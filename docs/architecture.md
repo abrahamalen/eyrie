@@ -192,4 +192,3 @@ Each phase is its own PR, reviewed before the next one starts.
 1. **Read-only vs control**: should Eyrie ever launch or resume Claude Code/Codex sessions? Saying yes changes the security model (it would be a local process runner).
 2. **Usage history depth**: is full history from transcripts worth the complexity, or is "last-session plus daily snapshots taken by Eyrie" enough?
 3. **Tasks home**: keep `Tasks.md` in the vault, or move to Eyrie's own store?
-4. **Repo location**: `origin` is under `alenabraham-qure`; move to a personal account?
