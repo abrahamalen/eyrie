@@ -40,3 +40,14 @@ lint: frontend/node_modules/.stamp ## Lint the UI
 
 clean: ## Remove venv, node_modules, dist
 	rm -rf backend/.venv frontend/node_modules frontend/dist
+
+.PHONY: up down logs
+up: ## Build + run in Docker, then open http://localhost:8080
+	docker compose up --build -d
+	@echo "Eyrie -> http://localhost:$${EYRIE_PORT:-8080}"
+
+down: ## Stop the Docker stack
+	docker compose down
+
+logs: ## Tail Docker logs
+	docker compose logs -f

@@ -3,8 +3,7 @@
 A local portal for keeping an eye on your AI coding tools — Claude Code, Codex, MCP
 servers, and installed agent plugins (e.g. Nexus) — plus a simple task list.
 
-FastAPI backend + React/TypeScript frontend, run as plain code for now (no Docker
-yet — that's the next step once this is stable). No accounts, no cloud: everything
+FastAPI backend + React/TypeScript frontend, run with `make dev` or Docker. No accounts, no cloud: everything
 reads what's already on your disk, live, on every request.
 
 ## Architecture
@@ -34,21 +33,23 @@ eyrie/
 
 ## Running it locally
 
-Two processes, two terminals:
-
 ```bash
-# backend
-cd backend
-source .venv/bin/activate   # venv already has fastapi + uvicorn installed
-uvicorn app.main:app --port 8000 --reload
-
-# frontend
-cd frontend
-npm run dev
+make dev   # installs deps on first run, then API :8000 + UI -> http://localhost:5173
 ```
 
-Open `http://localhost:5173`. Vite proxies `/api/*` to the backend on port 8000
-(see `frontend/vite.config.ts`), so there's no CORS setup needed in dev.
+`make help` lists everything (`build`, `lint`, `clean`, ...). Vite proxies `/api/*`
+to the backend, so there's no CORS setup in dev.
+
+### Docker
+
+```bash
+make up    # builds + runs -> http://localhost:8080  (EYRIE_PORT to change)
+make down
+```
+
+nginx serves the built UI and proxies `/api` to the backend. `~/.claude.json`,
+`~/.claude`, `~/.codex` are mounted read-only; the Obsidian vault is mounted
+read-write (tasks). Paths are in `docker-compose.yml`.
 
 ## Configuration
 
