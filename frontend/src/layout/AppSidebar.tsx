@@ -37,11 +37,9 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Overview">
-                <NavLink to="/" end className={navLinkClass}>
+              <SidebarMenuButton render={<NavLink to="/" end className={navLinkClass} />} tooltip="Overview">
                   <LayoutDashboard className="size-4 shrink-0" />
                   <span className="truncate">Overview</span>
-                </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -53,28 +51,26 @@ export function AppSidebar() {
             <SidebarMenu>
               <Collapsible defaultOpen={claudeFamilyActive} className="group/collapsible">
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Claude Code">
-                    <NavLink to="/claude" className={navLinkClass}>
+                  <SidebarMenuButton render={<NavLink to="/claude" className={navLinkClass} />} tooltip="Claude Code">
                       <SquareTerminal className="size-4 shrink-0" />
                       <span className="truncate">Claude Code</span>
-                    </NavLink>
                   </SidebarMenuButton>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      className="absolute right-1 top-1 h-6 w-6 p-0 data-[state=open]:rotate-90"
-                      aria-label="Toggle Nexus Agents"
-                    >
-                      <ChevronRight className="size-3.5 transition-transform" />
-                    </SidebarMenuButton>
+                  <CollapsibleTrigger
+                    render={
+                      <SidebarMenuButton
+                        className="absolute right-1 top-1 h-6 w-6 p-0 data-[panel-open]:rotate-90"
+                        aria-label="Toggle Nexus Agents"
+                      />
+                    }
+                  >
+                    <ChevronRight className="size-3.5 transition-transform" />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild>
-                          <NavLink to="/nexus" className={navLinkClass}>
+                        <SidebarMenuSubButton render={<NavLink to="/nexus" className={navLinkClass} />}>
                             <Bot className="size-4 shrink-0" />
                             <span className="truncate">Nexus Agents</span>
-                          </NavLink>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
@@ -83,11 +79,9 @@ export function AppSidebar() {
               </Collapsible>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Codex">
-                  <NavLink to="/codex" className={navLinkClass}>
+                <SidebarMenuButton render={<NavLink to="/codex" className={navLinkClass} />} tooltip="Codex">
                     <Cloud className="size-4 shrink-0" />
                     <span className="truncate">Codex</span>
-                  </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -99,11 +93,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="MCP Servers">
-                  <NavLink to="/mcp" className={navLinkClass}>
+                <SidebarMenuButton render={<NavLink to="/mcp" className={navLinkClass} />} tooltip="MCP Servers">
                     <Plug className="size-4 shrink-0" />
                     <span className="truncate">MCP Servers</span>
-                  </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -114,11 +106,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Tasks">
-                  <NavLink to="/tasks" className={navLinkClass}>
+                <SidebarMenuButton render={<NavLink to="/tasks" className={navLinkClass} />} tooltip="Tasks">
                     <SquareCheck className="size-4 shrink-0" />
                     <span className="truncate">Tasks</span>
-                  </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
