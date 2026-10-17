@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '@/api/client'
 import { usePoll } from '@/usePoll'
-import { shortPath } from '@/format'
+import { shortPath, tildify } from '@/format'
 import { AddMcpDialog } from '@/components/AddMcpDialog'
 import { RemoveMcpDialog } from '@/components/RemoveMcpDialog'
 import { Button } from '@/components/ui/button'
@@ -55,7 +55,7 @@ export function McpPage() {
                         <div className="font-medium">{m.name}</div>
                         <div className="max-w-md truncate font-mono text-xs text-muted-foreground" title={m.target}>
                           <span className="mr-1.5 rounded bg-muted px-1">{m.type}</span>
-                          {m.target}
+                          {tildify(m.target)}
                         </div>
                       </TableCell>
                       <TableCell>{m.client === 'claude' ? 'Claude Code' : 'Codex'}</TableCell>

@@ -1,4 +1,8 @@
-const HOME = '/Users/alenabraham'
+// Set from /api/v1/meta at startup; until then paths are shown in full.
+let home = ''
+export function setHome(h: string) {
+  home = h.replace(/\/+$/, '')
+}
 
 export function fmtNum(n: number | null | undefined): string {
   return (n ?? 0).toLocaleString('en-US')
@@ -8,8 +12,15 @@ export function fmtUsd(n: number | null | undefined): string {
   return '$' + (n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/** Shortens every home path inside free text, e.g. a server's command line. */
+export function tildify(text: string): string {
+  return home ? text.split(home + '/').join('~/') : text
+}
+
 export function shortPath(p: string): string {
-  return p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p
+  if (!home) return p
+  if (p === home) return '~'
+  return p.startsWith(home + '/') ? '~' + p.slice(home.length) : p
 }
 
 export function fmtCompact(n: number | null | undefined): string {
