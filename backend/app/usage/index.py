@@ -160,3 +160,14 @@ class UsageIndex:
             files, = con.execute("SELECT count(*) FROM files").fetchone()
             messages, oldest = con.execute("SELECT count(*), min(ts) FROM messages").fetchone()
         return {"files": files, "messages": messages, "oldest": oldest, "last_scan_ms": round(self.last_scan_ms, 1)}
+
+    def recent_sessions(self, limit: int = 20) -> list[dict]:
+        """Most recent top-level Claude Code conversations, newest first."""
+        with closing(self.connect()) as con:
+            rows = con.execute(
+                "SELECT session_id, min(ts), max(ts), count(*), "
+                "(SELECT project FROM messages m2 WHERE m2.session_id = m.session_id ORDER BY ts LIMIT 1) "
+                "FROM messages m WHERE subagent = 0 AND session_id IS NOT NULL "
+                "GROUP BY session_id ORDER BY max(ts) DESC LIMIT ?", (limit,),
+            ).fetchall()
+        return [{"id": sid, "started": a, "last": b, "messages": n, "project": proj} for sid, a, b, n, proj in rows]

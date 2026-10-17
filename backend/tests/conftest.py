@@ -13,6 +13,11 @@ def _no_repo_config(monkeypatch, tmp_path):
     monkeypatch.setenv("EYRIE_CONFIG", str(tmp_path / "absent.toml"))
 
 
+from app.actions import runner as _runner
+
+REAL_RUN, REAL_BINARY = _runner.Runner.run, _runner.Runner.binary
+
+
 @pytest.fixture(autouse=True)
 def _never_run_real_cli(monkeypatch):
     """Tests must never touch the real claude/codex config. Use the fake_cli fixture."""

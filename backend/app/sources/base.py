@@ -21,9 +21,11 @@ class Source(Protocol):
 
 def build_registry(settings: Settings) -> dict[str, Source]:
     from app.sources import claude, codex, mcp, nexus, plugins, tasks
+    from app.sessions.source import SessionsSource
     from app.usage.source import UsageSource
 
     known: dict[str, Source] = {
+        "sessions": SessionsSource(settings),
         "claude": claude.ClaudeSource(settings),
         "codex": codex.CodexSource(settings),
         "mcp": mcp.McpSource(settings),

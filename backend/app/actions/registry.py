@@ -5,11 +5,17 @@ is destructive (needs an explicit confirm after the user has seen the command).
 There is deliberately no generic "run a command" action.
 """
 import re
+import secrets
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Literal
+from typing import TYPE_CHECKING, Callable, Literal
 
 from pydantic import BaseModel, field_validator, model_validator
+
+if TYPE_CHECKING:
+    from app.actions.runner import Runner
+    from app.config import Settings
 
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 PLUGIN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(@[A-Za-z0-9][A-Za-z0-9._-]*)?$")
@@ -122,6 +128,59 @@ class PluginToggle(BaseModel):
         return v
 
 
+UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+SESSION_NAME = re.compile(r"^eyrie-[a-z0-9]{4,16}$")
+
+
+def _uuid(v: str | None, what: str) -> str | None:
+    if v is not None and not UUID_RE.match(v):
+        raise ValueError(f"{what} must be a lowercase UUID")
+    return v
+
+
+class SessionStart(BaseModel):
+    tool: Literal["claude", "codex"]
+    cwd: str
+    # new: fresh conversation; continue: latest conversation in cwd; resume: resume_id
+    mode: Literal["new", "continue", "resume"] = "new"
+    resume_id: str | None = None
+    # Optional so API callers can omit them; the UI sends them so the preview matches the run.
+    name: str | None = None
+    conversation_id: str | None = None
+
+    @model_validator(mode="after")
+    def _check(self):
+        _uuid(self.resume_id, "resume_id")
+        _uuid(self.conversation_id, "conversation_id")
+        if self.name is not None and not SESSION_NAME.match(self.name):
+            raise ValueError("name must look like eyrie-<4-16 lowercase letters/digits>")
+        if (self.mode == "resume") != (self.resume_id is not None):
+            raise ValueError("resume_id is required for mode 'resume' and only allowed there")
+        if self.conversation_id and not (self.tool == "claude" and self.mode == "new"):
+            raise ValueError("conversation_id only applies to a new Claude Code session")
+        self.name = self.name or f"eyrie-{secrets.token_hex(3)}"
+        if self.tool == "claude" and self.mode == "new":
+            self.conversation_id = self.conversation_id or str(uuid.uuid4())
+        return self
+
+
+class SessionStop(BaseModel):
+    name: str
+
+    @field_validator("name")
+    @classmethod
+    def _valid(cls, v: str) -> str:
+        if not SESSION_NAME.match(v):
+            raise ValueError("Not an Eyrie session name")
+        return v
+
+
+@dataclass
+class Context:
+    settings: "Settings"
+    runner: "Runner"
+
+
 @dataclass
 class Planned:
     tool: str
@@ -133,13 +192,13 @@ class Planned:
 class Action:
     id: str
     params: type[BaseModel]
-    plan: Callable[[BaseModel], Planned]
+    plan: Callable[[BaseModel, Context], Planned]
     destructive: bool = False
     # Name of the source whose cached state this action changes.
     invalidates: str | None = None
 
 
-def _mcp_add(p: McpAdd) -> Planned:
+def _mcp_add(p: McpAdd, ctx: Context) -> Planned:
     cwd = Path(p.project_dir) if p.project_dir else None
     if p.client == "codex":
         args = ["mcp", "add", p.name]
@@ -162,14 +221,14 @@ def _mcp_add(p: McpAdd) -> Planned:
     return Planned("claude", args, cwd)
 
 
-def _mcp_remove(p: McpRemove) -> Planned:
+def _mcp_remove(p: McpRemove, ctx: Context) -> Planned:
     if p.client == "codex":
         return Planned("codex", ["mcp", "remove", p.name])
     return Planned("claude", ["mcp", "remove", "-s", p.scope, p.name], Path(p.project_dir) if p.project_dir else None)
 
 
 def _plugin(verb: str):
-    def plan(p: PluginToggle) -> Planned:
+    def plan(p: PluginToggle, ctx: Context) -> Planned:
         args = ["plugin", verb, p.plugin, "--json"]
         if p.scope:
             args += ["-s", p.scope]
@@ -177,11 +236,37 @@ def _plugin(verb: str):
     return plan
 
 
+def _session_start(p: SessionStart, ctx: Context) -> Planned:
+    from app.sessions.tmux import base_args
+
+    exe = ctx.runner.binary(p.tool)
+    if p.tool == "claude":
+        cmd = {"new": [exe, "--session-id", p.conversation_id], "continue": [exe, "--continue"],
+               "resume": [exe, "--resume", p.resume_id]}[p.mode]
+    else:
+        cmd = {"new": [exe, "--cd", p.cwd], "continue": [exe, "--cd", p.cwd, "resume", "--last"],
+               "resume": [exe, "--cd", p.cwd, "resume", p.resume_id]}[p.mode]
+    tags = {"@eyrie_tool": p.tool, "@eyrie_cwd": p.cwd, "@eyrie_mode": p.mode,
+            "@eyrie_conv": p.conversation_id or p.resume_id or ""}
+    args = [*base_args(ctx.settings), "new-session", "-d", "-s", p.name, "-x", "200", "-y", "50", "-c", p.cwd, *cmd]
+    for k, v in tags.items():
+        args += [";", "set-option", "-t", p.name, k, v]
+    return Planned("tmux", args)
+
+
+def _session_stop(p: SessionStop, ctx: Context) -> Planned:
+    from app.sessions.tmux import base_args
+
+    return Planned("tmux", [*base_args(ctx.settings), "kill-session", "-t", p.name])
+
+
 ACTIONS: dict[str, Action] = {a.id: a for a in [
     Action("mcp.add", McpAdd, _mcp_add, invalidates="mcp"),
     Action("mcp.remove", McpRemove, _mcp_remove, destructive=True, invalidates="mcp"),
     Action("plugins.enable", PluginToggle, _plugin("enable"), invalidates="plugins"),
     Action("plugins.disable", PluginToggle, _plugin("disable"), invalidates="plugins"),
+    Action("sessions.start", SessionStart, _session_start),
+    Action("sessions.stop", SessionStop, _session_stop, destructive=True),
 ]}
 
 
