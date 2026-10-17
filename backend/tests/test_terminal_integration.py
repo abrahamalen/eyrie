@@ -1,0 +1,86 @@
+"""Browser terminal against real tmux on a throwaway socket, with a stand-in program."""
+import json
+import subprocess
+import time
+
+import pytest
+
+from tests.test_sessions_tmux_integration import real  # noqa: F401  (fixture)
+
+pytestmark = pytest.mark.skipif(subprocess.run(["which", "tmux"], capture_output=True).returncode != 0,
+                                reason="tmux not installed")
+
+
+def start(c, proj, name):
+    r = c.post("/api/v1/actions/sessions.start", json={"params": {"tool": "claude", "cwd": str(proj), "name": name}}).json()
+    assert r["ok"], r
+
+
+def read_until(ws, needle, timeout=4.0):
+    buf = b""
+    end = time.time() + timeout
+    while time.time() < end:
+        buf += ws.receive_bytes()
+        if needle in buf:
+            return buf
+    raise AssertionError(f"{needle!r} not seen; got {buf[-400:]!r}")
+
+
+def proto(c):
+    return ["eyrie", f"eyrie.token.{c.app.state.token}"]
+
+
+def test_type_into_session_and_detach_keeps_it_running(real):  # noqa: F811
+    c, proj, socket = real
+    start(c, proj, "eyrie-term1")
+    with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term1/term", subprotocols=proto(c)) as ws:
+        assert ws.accepted_subprotocol == "eyrie"
+        read_until(ws, b"fake claude args")
+        ws.send_bytes(b"hello from the browser\r")
+        read_until(ws, b"got: hello from the browser")
+    time.sleep(0.3)
+    s = c.get("/api/v1/sources/sessions").json()["sessions"][0]
+    # The stand-in exits after one line, so the session shows exited; it still exists.
+    assert s["name"] == "eyrie-term1"
+    entry = c.get("/api/v1/audit").json()[0]
+    assert entry["action"] == "sessions.attach" and entry["params"] == {"name": "eyrie-term1", "readonly": False}
+
+
+def test_readonly_ignores_input(real):  # noqa: F811
+    c, proj, socket = real
+    start(c, proj, "eyrie-term2")
+    with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term2/term?readonly=true", subprotocols=proto(c)) as ws:
+        read_until(ws, b"fake claude args")
+        ws.send_bytes(b"should not arrive\r")
+        time.sleep(0.5)
+    screen = c.get("/api/v1/sessions/eyrie-term2/screen").json()["text"]
+    assert "should not arrive" not in screen
+    assert c.get("/api/v1/sources/sessions").json()["sessions"][0]["alive"] is True
+
+
+def test_resize_reaches_tmux(real):  # noqa: F811
+    c, proj, socket = real
+    start(c, proj, "eyrie-term3")
+    with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term3/term", subprotocols=proto(c)) as ws:
+        read_until(ws, b"fake claude args")
+        ws.send_text(json.dumps({"type": "resize", "cols": 97, "rows": 29}))
+        size = ""
+        for _ in range(30):
+            time.sleep(0.1)
+            size = subprocess.run(["tmux", "-L", socket, "display-message", "-p", "-t", "eyrie-term3",
+                                   "#{window_width}x#{window_height}"], capture_output=True, text=True).stdout.strip()
+            if size.startswith("97x"):
+                break
+        assert size.startswith("97x"), size
+
+
+def test_session_kill_closes_terminal(real):  # noqa: F811
+    c, proj, socket = real
+    start(c, proj, "eyrie-term4")
+    with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term4/term", subprotocols=proto(c)) as ws:
+        read_until(ws, b"fake claude args")
+        subprocess.run(["tmux", "-L", socket, "kill-session", "-t", "eyrie-term4"], check=True)
+        from starlette.websockets import WebSocketDisconnect
+        with pytest.raises(WebSocketDisconnect):
+            for _ in range(200):
+                ws.receive_bytes()

@@ -46,3 +46,37 @@ def test_writes_need_token(client):
 
 def test_writes_with_token(authed):
     assert authed.post("/api/v1/tasks", json={"text": "x"}, headers={"If-Match": "absent"}).status_code == 200
+
+
+def _ws_rejected(client, url, **kw):
+    from starlette.websockets import WebSocketDisconnect
+    with pytest.raises(WebSocketDisconnect) as e:
+        with client.websocket_connect(url, **kw):
+            pass
+    return e.value.code
+
+
+def test_websocket_wrong_host_rejected(client, app):
+    # The test client sends Host: testserver for relative WebSocket URLs.
+    assert _ws_rejected(client, "/api/v1/sessions/eyrie-abcd/term",
+                        subprotocols=["eyrie", f"eyrie.token.{app.state.token}"]) == 4403
+
+
+def test_websocket_needs_token(client, app):
+    assert _ws_rejected(client, "ws://localhost/api/v1/sessions/eyrie-abcd/term") == 4401
+    assert _ws_rejected(client, "ws://localhost/api/v1/sessions/eyrie-abcd/term", subprotocols=["eyrie", "eyrie.token.wrong"]) == 4401
+
+
+def test_websocket_foreign_origin_rejected_even_with_token(client, app):
+    code = _ws_rejected(client, "ws://localhost/api/v1/sessions/eyrie-abcd/term",
+                        subprotocols=["eyrie", f"eyrie.token.{app.state.token}"], headers={"Origin": "https://evil.example"})
+    assert code == 4403
+
+
+def test_websocket_token_via_subprotocol_reaches_route(client, app, monkeypatch):
+    from app.actions import runner
+    from app.actions.runner import RunResult
+    monkeypatch.setattr(runner.Runner, "run", lambda self, tool, args, cwd=None: RunResult(1, "", "no server", 1))
+    # Auth passes; the route then closes because the session doesn't exist.
+    code = _ws_rejected(client, "ws://localhost/api/v1/sessions/eyrie-abcd/term", subprotocols=["eyrie", f"eyrie.token.{app.state.token}"])
+    assert code == 4404
