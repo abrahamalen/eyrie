@@ -3,7 +3,9 @@
 - Host must be a loopback name: blocks DNS-rebinding pages that resolve to 127.0.0.1.
 - Origin (when sent) must be loopback, and Sec-Fetch-Site must not be cross-site: blocks
   other websites driving the API from the user's browser.
-- Mutating requests need the per-install token from <data_dir>/token.
+- Mutating requests and every WebSocket need the per-install token from <data_dir>/token.
+  Browsers can't set headers on a WebSocket, so there it may come as a subprotocol
+  "eyrie.token.<token>" (the server then accepts the plain "eyrie" subprotocol).
 """
 import hmac
 import secrets
@@ -16,6 +18,8 @@ from starlette.responses import JSONResponse
 LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 TOKEN_HEADER = "x-eyrie-token"
+WS_TOKEN_PREFIX = "eyrie.token."
+WS_PROTOCOL = "eyrie"
 
 
 def load_or_create_token(data_dir: Path) -> str:
@@ -48,6 +52,10 @@ class LocalOnlyMiddleware:
         error = self._check(scope, headers)
         if error:
             status, detail = error
+            if scope["type"] == "websocket":
+                # Closing before accept makes the server answer the handshake with 403.
+                await receive()
+                return await send({"type": "websocket.close", "code": 4000 + status, "reason": detail})
             return await JSONResponse({"detail": detail}, status_code=status)(scope, receive, send)
         await self.app(scope, receive, send)
 
@@ -61,6 +69,11 @@ class LocalOnlyMiddleware:
             return 403, "Cross-site request blocked"
         method = scope.get("method", "GET")
         if scope["type"] == "websocket" or method not in SAFE_METHODS:
-            if not hmac.compare_digest(headers.get(TOKEN_HEADER, ""), self.token):
+            supplied = headers.get(TOKEN_HEADER, "")
+            if scope["type"] == "websocket" and not supplied:
+                for proto in (p.strip() for p in headers.get("sec-websocket-protocol", "").split(",")):
+                    if proto.startswith(WS_TOKEN_PREFIX):
+                        supplied = proto[len(WS_TOKEN_PREFIX):]
+            if not hmac.compare_digest(supplied, self.token):
                 return 401, "Missing or invalid token"
         return None
