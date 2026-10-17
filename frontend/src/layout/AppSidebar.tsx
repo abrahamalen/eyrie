@@ -1,0 +1,144 @@
+import { Bot, ChartColumnStacked, ChevronRight, Cloud, History, LayoutDashboard, MonitorPlay, Plug, Puzzle, SquareTerminal, SquareCheck } from 'lucide-react'
+import { NavLink, useLocation } from 'react-router-dom'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+} from '@/components/ui/sidebar'
+
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  `flex w-full items-center gap-2 ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+
+export function AppSidebar() {
+  const location = useLocation()
+  const claudeFamilyActive = location.pathname === '/claude' || location.pathname === '/nexus'
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 px-2 py-1.5">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
+            E
+          </span>
+          <span className="font-semibold tracking-tight group-data-[collapsible=icon]:hidden">Eyrie</span>
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<NavLink to="/" end className={navLinkClass} />} tooltip="Overview">
+                  <LayoutDashboard className="size-4 shrink-0" />
+                  <span className="truncate">Overview</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<NavLink to="/sessions" className={navLinkClass} />} tooltip="Sessions">
+                  <MonitorPlay className="size-4 shrink-0" />
+                  <span className="truncate">Sessions</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<NavLink to="/usage" className={navLinkClass} />} tooltip="Usage">
+                  <ChartColumnStacked className="size-4 shrink-0" />
+                  <span className="truncate">Usage</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Coding Agents</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <Collapsible defaultOpen={claudeFamilyActive} className="group/collapsible">
+                <SidebarMenuItem>
+                  <SidebarMenuButton render={<NavLink to="/claude" className={navLinkClass} />} tooltip="Claude Code">
+                      <SquareTerminal className="size-4 shrink-0" />
+                      <span className="truncate">Claude Code</span>
+                  </SidebarMenuButton>
+                  <CollapsibleTrigger
+                    render={
+                      <SidebarMenuButton
+                        className="absolute right-1 top-1 h-6 w-6 p-0 data-[panel-open]:rotate-90"
+                        aria-label="Toggle Nexus Agents"
+                      />
+                    }
+                  >
+                    <ChevronRight className="size-3.5 transition-transform" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton render={<NavLink to="/nexus" className={navLinkClass} />}>
+                            <Bot className="size-4 shrink-0" />
+                            <span className="truncate">Nexus Agents</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<NavLink to="/codex" className={navLinkClass} />} tooltip="Codex">
+                    <Cloud className="size-4 shrink-0" />
+                    <span className="truncate">Codex</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<NavLink to="/mcp" className={navLinkClass} />} tooltip="MCP Servers">
+                    <Plug className="size-4 shrink-0" />
+                    <span className="truncate">MCP Servers</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<NavLink to="/plugins" className={navLinkClass} />} tooltip="Plugins">
+                  <Puzzle className="size-4 shrink-0" />
+                  <span className="truncate">Plugins</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<NavLink to="/tasks" className={navLinkClass} />} tooltip="Tasks">
+                    <SquareCheck className="size-4 shrink-0" />
+                    <span className="truncate">Tasks</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton render={<NavLink to="/activity" className={navLinkClass} />} tooltip="Activity">
+                  <History className="size-4 shrink-0" />
+                  <span className="truncate">Activity</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  )
+}

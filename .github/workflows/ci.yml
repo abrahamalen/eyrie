@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    # Skipped on the work-account fork (no Actions minutes spent there); runs on the
+    # personal repo once synced.
+    if: github.repository_owner != 'alenabraham-qure'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install tmux (session and terminal integration tests)
+        run: sudo apt-get update && sudo apt-get install -y tmux
+      - name: Install dependencies
+        run: make setup
+      - name: Backend tests, generated-types check, UI build and lint
+        run: make check

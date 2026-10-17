@@ -1,0 +1,42 @@
+# Copy to eyrie.toml (gitignored) and edit. Every key is optional; these are the defaults.
+# Env vars override this file, e.g. EYRIE_PATHS__VAULT=~/notes.
+
+[paths]
+claude_home = "~/.claude"
+claude_json = "~/.claude.json"
+codex_home  = "~/.codex"
+vault       = "~/workspace/Obsidian Vault"
+tasks_file  = "Personal/Tasks.md"     # relative to vault
+nexus_dir   = "agent-memory/Nexus"    # relative to vault
+data_dir    = "~/.eyrie"              # install token and usage.db (usage history)
+
+[sources]
+enabled = ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+
+[sessions]
+# Sessions may start in any directory under these, or in one Claude Code / Codex already knows.
+roots = []                            # e.g. ["~/personal/projects"]
+socket = "eyrie"                      # Eyrie's private tmux server: tmux -L eyrie ls
+
+[server]
+# ui_dir = "frontend/dist"           # built UI served at / (make build); default: this checkout's
+
+[privacy]
+hide_mcp = []                         # MCP server names to hide from the UI
+
+[cli]
+# claude_bin = "/opt/homebrew/bin/claude"   # default: found on PATH
+# tmux_bin   = "/opt/homebrew/bin/tmux"
+# codex_bin  = "/opt/homebrew/bin/codex"
+timeout_s = 60
+# Extra env for CLI calls. To try changes against a scratch config, point the CLIs and
+# paths.* at the same place:
+# env = { CLAUDE_CONFIG_DIR = "/tmp/eyrie-sandbox/claude", CODEX_HOME = "/tmp/eyrie-sandbox/codex" }
+
+# $/MTok. Overrides or adds to the built-in table in backend/app/usage/prices.py.
+# [pricing."claude-opus-5-5"]
+# input = 4.0
+# output = 20.0
+# cache_write_5m = 5.0
+# cache_write_1h = 8.0
+# cache_read = 0.20

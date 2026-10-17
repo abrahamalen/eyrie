@@ -1,0 +1,336 @@
+# Eyrie — revamp architecture (draft)
+
+Status: **draft, under review**. This PR is design only. The prototype and the code
+come in separate PRs once this is agreed.
+
+## 1. Context
+
+Eyrie v0 is a **read-only** dashboard: a FastAPI app reads local agent state on every
+request, and a React portal polls it. The revamp turns it into a **control plane**:
+everything about the local AI tooling (sessions, MCP servers, plugins, agent memory,
+personal tasks) should be manageable from Eyrie, with full usage history.
+
+v0 was built page by page, and these problems carry into the revamp:
+
+| # | Problem | Where |
+|---|---------|-------|
+| P1 | Every source is a one-off module with its own path constants, error handling and return shape. Adding a source means touching the router, `types.ts`, `client.ts` and a new page | `backend/app/services/*.py`, `routers/status.py` |
+| P2 | Paths are hardcoded to this machine (`~/workspace/Obsidian Vault/...`) | `services/tasks.py:6`, `services/nexus.py:6` |
+| P3 | Claude cost only counts the **last session** per project (`lastCost`), so long-term spend is invisible | `services/claude.py:29` |
+| P4 | Tasks writes rebuild the whole file: any non-task lines are dropped, and index-based IDs race with edits made in Obsidian | `services/tasks.py:21`, `routers/tasks.py:24` |
+| P5 | The MCP status scan re-reads the 15 newest transcripts on every 10s poll | `services/mcp.py:17` |
+| P6 | Frontend response types are written by hand, so they can drift from the backend | `frontend/src/api/types.ts` |
+| P7 | Personal tool, but it shows whatever is in `~/.claude.json`, including work MCP server names | `services/claude.py:67` |
+| P8 | Tasks point at the vault-root `Tasks.md`, which holds **work** tasks. Eyrie should only touch personal tasks | `services/tasks.py:6` |
+
+## 2. Decisions so far
+
+| Question | Decision |
+|----------|----------|
+| Read-only or control? | **Full control.** Everything manageable from Eyrie |
+| Usage history? | **Yes, full history** from session transcripts |
+| Tasks home? | **Vault, personal only**: `Personal/Tasks.md` (created on first write). The vault-root work `Tasks.md` is never read or written |
+| Company tools? | **None.** Personal project, so no Qure-hosted integrations |
+| Remote / phone access? | **Laptop only** for now. Tailscale + token remains the path if it's ever wanted |
+| Docker? | **Dropped.** Native-first; the v0 Docker files are removed in the code phase |
+
+## 3. Goals / non-goals
+
+**Goals**
+- **Manage, not just view.** Each section has actions:
+  - Sessions: start, resume, attach, stop.
+  - MCP servers: add, remove, inspect.
+  - Plugins: install, enable, disable.
+  - Nexus memory: browse, edit, delete.
+  - Tasks: full CRUD.
+- **Full usage history**: cost and tokens over time, per model and per project.
+- A uniform **source + action** abstraction: adding a capability means one backend module plus one page.
+- Configurable paths, so it runs on another machine without code edits.
+- Safe by default: localhost-only, authenticated actions, every action audit-logged.
+- Keep the v0 principle: **local-only, no accounts, no cloud**.
+
+**Non-goals**
+- Multi-user and remote hosting.
+- Any company/Qure integration.
+- Replacing the Claude Code / Codex UIs. Eyrie orchestrates them and doesn't reimplement them.
+
+## 4. Architecture
+
+```mermaid
+flowchart LR
+  subgraph Host["Host machine"]
+    subgraph Disk["Local state"]
+      CJ["~/.claude.json + settings"]
+      CT["~/.claude/projects/*.jsonl"]
+      CX["~/.codex/state_5.sqlite"]
+      V["Vault: Personal/Tasks.md, agent-memory/Nexus"]
+    end
+    CLI["claude / codex CLIs"]
+    TMUX["tmux server (eyrie-* sessions)"]
+  end
+
+  subgraph Backend["Eyrie backend (FastAPI, 127.0.0.1 only)"]
+    CFG["config"]
+    REG["source registry (read)"]
+    ACT["action layer (write)"]
+    SESS["session manager"]
+    IDX["usage indexer (SQLite)"]
+    AUD["audit log"]
+    API["/api/v1 + WS /term"]
+  end
+
+  UI["React portal + xterm.js"]
+
+  CJ & CT & CX & V --> REG
+  CT --> IDX
+  ACT -- "official CLI commands" --> CLI
+  ACT -- "in-place edits" --> V
+  SESS --> TMUX --> CLI
+  ACT & SESS --> AUD
+  REG & ACT & SESS & IDX --> API
+  API <--> UI
+```
+
+Two halves:
+- **Read path**: the source registry reads state from disk.
+- **Write path**: the action layer and session manager change things, and only through official interfaces.
+
+### 4.1 Source contract (read, fixes P1)
+
+```python
+class Source(Protocol):
+    id: str
+    title: str
+    def available(self) -> Availability: ...    # present? readable? why not?
+    def snapshot(self) -> BaseModel: ...        # typed payload
+```
+
+- `GET /api/v1/sources` lists sources and their availability. `GET /api/v1/sources/{id}` returns a snapshot.
+- Failures go through one shared envelope (`{available: false, reason}`).
+- Parse results are cached, keyed by the inputs' `(path, mtime, size)`, so a poll costs a `stat()` (fixes P5).
+
+### 4.2 Action layer (write)
+
+Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes go through that tool's own CLI; reads come from its config files.
+
+| Capability | Write (CLI) | Read |
+|------------|-------------|------|
+| MCP servers (Claude) | `claude mcp add` / `remove`, scopes user / local / project | `~/.claude.json` (user, and local per project) + each known project's `.mcp.json` |
+| MCP servers (Codex) | `codex mcp add` / `remove` (global only, stdio or http) | `~/.codex/config.toml` |
+| Plugins | `claude plugin enable` / `disable --json` | `claude plugin list --json`, cached until the plugin state files change (~0.7 s per call) |
+| Plugin install / uninstall | Not yet: marketplace installs can declare a command a person must approve by sha256 (`--accept-command`), which needs its own two-step flow | |
+| Codex threads, sessions | Slice 5 (session manager) | |
+| Nexus memory | Slice 6: direct file ops, confined to `agent-memory/Nexus/<agent>/*.md` (see below) | Same folder |
+| Personal tasks | Slice 2 (in-place line edits) | |
+
+- **No health checks**: `claude mcp list` / `get` health-check servers, which launches every stdio server. So they're never used for reads.
+- **Declared actions only**: `POST /api/v1/actions/{id}` with `{params, dry_run, confirm}`. The current ids are `mcp.add`, `mcp.remove`, `plugins.enable` and `plugins.disable`. There is no generic command action.
+- **Validation**: params are checked with pydantic before anything runs.
+  - Names: `[A-Za-z0-9][A-Za-z0-9._-]{0,63}`, so a value can't pass itself off as a flag.
+  - URLs: http(s) only.
+  - Env and header names are checked, and header values can't contain newlines.
+  - `project_dir` must be an existing absolute directory.
+  - Client-specific limits apply, for example Codex has no SSE and no scopes.
+- **Running**: argv list, `shell=False`, stdin closed, timeout, serialised by a lock. A stdio command always comes after `--`. Local and project scope run with `cwd` set to the project.
+- **Preview**: `dry_run` returns the exact argv, with env and header values masked. The UI shows it before any change.
+- **Confirm**: destructive actions (`mcp.remove`) return `428` until `confirm: true` is sent.
+- **Verify**: after a run, Eyrie checks the change actually happened, because some CLI paths exit 0 without doing it.
+  - `claude plugin enable` of a plugin that isn't installed reports success and records it as enabled. So plugin toggles are refused (`409`) unless the plugin is installed, and the enabled state is rechecked afterwards.
+- **Audit**: every run appends to `~/.eyrie/audit.jsonl`: action, masked argv, params with secret values masked, ok, exit code, duration, message. `GET /api/v1/audit` serves it, and the Activity page shows it.
+- **Nexus memory (slice 6)**: Eyrie owns no CLI for this, so it edits the files directly, inside tight limits.
+  - Agent and file names are restricted (`*.md` only, no hidden files).
+  - Every path is resolved and must stay directly inside an existing agent folder. Symlinked files or agent folders are refused, and no new agent folders can be created.
+  - Writes require `If-Match` with the content hash, and use an atomic write. A stale write is `409`, returned with the current file.
+  - Delete also requires `If-Match`, and moves the file to `<vault>/.trash/agent-memory/Nexus/<agent>/`, never unlinking it.
+  - 1 MB per file.
+  - Every create, write and delete is audit-logged.
+  - The editor re-checks the open file every 10 s, because agents write while they work. With no local edits it reloads quietly; with local edits it shows the conflict before Save, offering to load theirs or overwrite with yours.
+  - Reading a file reports which other files link to it, e.g. the agent's `MEMORY.md` index. The delete dialog uses this to warn about a dangling link.
+- **Sandbox**: `[cli] env` (e.g. `CLAUDE_CONFIG_DIR`, `CODEX_HOME`), together with matching `paths.*`, points the CLIs and reads at a scratch config. That's how this slice was tested end to end with the real CLIs.
+
+### 4.3 Session manager
+
+Slices 5a (start, stop, resume) and 5b (in-browser terminal) are built. Claude Code and Codex are interactive TUIs, so Eyrie runs them inside **tmux** (3.6 installed).
+
+- **Private server**: `tmux -L eyrie -f ~/.eyrie/tmux.conf`. Eyrie's sessions never mix with your own tmux; `list-sessions` only shows Eyrie's. The config sets `remain-on-exit on` from server start, so a process that exits instantly still leaves its session and exit status. It also sets 50k lines of history and mouse support.
+- **Start** (`sessions.start` action):
+  - The command is `tmux new-session -d -s eyrie-<hex> -c <dir> <bin> <args…>`, followed by `set-option` calls for the `@eyrie_tool` / `@eyrie_cwd` / `@eyrie_mode` / `@eyrie_conv` tags.
+  - The program is always passed as **two or more arguments**, so tmux execs it directly; a single argument would go through `sh -c`. A test confirms that a directory named `a;b $HOME` reaches the process literally.
+  - Claude Code: `--session-id <uuid>` (new), `--continue`, `--resume <uuid>`. Eyrie chooses the conversation id for new sessions, so the tmux session links to its transcript and usage.
+  - Codex: `--cd <dir>`, plus `resume --last` or `resume <thread id>`.
+  - The UI generates the session name and conversation id before previewing, so the preview is exactly what runs.
+- **Where sessions may start**: a directory Claude Code or Codex already knows (`~/.claude.json` projects, Codex thread `cwd`s), or anything under `[sessions] roots`. Anything else is `409`.
+- **Rediscovery**: sessions outlive Eyrie. The list comes from tmux itself (`list-sessions -F` with the `@eyrie_*` tags), so a restart or crash loses nothing.
+- **Screen**: `GET /api/v1/sessions/{name}/screen` returns `capture-pane -p -J` as plain text; the UI refreshes it every 2 s (read-only).
+- **Attach from a terminal**: `tmux -L eyrie attach -t eyrie-<hex>`. The UI shows it with a copy button.
+- **Stop** (`sessions.stop`): `kill-session`, destructive, so it needs confirmation. Only `eyrie-*` names are accepted.
+- **Resume lists**: recent Claude Code conversations come from the usage index; recent Codex threads come from its SQLite DB.
+- **Browser terminal (5b)**: `WS /api/v1/sessions/{name}/term[?readonly=true]` runs `tmux -L eyrie attach-session -t <name> [-r]` in a pty and bridges it to xterm.js.
+  - Output and input are binary frames; resize is a JSON text frame.
+  - Closing the socket sends SIGHUP to that tmux client only, so the session keeps running. Killing the session closes the socket.
+  - The pty isn't the client's controlling terminal, so the kernel won't deliver SIGWINCH; Eyrie sends it after each resize.
+  - Auth: browsers can't set headers on a WebSocket, so the token is offered as subprotocol `eyrie.token.<token>`, and the server accepts `eyrie`. Host and Origin checks apply as for HTTP. A rejected handshake is closed with `4000+status` instead of an HTTP body, which isn't valid on a WebSocket.
+  - Watch-only mode uses tmux's `-r` and also drops input server-side.
+  - At most 8 terminals at once. Each one is recorded in the audit log when it closes (connection only, never keystrokes).
+  - xterm is loaded lazily, so it only downloads when a terminal opens.
+- **Headless jobs** (`claude -p` / `codex exec`): after 5b.
+
+### 4.4 Usage history (fixes P3)
+
+Built in slice 3. What the real transcripts showed, and how the design handles it:
+
+- **Source**: transcripts (`~/.claude/projects/*/*.jsonl`, plus `*/<session>/subagents/*.jsonl`) carry per-response `usage`. Subagent runs are billed to their parent session, so they're included.
+- **Dedupe**: one API response is written as several lines (one per content block), each repeating its usage. Naive summing overcounts about 2.3×. Streaming lines can carry partial output counts. Rows are keyed on `(message.id, requestId)` and keep the max of each counter.
+- **Retention**: Claude Code prunes old transcripts, so `~/.eyrie/usage.db` is the **system of record** for history, not a disposable cache. Rows outlive their files. A schema change needs a migration, not a rebuild.
+- **Incremental**: each file is read from its last byte offset, and only up to its last complete line. A replaced or truncated file is reread, which the upsert keeps idempotent. Measured on this laptop: cold scan of 97 MB / 79 files takes 260 ms; warm scan takes 6 ms. So scanning runs inline on request, throttled to every 10 s, with no background worker.
+- **Cost**: tokens × a per-model price table (`app/usage/prices.py`, overridable under `[pricing]`), applied at query time, so a price fix corrects all history. 5-minute and 1-hour cache writes are priced separately; 1-hour writes are about 8× the volume here.
+  - Validated against Claude Code's own `cost-state` records: its token counts priced with this table land within a few percent of the cost it reports.
+  - `cost-state` itself isn't usable as the source: it has no timestamps, resets on each resumed run, and omits subagents.
+  - Transcript-based cost reads 0–15% low, because Claude Code doesn't log some background calls (titles, compaction). The UI says so.
+- **Model ids** are normalised (`[1m]`, `-YYYYMMDD` suffixes). Unknown models are listed as unpriced instead of silently counting $0.
+- **Projects**: a session counts toward the directory it started in, even if it later `cd`s.
+- **Codex**: `threads.tokens_used` is a lifetime total per thread (one thread holds over 1B tokens), so spreading it by day would be wrong. It's reported per model, for threads active in the range.
+- **Usage page**: daily cost or tokens (7/30/90 days) stacked by model, by-model table, by-project bars, and a Codex panel. `GET /api/v1/usage?days=N`.
+
+### 4.5 Personal tasks (fixes P4, P8)
+
+- Default file: `<vault>/Personal/Tasks.md`, configurable. The vault-root `Tasks.md` (work) is out of scope.
+- **Edit lines in place**: change only the target line and preserve every other line (headings, notes, blank lines).
+- Task ID = hash of the task text (not the checkbox, so it survives toggling) plus its ordinal among duplicates.
+- Writes carry the file's etag in `If-Match`: a hash of the file content, so it can't be fooled by mtime granularity. If the file changed in Obsidian since the read, the write gets `409` with the current state, and the UI shows it.
+- Atomic writes (temp file + rename).
+
+### 4.6 Config (fixes P2, P7)
+
+`eyrie.toml` (gitignored, with a committed `eyrie.example.toml`), overridable with `EYRIE_*` env vars and loaded through `pydantic-settings`:
+
+```toml
+[paths]
+claude_home = "~/.claude"
+codex_home  = "~/.codex"
+vault       = "~/workspace/Obsidian Vault"
+tasks_file  = "Personal/Tasks.md"   # relative to vault
+
+[sessions]
+roots = ["~/personal/projects"]     # where sessions may be started
+
+[privacy]
+hide_mcp = []                       # server names hidden from the UI
+
+[server]
+port = 8000                         # always bound to 127.0.0.1
+```
+
+### 4.7 Security model
+
+Control means Eyrie can run commands as you, so the threat to design against is **another web page or LAN device driving it**.
+
+- **Bind address**: the backend binds to `127.0.0.1` only, never `0.0.0.0`.
+- **Auth token**: a random token is generated on first run (`~/.eyrie/token`, mode 600) and is required on every mutating request and on the terminal WebSocket. The portal gets it through a one-time local bootstrap.
+- **Host/Origin checks** block DNS rebinding and cross-site requests (only `localhost` / `127.0.0.1` are accepted).
+- **Commands**: no arbitrary command endpoint. Only the declared actions in §4.2, with validated arguments.
+- **Paths**: file actions are confined to their roots (resolve, then check the prefix) so `../` can't escape them.
+- **Remote/phone access**: laptop only (decided). If it's wanted later, it goes through Tailscale plus the same token, never a port open to the internet.
+
+### 4.8 Deployment (built in slice 7b)
+
+A container can't drive host tmux or the host's `claude`/`codex` with their credentials, so Eyrie runs natively. Docker was removed in slice 1.
+
+- **Development**: `make dev` runs Vite with hot reload on 5173, proxying `/api` (including WebSockets) to the API on 8000.
+- **Installed**: the backend serves the built UI itself (`app/ui.py`), so it's one process on one port, 8787 by default and separate from dev.
+  - Client-side routes fall back to `index.html`, and unknown `/api/*` paths are a JSON 404 for every method.
+  - Fingerprinted `assets/` are cached as immutable.
+  - Every response gets anti-framing headers (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) plus `nosniff` and `no-referrer`.
+- **`make install`**: a launchd agent `local.eyrie`, written by `scripts/launchd.py` (stdlib only, rendered with `plistlib`, then checked with `plutil -lint`).
+  - It records install-time `PATH`, because launchd's default can't find `claude`, `codex` or `tmux`.
+  - `KeepAlive`, with throttled restarts.
+  - **`AbandonProcessGroup`**, so restarting or unloading Eyrie never kills the tmux sessions it started.
+  - Default process type, not Background, so agents in those sessions aren't throttled.
+  - `make status`, `make logs` and `make uninstall` go with it. `DRY_RUN=1` prints everything without touching launchd.
+- **Other platforms**: `make serve` runs the same thing in the foreground.
+
+### 4.9 API and types (fixes P6)
+
+Built in slice 7a.
+
+- **Response models**: every JSON route declares one (`backend/app/schemas.py`). They are the contract. Each source has its own typed route (`GET /api/v1/sources/<id>`), so each snapshot gets its own schema. A test fails if a route or a source is left untyped.
+- **Checked against real data**: when the models were written, every source's real snapshot on this laptop was validated against its model, and none dropped a field. This also caught a hand-written TS type that was wrong: `last_start_time` is epoch ms, not a string.
+- **Generation**: `make types` dumps OpenAPI with `python -m app.openapi`, which uses a throwaway data dir and never touches real state. It then runs `openapi-typescript` to write `frontend/src/api/generated.ts`. `frontend/src/api/types.ts` only aliases names from it.
+  - The generator needs TypeScript 5 and the app is on 6, so it runs through `npx -p typescript@5.9.3 -p openapi-typescript@7.13.0`, pinned and kept out of the app's dependencies.
+- **Staleness check**: `make types-check` regenerates into a temp dir and fails with a diff if the committed file is stale. `make check` runs tests, types-check, build and lint, which is everything CI runs.
+- **CI** (`.github/workflows/ci.yml`): runs `make check` on Ubuntu, with tmux installed for the integration tests. It's skipped on the `alenabraham-qure` fork so no work-account Actions minutes are used, and runs on the personal repo.
+- **Home path**: `GET /api/v1/meta` returns the home directory, so the UI no longer hardcodes it when shortening paths to `~/…`.
+
+### 4.10 Frontend
+
+- Same stack: React + Vite + Tailwind v4 + shadcn/ui (Base UI) + react-router. xterm.js is added for terminals.
+- The sidebar comes from `GET /api/v1/sources`.
+- Pages:
+  - Overview
+  - **Sessions** (new): list, start, attach, stop
+  - Claude Code
+  - Codex
+  - **Usage** (new)
+  - MCP: with add and remove
+  - Plugins: with enable and disable
+  - Nexus: browse and edit memory
+  - Tasks
+- Destructive actions use a confirm dialog that shows exactly what will run.
+
+## 5. Repo layout (target)
+
+```
+backend/app/
+  config.py  security.py  audit.py
+  sources/   base.py claude.py codex.py mcp.py plugins.py nexus.py tasks.py
+  actions/   base.py runner.py          # argv-only subprocess wrapper
+  sessions/  manager.py term_ws.py      # tmux + websocket bridge
+  index/     usage.py                   # transcript indexer
+  routers/   sources.py actions.py sessions.py usage.py
+frontend/src/
+  api/generated.ts
+  pages/ ...  components/Terminal.tsx
+docs/architecture.md
+eyrie.example.toml
+```
+
+## 6. Tooling / MCPs used to build this
+
+| Tool | Used for |
+|------|----------|
+| Obsidian MCP | Verify the vault layout (`Personal/`, `agent-memory/Nexus`) while building tasks and nexus |
+| GitHub via `gh` | One PR per phase and per code slice |
+| Artifact / `archify` | Clickable prototype and diagrams |
+| Browser automation skill | Headless QA of every page before each merge |
+
+At runtime, Eyrie makes no MCP calls. It manages MCP **config** through the official CLIs.
+
+## 7. Delivery plan
+
+Each step is its own PR, reviewed before the next one starts.
+
+1. **Design**: this document.
+2. **Prototype**: a clickable mock covering Sessions (with terminal), Usage, MCP add/remove, and Tasks with a conflict state.
+3. **Code**, sliced:
+   1. config, security (token, Host/Origin), source registry; existing sources ported
+   2. personal tasks: in-place edits, etag
+   3. usage indexer and Usage page
+   4. action layer: MCP and plugins via the CLIs, audit log
+   5. session manager: (a) tmux start/stop/resume + screen preview, (b) xterm.js terminal, then headless jobs
+   6. Nexus memory management
+   7. generated types, CI check, `launchd` install, remove Docker, README
+
+## 8. Risks
+
+| Risk | Mitigation |
+|------|------------|
+| Eyrie becomes a local command runner | §4.7: localhost only, token, Origin checks, declared actions only, audit log |
+| CLI output formats change (`claude mcp list`, etc.) | Prefer JSON flags where they exist; parse defensively; integration test per CLI version |
+| Transcript format is undocumented | Indexer ignores unknown fields, stores a schema version, falls back to `lastCost` |
+| Pricing table goes stale | In config, with the date shown in the UI |
+| First index build over a large history is slow | Background build with progress; incremental after that |
+| A tmux session is orphaned after a crash | Rediscovered on boot via the `eyrie-` prefix; listed and killable from the UI |
+
+## 9. Open questions
+
+None blocking. Prototype feedback lands here.

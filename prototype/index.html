@@ -1,0 +1,871 @@
+<meta charset="utf-8">
+<title>Eyrie Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: app shell, fixed sidebar of sources + scrolling work area; collapses to a top tab strip on phones. Mirrors the real app's shadcn neutral theme. */
+:root {
+  --bg: oklch(0.99 0.002 260);
+  --surface: oklch(1 0 0);
+  --sidebar: oklch(0.975 0.003 260);
+  --fg: oklch(0.18 0.01 260);
+  --muted: oklch(0.52 0.012 260);
+  --border: oklch(0.91 0.005 260);
+  --hover: oklch(0.955 0.005 260);
+  --primary: oklch(0.22 0.01 260);
+  --primary-fg: oklch(0.985 0 0);
+  --accent: oklch(0.52 0.2 264);
+  --ok: oklch(0.58 0.15 150);
+  --warn: oklch(0.68 0.15 70);
+  --bad: oklch(0.577 0.22 27);
+  --m1: oklch(0.5 0.2 264);
+  --m2: oklch(0.66 0.13 225);
+  --m3: oklch(0.8 0.09 195);
+  --m4: oklch(0.62 0.17 330);
+  --term-bg: oklch(0.17 0.012 260);
+  --term-fg: oklch(0.9 0.01 260);
+  --term-dim: oklch(0.62 0.01 260);
+  --overlay: oklch(0.2 0.01 260 / 40%);
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: oklch(0.15 0.005 260); --surface: oklch(0.19 0.006 260); --sidebar: oklch(0.17 0.006 260);
+    --fg: oklch(0.96 0.003 260); --muted: oklch(0.7 0.01 260); --border: oklch(1 0 0 / 10%);
+    --hover: oklch(0.24 0.008 260); --primary: oklch(0.93 0.003 260); --primary-fg: oklch(0.2 0.01 260);
+    --accent: oklch(0.7 0.16 264); --ok: oklch(0.74 0.15 150); --warn: oklch(0.82 0.14 75); --bad: oklch(0.7 0.19 22);
+    --m1: oklch(0.66 0.18 264); --m2: oklch(0.75 0.12 225); --m3: oklch(0.85 0.08 195); --m4: oklch(0.72 0.15 330);
+    --term-bg: oklch(0.11 0.006 260); --term-fg: oklch(0.9 0.01 260); --term-dim: oklch(0.6 0.01 260);
+    --overlay: oklch(0 0 0 / 55%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: oklch(0.15 0.005 260); --surface: oklch(0.19 0.006 260); --sidebar: oklch(0.17 0.006 260);
+  --fg: oklch(0.96 0.003 260); --muted: oklch(0.7 0.01 260); --border: oklch(1 0 0 / 10%);
+  --hover: oklch(0.24 0.008 260); --primary: oklch(0.93 0.003 260); --primary-fg: oklch(0.2 0.01 260);
+  --accent: oklch(0.7 0.16 264); --ok: oklch(0.74 0.15 150); --warn: oklch(0.82 0.14 75); --bad: oklch(0.7 0.19 22);
+  --m1: oklch(0.66 0.18 264); --m2: oklch(0.75 0.12 225); --m3: oklch(0.85 0.08 195); --m4: oklch(0.72 0.15 330);
+  --term-bg: oklch(0.11 0.006 260); --term-fg: oklch(0.9 0.01 260); --term-dim: oklch(0.6 0.01 260);
+  --overlay: oklch(0 0 0 / 55%);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; }
+button, input, select, textarea { font: inherit; color: inherit; }
+code, .mono { font-family: var(--font-mono); font-size: 12.5px; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100%; }
+
+/* sidebar */
+.side { background: var(--sidebar); border-right: 1px solid var(--border); padding-block: 14px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: 12px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.brand { display: flex; align-items: center; gap: 9px; padding: 2px 6px; }
+.brand-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--primary); color: var(--primary-fg); display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.brand-name { font-weight: 600; letter-spacing: -0.01em; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 0 8px 4px; }
+.nav a { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 7px; color: var(--fg); text-decoration: none; font-size: 13.5px; }
+.nav a:hover { background: var(--hover); }
+.nav a[aria-current="page"] { background: var(--hover); font-weight: 500; }
+.nav a .count { margin-left: auto; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.nav a .dot { margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); }
+.nav svg { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+.side-foot { margin-top: auto; font-size: 12px; color: var(--muted); padding: 0 8px; display: flex; flex-direction: column; gap: 4px; }
+
+/* main */
+.main { padding-block: 0 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); min-width: 0; }
+.inner { max-width: 1120px; margin: 0 auto; padding-left: 12px; padding-right: 12px; display: flex; flex-direction: column; gap: 20px; }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.topbar .inner { flex-direction: row; align-items: center; gap: 10px; padding-block: 10px; flex-wrap: wrap; }
+.proto-flag { font-size: 12px; color: var(--muted); }
+.proto-flag b { color: var(--fg); font-weight: 500; }
+.top-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); background: var(--surface); white-space: nowrap; }
+.chip .led { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+
+.page-head { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; padding-top: 12px; }
+.page-head h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; }
+.page-head p { margin: 2px 0 0; color: var(--muted); max-width: 65ch; }
+.page-head .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* controls */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.btn.primary:hover { opacity: 0.9; }
+.btn.danger { color: var(--bad); }
+.btn.danger.solid { background: var(--bad); color: oklch(0.99 0 0); border-color: var(--bad); }
+.btn.sm { padding: 3px 9px; font-size: 12.5px; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 5px 11px; cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--hover); color: var(--fg); font-weight: 500; }
+label.field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 500; }
+label.field .hint { font-weight: 400; color: var(--muted); }
+input[type="text"], select, textarea { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 7px 10px; width: 100%; min-width: 0; }
+textarea { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.55; resize: vertical; }
+
+/* surfaces */
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.panel-head h2 { font-size: 14px; font-weight: 600; }
+.panel-head .sub { color: var(--muted); font-size: 12.5px; }
+.panel-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.panel-body { padding: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-3-1 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.stat { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+.stat .label { font-size: 12px; color: var(--muted); }
+.stat .value { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stat .foot { font-size: 12px; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 8px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.actions { text-align: right; white-space: nowrap; }
+td.actions .btn + .btn { margin-left: 6px; }
+.path { font-family: var(--font-mono); font-size: 12.5px; }
+.dim { color: var(--muted); }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.pill.ok::before { background: var(--ok); }
+.pill.warn::before { background: var(--warn); }
+.pill.bad::before { background: var(--bad); }
+.pill.bad { color: var(--bad); }
+.tag { font-size: 11.5px; padding: 1px 7px; border-radius: 5px; background: var(--hover); color: var(--muted); font-family: var(--font-mono); white-space: nowrap; }
+
+.list { display: flex; flex-direction: column; }
+.list-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); min-width: 0; }
+.list-row:last-child { border-bottom: 0; }
+.list-row .grow { flex: 1; min-width: 0; }
+.list-row .title { font-weight: 500; }
+.list-row .meta { font-size: 12px; color: var(--muted); }
+.stripe { width: 3px; align-self: stretch; border-radius: 2px; background: var(--muted); flex: none; }
+.stripe.bad { background: var(--bad); } .stripe.warn { background: var(--warn); } .stripe.ok { background: var(--ok); }
+
+.banner { display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--warn); background: color-mix(in oklch, var(--warn) 12%, var(--surface)); flex-wrap: wrap; }
+.banner .grow { flex: 1; min-width: 200px; }
+.banner.bad { border-color: var(--bad); background: color-mix(in oklch, var(--bad) 10%, var(--surface)); }
+
+/* terminal */
+.term { background: var(--term-bg); color: var(--term-fg); border-radius: 0 0 var(--radius) var(--radius); font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; padding: 14px 16px; height: 340px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+.term .d { color: var(--term-dim); }
+.term .a { color: var(--m3); }
+.term .g { color: var(--ok); }
+.term-input { display: flex; gap: 8px; align-items: center; background: var(--term-bg); color: var(--term-fg); padding: 0 16px 12px; border-radius: 0 0 var(--radius) var(--radius); margin-top: -8px; }
+.term-input span { font-family: var(--font-mono); color: var(--m3); }
+.term-input input { background: transparent; border: 0; color: var(--term-fg); font-family: var(--font-mono); font-size: 12.5px; outline: none; padding: 6px 0; }
+.term-tabs { display: flex; gap: 2px; padding: 8px 10px 0; background: var(--term-bg); border-radius: var(--radius) var(--radius) 0 0; overflow-x: auto; }
+.term-tabs button { background: transparent; border: 0; color: var(--term-dim); font-family: var(--font-mono); font-size: 12px; padding: 6px 10px; border-radius: 6px 6px 0 0; cursor: pointer; white-space: nowrap; }
+.term-tabs button[aria-pressed="true"] { color: var(--term-fg); background: color-mix(in oklch, var(--term-fg) 8%, var(--term-bg)); }
+.term-foot { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--border); font-size: 12.5px; flex-wrap: wrap; }
+
+/* chart */
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart .gridline { stroke: var(--border); stroke-width: 1; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.barlist { display: flex; flex-direction: column; gap: 10px; }
+.barlist .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; font-size: 13px; }
+.barlist .track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--hover); overflow: hidden; }
+.barlist .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+
+/* switch */
+.switch { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--border); border: 0; cursor: pointer; flex: none; transition: background .15s; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px oklch(0 0 0 / 25%); transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(14px); }
+
+/* tasks */
+.task { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.task:last-child { border-bottom: 0; }
+.task input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); flex: none; }
+.task .text { flex: 1; min-width: 0; }
+.task.done .text { color: var(--muted); text-decoration: line-through; }
+.task .del { opacity: 0; }
+.task:hover .del, .task .del:focus-visible { opacity: 1; }
+.rawfile { font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; margin: 0; padding: 14px 16px; color: var(--fg); }
+.rawfile .keep { color: var(--muted); }
+
+/* nexus */
+.split { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 380px; }
+.split .left { border-right: 1px solid var(--border); }
+.filebtn { display: flex; width: 100%; gap: 8px; align-items: center; padding: 8px 14px; background: none; border: 0; border-bottom: 1px solid var(--border); text-align: left; cursor: pointer; }
+.filebtn:hover { background: var(--hover); }
+.filebtn[aria-pressed="true"] { background: var(--hover); font-weight: 500; }
+.filebtn .meta { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+.agent-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 12px 14px 6px; }
+
+/* modal + toast */
+.overlay { position: fixed; inset: 0; background: var(--overlay); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: min(520px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px oklch(0 0 0 / 25%); }
+.modal-head { padding: 16px 18px 4px; }
+.modal-head h3 { font-size: 16px; font-weight: 600; }
+.modal-head p { margin: 4px 0 0; color: var(--muted); }
+.modal-body { padding: 12px 18px; display: flex; flex-direction: column; gap: 12px; }
+.modal-foot { padding: 12px 18px 16px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.cmd { background: var(--term-bg); color: var(--term-fg); border-radius: 8px; padding: 10px 12px; font-family: var(--font-mono); font-size: 12.5px; white-space: pre-wrap; word-break: break-all; }
+.cmd::before { content: "$ "; color: var(--term-dim); }
+.cmd-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: min(420px, calc(100vw - 32px)); }
+.toast { background: var(--primary); color: var(--primary-fg); border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 8px 24px oklch(0 0 0 / 20%); }
+.toast code { opacity: 0.75; display: block; margin-top: 2px; word-break: break-all; }
+
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-2, .grid-3-1 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; height: auto; flex-direction: row; align-items: center; overflow-x: auto; gap: 10px; border-right: 0; border-bottom: 1px solid var(--border); padding-block: 8px; padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+  .nav-group { flex-direction: row; gap: 2px; }
+  .nav-label, .side-foot, .brand-name { display: none; }
+  .nav a { white-space: nowrap; }
+  .nav a .count, .nav a .dot { margin-left: 4px; }
+  .topbar { position: static; }
+  .inner { padding-left: 0; padding-right: 0; }
+  .split { grid-template-columns: minmax(0, 1fr); }
+  .split .left { border-right: 0; border-bottom: 1px solid var(--border); }
+  .row-2 { grid-template-columns: 1fr; }
+  .task .del { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="side" aria-label="Sections">
+    <div class="brand"><span class="brand-mark">E</span><span class="brand-name">Eyrie</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <span>127.0.0.1:8000 · local only</span>
+      <span>v1 prototype</span>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="inner">
+        <span class="proto-flag"><b>Prototype.</b> Example data; actions are simulated and only logged on this page.</span>
+        <div class="top-right">
+          <span class="chip" title="Mutating requests carry the per-install token from ~/.eyrie/token"><span class="led"></span>Token OK</span>
+          <button class="btn sm" id="themeBtn" type="button">Theme: system</button>
+        </div>
+      </div>
+    </div>
+    <div class="inner" id="page"></div>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="modalRoot"></div>
+
+<script>
+(() => {
+  // ---------- example data ----------
+  const NOW = Date.now();
+  const ago = (m) => NOW - m * 60000;
+  const rel = (t) => {
+    const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    const h = Math.round(m / 60);
+    if (h < 24) return h + ' h ago';
+    return Math.round(h / 24) + ' d ago';
+  };
+  const ROOTS = ['~/personal/projects/eyrie', '~/personal/projects/dotfiles', '~/personal/projects/blog', '~/personal/projects/homelab'];
+
+  const S = {
+    sessions: [
+      { id: 'eyrie-7f3a', tool: 'claude', repo: '~/personal/projects/eyrie', status: 'running', started: ago(42), tokens: 182400, model: 'claude-opus-5-5', title: 'Port sources to registry' },
+      { id: 'eyrie-2c91', tool: 'codex', repo: '~/personal/projects/dotfiles', status: 'idle', started: ago(190), tokens: 64100, model: 'gpt-5.4', title: 'Refactor zsh prompt segments' },
+      { id: 'eyrie-b40e', tool: 'claude', repo: '~/personal/projects/blog', status: 'exited', started: ago(1460), tokens: 23900, model: 'claude-sonnet-5-5', title: 'Draft post on homelab DNS' },
+    ],
+    attached: ['eyrie-7f3a'],
+    activeTerm: 'eyrie-7f3a',
+    termLines: {
+      'eyrie-7f3a': [
+        ['d', '╭─ Claude Code ─ ~/personal/projects/eyrie ─ claude-opus-5-5'],
+        ['', '> port the codex service onto the new Source protocol'],
+        ['a', '● Reading backend/app/services/codex.py'],
+        ['a', '● Reading backend/app/sources/base.py'],
+        ['', 'CodexSource now implements available() and snapshot(); the'],
+        ['', 'read-only sqlite connection is unchanged.'],
+        ['g', '✓ Edited backend/app/sources/codex.py (+48 −31)'],
+        ['d', '  tokens 182.4k · cost $3.12 · context 41%'],
+      ],
+      'eyrie-2c91': [
+        ['d', 'codex · ~/personal/projects/dotfiles · gpt-5.4 · reasoning medium'],
+        ['', '> split the git segment out of prompt.zsh'],
+        ['a', '• Ran rg -n "git_segment" zsh/'],
+        ['', 'Moved git_segment into zsh/segments/git.zsh and sourced it.'],
+        ['d', '  waiting for input'],
+      ],
+    },
+    claudeProjects: [
+      { path: '~/personal/projects/eyrie', cost: 41.82, sessions: 23, last: ago(12), models: ['opus-5-5', 'haiku-5-5'] },
+      { path: '~/workspace/Obsidian Vault', cost: 25.69, sessions: 17, last: ago(300), models: ['opus-5-5', 'haiku-5-5'] },
+      { path: '~/personal/projects/homelab', cost: 14.7, sessions: 9, last: ago(2900), models: ['sonnet-5-5'] },
+      { path: '~/personal/projects/blog', cost: 9.4, sessions: 6, last: ago(1460), models: ['sonnet-5-5'] },
+      { path: '~/personal/projects/dotfiles', cost: 6.15, sessions: 5, last: ago(5200), models: ['haiku-5-5', 'sonnet-5-5'] },
+    ],
+    codexThreads: [
+      { id: '019a2f', title: 'Refactor zsh prompt segments', repo: '~/personal/projects/dotfiles', model: 'gpt-5.4', effort: 'medium', tokens: 64100, updated: ago(190) },
+      { id: '019a11', title: 'Add Caddy reverse proxy for homelab', repo: '~/personal/projects/homelab', model: 'gpt-5.4', effort: 'high', tokens: 211800, updated: ago(2600) },
+      { id: '0199fe', title: 'Fix RSS feed dates', repo: '~/personal/projects/blog', model: 'gpt-5.4-mini', effort: 'low', tokens: 18300, updated: ago(6100) },
+    ],
+    mcp: [
+      { name: 'obsidian', client: 'Claude Code', transport: 'stdio', scope: 'user', status: 'ok', detail: 'connected 4 min ago', target: 'npx -y mcp-obsidian' },
+      { name: 'github', client: 'Claude Code', transport: 'http', scope: 'user', status: 'ok', detail: 'connected 4 min ago', target: 'https://api.githubcopilot.com/mcp/' },
+      { name: 'context7', client: 'Claude Code', transport: 'http', scope: 'project', status: 'failed', detail: 'CONNECT_TIMEOUT · 2 h ago', target: 'https://mcp.context7.com/mcp' },
+      { name: 'filesystem', client: 'Codex', transport: 'stdio', scope: 'user', status: 'unknown', detail: 'no session since added', target: 'npx -y @modelcontextprotocol/server-filesystem ~/personal' },
+    ],
+    hiddenMcp: 4,
+    plugins: [
+      { name: 'nexus', market: 'nexus-agent-kit', enabled: true, desc: 'Agent kit: debugging, reliability, code reviewer, planners.' },
+      { name: 'codex', market: 'openai-codex', enabled: true, desc: 'Hand tasks to Codex from inside Claude Code.' },
+      { name: 'archify', market: 'archify', enabled: true, desc: 'Architecture and sequence diagrams as standalone HTML.' },
+      { name: 'playwright-qa', market: 'community', enabled: false, desc: 'Browser QA flows recorded as Playwright tests.' },
+    ],
+    nexus: [
+      { agent: 'nexus-code-reviewer', files: [
+        { name: 'eyrie-review-notes.md', updated: ago(600), body: '# Eyrie review notes\n\n- Tasks writes must preserve non-task lines.\n- Never shell out with a string; argv lists only.\n' },
+        { name: 'style.md', updated: ago(9000), body: '# Style\n\nMatch existing Python style; check pyproject before assuming.\n' },
+      ]},
+      { agent: 'nexus-cloud-cost-optimizer', files: [
+        { name: 'homelab-costs.md', updated: ago(26000), body: '# Homelab costs\n\nB2 backups ~ $1.80/mo. Consider lifecycle rule for snapshots older than 90 days.\n' },
+      ]},
+      { agent: 'nexus-debugging', files: [
+        { name: 'vite-proxy.md', updated: ago(1500), body: '# Vite proxy\n\nIf /api returns 404 in dev, check backend port matches vite.config.ts proxy target.\n' },
+      ]},
+    ],
+    nexusSel: [0, 0],
+    taskLines: ['# Personal tasks', '', '- [ ] Renew passport before December', '- [x] Book dentist appointment', '- [ ] Sync eyrie fork back to personal GitHub', '- [ ] Back up homelab Postgres to B2', '', 'Notes: keep this list short; move someday items to Learning.md.'],
+    tasksStale: false,
+    tasksConflict: false,
+    showRaw: false,
+    usageRange: 30,
+    usageMetric: 'cost',
+    audit: [
+      { t: ago(41), action: 'sessions.start', cmd: 'tmux new-session -d -s eyrie-7f3a -c ~/personal/projects/eyrie claude', code: 0 },
+      { t: ago(188), action: 'sessions.start', cmd: 'tmux new-session -d -s eyrie-2c91 -c ~/personal/projects/dotfiles codex', code: 0 },
+      { t: ago(400), action: 'plugins.enable', cmd: 'claude plugin enable archify', code: 0 },
+    ],
+  };
+
+  // 90 days of daily usage, deterministic
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const MODELS = [
+    { key: 'opus', label: 'claude-opus-5-5', color: 'var(--m1)', price: 1 },
+    { key: 'sonnet', label: 'claude-sonnet-5-5', color: 'var(--m2)', price: 1 },
+    { key: 'haiku', label: 'claude-haiku-5-5', color: 'var(--m3)', price: 1 },
+    { key: 'codex', label: 'Codex (gpt-5.4)', color: 'var(--m4)', price: 0 },
+  ];
+  const DAYS = [];
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(NOW - i * 86400000);
+    const wk = d.getDay() === 0 || d.getDay() === 6;
+    const f = (wk ? 1.4 : 0.6) * (0.5 + rnd()) * (i < 20 ? 1.35 : 1);
+    DAYS.push({
+      date: d,
+      cost: { opus: +(2.4 * f * (0.6 + rnd())).toFixed(2), sonnet: +(0.9 * f * (0.5 + rnd())).toFixed(2), haiku: +(0.12 * f * (0.5 + rnd())).toFixed(2), codex: 0 },
+      tokens: { opus: Math.round(160e3 * f * (0.6 + rnd())), sonnet: Math.round(210e3 * f * (0.5 + rnd())), haiku: Math.round(90e3 * f * (0.5 + rnd())), codex: Math.round(120e3 * f * rnd()) },
+    });
+  }
+
+  // ---------- helpers ----------
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = (n) => '$' + n.toFixed(2);
+  const tok = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : String(n);
+  const shortPath = (p) => p.replace('~/personal/projects/', '');
+  const newId = () => 'eyrie-' + Math.random().toString(16).slice(2, 6);
+  const shq = (s) => /^[\w@%+=:,./~-]+$/.test(s) ? s : "'" + s.replace(/'/g, "'\\''") + "'";
+
+  function toast(msg, cmd) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = esc(msg) + (cmd ? '<code>$ ' + esc(cmd) + '</code>' : '');
+    $('#toasts').appendChild(el);
+    setTimeout(() => el.remove(), 4200);
+  }
+  function run(action, cmd, msg) {
+    S.audit.unshift({ t: Date.now(), action, cmd, code: 0 });
+    toast(msg, cmd);
+  }
+
+  // in-page modal (alert/confirm are unavailable in the viewer)
+  function modal({ title, desc, body = '', cmd, confirm = 'Run', danger = false, onOpen, getCmd }) {
+    return new Promise((resolve) => {
+      const root = $('#modalRoot');
+      root.innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+        <div class="modal">
+          <div class="modal-head"><h3 id="mTitle">${esc(title)}</h3>${desc ? `<p>${desc}</p>` : ''}</div>
+          <div class="modal-body">${body}
+            <div><div class="cmd-label">Eyrie will run</div><div class="cmd" id="mCmd">${esc(cmd || '')}</div></div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn" type="button" data-m="cancel">Cancel</button>
+            <button class="btn ${danger ? 'danger solid' : 'primary'}" type="button" data-m="ok">${esc(confirm)}</button>
+          </div>
+        </div></div>`;
+      const ov = root.firstElementChild;
+      const refresh = () => { if (getCmd) $('#mCmd').textContent = getCmd(ov); };
+      ov.addEventListener('input', refresh);
+      ov.addEventListener('change', refresh);
+      const close = (v) => { root.innerHTML = ''; document.removeEventListener('keydown', onKey); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') close(null); };
+      document.addEventListener('keydown', onKey);
+      ov.addEventListener('click', (e) => {
+        if (e.target === ov || e.target.dataset.m === 'cancel') close(null);
+        if (e.target.dataset.m === 'ok') close({ el: ov, cmd: $('#mCmd').textContent });
+      });
+      if (onOpen) onOpen(ov);
+      refresh();
+      ($('input, select, textarea', ov) || $('[data-m="ok"]', ov)).focus();
+    });
+  }
+
+  // ---------- nav ----------
+  const ICON = {
+    overview: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+    sessions: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/>',
+    usage: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    claude: '<path d="M4 17l6-6-6-6M12 19h8"/>',
+    codex: '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3M9 9l6 6M15 9l-6 6"/>',
+    mcp: '<path d="M12 22v-5M9 8V2M15 8V2M18 8H6v4a6 6 0 0 0 12 0z"/>',
+    plugins: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+    nexus: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    tasks: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 12 3 3 5-6"/>',
+    activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  };
+  const NAV = [
+    { group: null, items: [['overview', 'Overview'], ['sessions', 'Sessions'], ['usage', 'Usage']] },
+    { group: 'Coding agents', items: [['claude', 'Claude Code'], ['codex', 'Codex']] },
+    { group: 'Tooling', items: [['mcp', 'MCP servers'], ['plugins', 'Plugins'], ['nexus', 'Nexus memory']] },
+    { group: 'Personal', items: [['tasks', 'Tasks'], ['activity', 'Activity log']] },
+  ];
+  function renderNav(route) {
+    const running = S.sessions.filter((s) => s.status !== 'exited').length;
+    const failing = S.mcp.some((m) => m.status === 'failed');
+    const open = S.taskLines.filter((l) => /^- \[ \] /.test(l)).length;
+    $('#nav').innerHTML = NAV.map((g) => `<div class="nav-group">${g.group ? `<div class="nav-label">${g.group}</div>` : ''}
+      ${g.items.map(([id, label]) => {
+        let extra = '';
+        if (id === 'sessions' && running) extra = `<span class="count">${running}</span>`;
+        if (id === 'mcp' && failing) extra = '<span class="dot" title="A server failed to connect"></span>';
+        if (id === 'tasks' && open) extra = `<span class="count">${open}</span>`;
+        return `<a href="#${id}" ${route === id ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24">${ICON[id]}</svg>${label}${extra}</a>`;
+      }).join('')}</div>`).join('');
+  }
+
+  // ---------- pages ----------
+  const head = (title, desc, actions = '') => `<div class="page-head"><div><h1>${title}</h1><p>${desc}</p></div>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
+  const statusPill = (s) => ({ running: '<span class="pill ok">running</span>', idle: '<span class="pill warn">waiting for input</span>', exited: '<span class="pill">exited</span>', ok: '<span class="pill ok">connected</span>', failed: '<span class="pill bad">failed</span>', unknown: '<span class="pill">unknown</span>' }[s]);
+
+  function sumRange(days, metric, filter = () => true) {
+    return DAYS.slice(-days).reduce((a, d) => a + MODELS.filter(filter).reduce((b, m) => b + d[metric][m.key], 0), 0);
+  }
+
+  const P = {};
+
+  P.overview = () => {
+    const live = S.sessions.filter((s) => s.status !== 'exited');
+    const cost30 = sumRange(30, 'cost');
+    const cost7 = sumRange(7, 'cost');
+    const prev7 = DAYS.slice(-14, -7).reduce((a, d) => a + d.cost.opus + d.cost.sonnet + d.cost.haiku, 0);
+    const today = sumRange(1, 'tokens');
+    const failing = S.mcp.filter((m) => m.status === 'failed');
+    const open = S.taskLines.filter((l) => /^- \[ \] /.test(l));
+    const attention = [
+      ...failing.map((m) => ({ k: 'bad', t: `MCP server ${m.name} failed to connect`, m: m.detail, go: 'mcp', b: 'Open MCP servers' })),
+      ...S.sessions.filter((s) => s.status === 'idle').map((s) => ({ k: 'warn', t: `${s.id} is waiting for input`, m: `${s.tool === 'claude' ? 'Claude Code' : 'Codex'} · ${shortPath(s.repo)}`, go: 'sessions', b: 'Attach' })),
+    ];
+    return head('Overview', 'Everything running on this laptop, and what needs you.') + `
+      <div class="stats">
+        <div class="panel stat"><span class="label">Live sessions</span><span class="value">${live.length}</span><span class="foot">${live.map((s) => shortPath(s.repo)).join(', ') || 'none'}</span></div>
+        <div class="panel stat"><span class="label">Claude cost, last 7 days</span><span class="value">${money(cost7)}</span><span class="foot">${cost7 >= prev7 ? '+' : '−'}${Math.abs(((cost7 - prev7) / prev7) * 100).toFixed(0)}% vs previous 7 days</span></div>
+        <div class="panel stat"><span class="label">Tokens today</span><span class="value">${tok(today)}</span><span class="foot">Claude + Codex</span></div>
+        <div class="panel stat"><span class="label">Open personal tasks</span><span class="value">${open.length}</span><span class="foot">Personal/Tasks.md</span></div>
+      </div>
+      <div class="grid-3-1">
+        <section class="panel"><div class="panel-head"><h2>Needs attention</h2><span class="sub">${attention.length} item${attention.length === 1 ? '' : 's'}</span></div>
+          <div class="list">${attention.length ? attention.map((a) => `<div class="list-row"><span class="stripe ${a.k}"></span><div class="grow"><div class="title">${esc(a.t)}</div><div class="meta">${esc(a.m)}</div></div><a class="btn sm" href="#${a.go}">${a.b}</a></div>`).join('') : '<div class="list-row dim">Nothing needs you right now.</div>'}</div>
+        </section>
+        <section class="panel"><div class="panel-head"><h2>Last 30 days</h2><a class="btn sm" href="#usage" style="margin-left:auto">Usage</a></div>
+          <div class="panel-body"><div class="stat" style="padding:0"><span class="value">${money(cost30)}</span><span class="foot">Claude Code, priced from the config table</span></div>${spark()}</div>
+        </section>
+      </div>
+      <section class="panel"><div class="panel-head"><h2>Recent activity</h2><a class="btn sm" href="#activity" style="margin-left:auto">Activity log</a></div>${auditTable(4)}</section>`;
+  };
+
+  function spark() {
+    const d = DAYS.slice(-30).map((x) => x.cost.opus + x.cost.sonnet + x.cost.haiku);
+    const max = Math.max(...d), W = 300, H = 64;
+    const pts = d.map((v, i) => [i * (W / (d.length - 1)), H - 6 - (v / max) * (H - 12)]);
+    const line = pts.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' ');
+    const last = pts[pts.length - 1];
+    return `<div class="chart" style="margin-top:12px"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily Claude cost, last 30 days">
+      <polygon points="0,${H} ${line} ${W},${H}" fill="var(--accent)" fill-opacity="0.12"/>
+      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+      <circle cx="${last[0]}" cy="${last[1]}" r="3" fill="var(--accent)"/></svg></div>`;
+  }
+
+  P.sessions = () => {
+    const rows = S.sessions.map((s) => `<tr>
+      <td><div class="mono">${s.id}</div><div class="dim" style="font-size:12px">${esc(s.title)}</div></td>
+      <td>${s.tool === 'claude' ? 'Claude Code' : 'Codex'}<div class="dim" style="font-size:12px">${s.model}</div></td>
+      <td class="path">${esc(shortPath(s.repo))}</td>
+      <td>${statusPill(s.status)}</td>
+      <td class="dim">${rel(s.started)}</td>
+      <td class="num">${tok(s.tokens)}</td>
+      <td class="actions">${s.status === 'exited'
+        ? `<button class="btn sm" data-act="resume" data-id="${s.id}">Resume</button>`
+        : `<button class="btn sm" data-act="attach" data-id="${s.id}">Attach</button><button class="btn sm danger" data-act="stop" data-id="${s.id}">Stop</button>`}</td></tr>`).join('');
+    const tabs = S.attached.filter((id) => S.sessions.find((s) => s.id === id && s.status !== 'exited'));
+    if (!tabs.includes(S.activeTerm)) S.activeTerm = tabs[0];
+    const term = tabs.length ? `<section class="panel" aria-label="Terminal">
+        <div class="term-tabs">${tabs.map((id) => `<button type="button" data-act="tab" data-id="${id}" aria-pressed="${id === S.activeTerm}">${id}</button>`).join('')}</div>
+        <div class="term" id="term">${(S.termLines[S.activeTerm] || []).map(([c, l]) => `<span class="${c}">${esc(l)}</span>`).join('\n')}</div>
+        <form class="term-input" id="termForm"><span>&gt;</span><input id="termIn" type="text" autocomplete="off" placeholder="Type to send keys to ${S.activeTerm}"></form>
+        <div class="term-foot"><span class="dim">Same session from a terminal:</span><code>tmux attach -t ${S.activeTerm}</code>
+          <button class="btn sm" data-act="copy" data-text="tmux attach -t ${S.activeTerm}" style="margin-left:auto">Copy</button>
+          <button class="btn sm" data-act="detach" data-id="${S.activeTerm}">Detach</button></div>
+      </section>` : '';
+    return head('Sessions', 'Claude Code and Codex sessions run inside tmux, so they survive Eyrie restarts and you can attach from here or a terminal.',
+      `<button class="btn" data-act="headless">Run a prompt</button><button class="btn primary" data-act="new">New session</button>`) + `
+      <section class="panel"><div class="table-wrap"><table>
+        <thead><tr><th>Session</th><th>Tool</th><th>Repo</th><th>Status</th><th>Started</th><th class="num">Tokens</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div></section>${term}`;
+  };
+
+  const sessionForm = (repo = ROOTS[0], tool = 'claude') => `
+    <div class="row-2">
+      <label class="field">Tool<select id="fTool"><option value="claude" ${tool === 'claude' ? 'selected' : ''}>Claude Code</option><option value="codex" ${tool === 'codex' ? 'selected' : ''}>Codex</option></select></label>
+      <label class="field">Repo <span class="hint">from sessions.roots</span><select id="fRepo">${ROOTS.map((r) => `<option ${r === repo ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
+    </div>
+    <label class="field">Start from<select id="fFrom"><option value="new">New conversation</option><option value="last">Resume the latest conversation in this repo</option></select></label>`;
+  const sessionCmd = (ov, id) => {
+    const tool = $('#fTool', ov).value, repo = $('#fRepo', ov).value, from = $('#fFrom', ov).value;
+    const bin = tool === 'claude' ? (from === 'last' ? 'claude --continue' : 'claude') : (from === 'last' ? 'codex resume --last' : 'codex');
+    return `tmux new-session -d -s ${id} -c ${repo} ${bin}`;
+  };
+
+  async function newSession(repo, tool) {
+    const id = newId();
+    const r = await modal({ title: 'New session', desc: 'Starts detached in tmux. Attach from here or any terminal.', body: sessionForm(repo, tool), confirm: 'Start session', getCmd: (ov) => sessionCmd(ov, id) });
+    if (!r) return;
+    const t = $('#fTool', r.el).value;
+    S.sessions.unshift({ id, tool: t, repo: $('#fRepo', r.el).value, status: 'running', started: Date.now(), tokens: 0, model: t === 'claude' ? 'claude-opus-5-5' : 'gpt-5.4', title: 'New session' });
+    S.termLines[id] = [['d', t === 'claude' ? `╭─ Claude Code ─ ${$('#fRepo', r.el).value}` : `codex · ${$('#fRepo', r.el).value}`], ['d', '  ready']];
+    S.attached.push(id); S.activeTerm = id;
+    run('sessions.start', r.cmd, `Started ${id}`);
+    go('sessions');
+  }
+
+  P.usage = () => {
+    const days = DAYS.slice(-S.usageRange);
+    const metric = S.usageMetric;
+    const models = MODELS.filter((m) => metric === 'tokens' || m.price);
+    const totals = days.map((d) => models.reduce((a, m) => a + d[metric][m.key], 0));
+    const total = totals.reduce((a, b) => a + b, 0);
+    const fmt = metric === 'cost' ? money : tok;
+    // chart
+    const W = 760, H = 260, L = 48, R = 8, T = 12, B = 28;
+    const rawMax = Math.max(...totals);
+    const step = niceStep(rawMax / 4);
+    const yMax = Math.ceil(rawMax / step) * step;
+    const bw = (W - L - R) / days.length;
+    let bars = '';
+    days.forEach((d, i) => {
+      let y = H - B;
+      models.forEach((m) => {
+        const h = (d[metric][m.key] / yMax) * (H - T - B);
+        y -= h;
+        bars += `<rect x="${(L + i * bw + bw * 0.15).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * 0.7).toFixed(1)}" height="${Math.max(0, h).toFixed(1)}" fill="${m.color}"><title>${d.date.toDateString()} · ${m.label}: ${fmt(d[metric][m.key])}</title></rect>`;
+      });
+    });
+    let grid = '';
+    for (let v = 0; v <= yMax + 1e-9; v += step) {
+      const y = H - B - (v / yMax) * (H - T - B);
+      grid += `<line class="gridline" x1="${L}" x2="${W - R}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/><text x="${L - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end">${metric === 'cost' ? '$' + v.toFixed(v < 10 && step < 1 ? 1 : 0) : tok(v)}</text>`;
+    }
+    const every = S.usageRange <= 7 ? 1 : S.usageRange <= 30 ? 7 : 14;
+    let xl = '';
+    days.forEach((d, i) => {
+      if ((days.length - 1 - i) % every === 0) xl += `<text x="${(L + i * bw + bw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle">${d.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</text>`;
+    });
+    // breakdowns
+    const byModel = models.map((m) => ({ m, v: days.reduce((a, d) => a + d[metric][m.key], 0) })).sort((a, b) => b.v - a.v);
+    const projShare = [0.38, 0.24, 0.17, 0.12, 0.09];
+    const byProj = S.claudeProjects.map((p, i) => ({ p: p.path, v: total * projShare[i] }));
+    const maxP = byProj[0].v;
+    return head('Usage', 'Full history from session transcripts, indexed into ~/.eyrie/usage.db. Cost is tokens × the price table in eyrie.toml.',
+      `<div class="seg" role="group" aria-label="Metric"><button data-act="metric" data-v="cost" aria-pressed="${metric === 'cost'}">Cost</button><button data-act="metric" data-v="tokens" aria-pressed="${metric === 'tokens'}">Tokens</button></div>
+       <div class="seg" role="group" aria-label="Range">${[7, 30, 90].map((r) => `<button data-act="range" data-v="${r}" aria-pressed="${S.usageRange === r}">${r}d</button>`).join('')}</div>`) + `
+      <section class="panel">
+        <div class="panel-head"><h2>${fmt(total)}</h2><span class="sub">${metric === 'cost' ? 'Claude Code cost' : 'Tokens, Claude Code + Codex'} · last ${S.usageRange} days</span>
+          <div class="right legend">${models.map((m) => `<span><i style="background:${m.color}"></i>${m.label}</span>`).join('')}</div></div>
+        <div class="panel-body chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily ${metric} by model">${grid}${bars}${xl}</svg>
+          ${metric === 'cost' ? '<p class="dim" style="margin:8px 0 0;font-size:12px">Codex reports tokens only, so it appears under Tokens.</p>' : ''}</div>
+      </section>
+      <div class="grid-2">
+        <section class="panel"><div class="panel-head"><h2>By project</h2><span class="sub">Claude Code</span></div>
+          <div class="panel-body barlist">${byProj.map((r) => `<div class="row"><span class="path">${esc(shortPath(r.p))}</span><span class="num" style="font-variant-numeric:tabular-nums">${fmt(r.v)}</span><div class="track"><div class="fill" style="width:${((r.v / maxP) * 100).toFixed(1)}%"></div></div></div>`).join('')}</div></section>
+        <section class="panel"><div class="panel-head"><h2>By model</h2></div>
+          <div class="table-wrap"><table><thead><tr><th>Model</th><th class="num">${metric === 'cost' ? 'Cost' : 'Tokens'}</th><th class="num">Share</th></tr></thead>
+          <tbody>${byModel.map((r) => `<tr><td><span class="legend"><span><i style="background:${r.m.color}"></i>${r.m.label}</span></span></td><td class="num">${fmt(r.v)}</td><td class="num">${((r.v / total) * 100).toFixed(0)}%</td></tr>`).join('')}</tbody></table></div></section>
+      </div>
+      <div class="chip" style="align-self:flex-start;white-space:normal">Index: 1,284 transcripts · last scan 12 s ago · prices updated 2026-10-01</div>`;
+  };
+  function niceStep(raw) {
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+  }
+
+  P.claude = () => head('Claude Code', 'Projects from ~/.claude.json and transcripts. Start or continue a session in any project.') + `
+    <section class="panel"><div class="table-wrap"><table>
+      <thead><tr><th>Project</th><th>Models</th><th class="num">Sessions</th><th class="num">Cost, 30 d</th><th>Last active</th><th></th></tr></thead>
+      <tbody>${S.claudeProjects.map((p) => `<tr><td class="path">${esc(p.path)}</td><td>${p.models.map((m) => `<span class="tag">${m}</span>`).join(' ')}</td><td class="num">${p.sessions}</td><td class="num">${money(p.cost)}</td><td class="dim">${rel(p.last)}</td>
+        <td class="actions">${ROOTS.includes(p.path) ? `<button class="btn sm" data-act="startIn" data-repo="${p.path}" data-tool="claude">New session</button>` : '<span class="dim" style="font-size:12px" title="Not under sessions.roots in eyrie.toml">outside allowed roots</span>'}</td></tr>`).join('')}</tbody>
+    </table></div></section>`;
+
+  P.codex = () => head('Codex', 'Threads from ~/.codex/state_5.sqlite, read-only. Resume any thread into a tmux session.') + `
+    <section class="panel"><div class="table-wrap"><table>
+      <thead><tr><th>Thread</th><th>Repo</th><th>Model</th><th class="num">Tokens</th><th>Updated</th><th></th></tr></thead>
+      <tbody>${S.codexThreads.map((t) => `<tr><td>${esc(t.title)}<div class="dim mono" style="font-size:11.5px">${t.id}</div></td><td class="path">${esc(shortPath(t.repo))}</td><td><span class="tag">${t.model}</span> <span class="dim" style="font-size:12px">${t.effort}</span></td><td class="num">${tok(t.tokens)}</td><td class="dim">${rel(t.updated)}</td>
+        <td class="actions"><button class="btn sm" data-act="resumeThread" data-id="${t.id}">Resume</button></td></tr>`).join('')}</tbody>
+    </table></div></section>`;
+
+  P.mcp = () => head('MCP servers', 'Changes go through each tool\'s own CLI. Status is the last result seen in a session, not a live ping.',
+      `<button class="btn primary" data-act="addMcp">Add server</button>`) + `
+    <section class="panel"><div class="table-wrap"><table>
+      <thead><tr><th>Server</th><th>Client</th><th>Transport</th><th>Scope</th><th>Last known</th><th></th></tr></thead>
+      <tbody>${S.mcp.map((m, i) => `<tr><td><b style="font-weight:500">${esc(m.name)}</b><div class="dim mono" style="font-size:11.5px">${esc(m.target)}</div></td><td>${m.client}</td><td><span class="tag">${m.transport}</span></td><td class="dim">${m.scope}</td><td>${statusPill(m.status)}<div class="dim" style="font-size:12px;margin-top:2px">${esc(m.detail)}</div></td>
+        <td class="actions"><button class="btn sm danger" data-act="rmMcp" data-i="${i}">Remove</button></td></tr>`).join('')}</tbody>
+    </table></div></section>
+    <p class="dim" style="margin:0;font-size:12.5px">${S.hiddenMcp} more servers are hidden by <code>privacy.hide_mcp</code> in eyrie.toml.</p>`;
+
+  const mcpForm = `
+    <div class="row-2">
+      <label class="field">Name<input id="mName" type="text" value="sqlite" autocomplete="off"></label>
+      <label class="field">Client<select id="mClient"><option>Claude Code</option><option>Codex</option></select></label>
+    </div>
+    <div class="row-2">
+      <label class="field">Transport<select id="mTrans"><option value="stdio">stdio (command)</option><option value="http">http (URL)</option></select></label>
+      <label class="field">Scope<select id="mScope"><option value="user">user</option><option value="project">project</option></select></label>
+    </div>
+    <label class="field">Command or URL<input id="mTarget" type="text" value="uvx mcp-server-sqlite --db-path ~/personal/data/notes.db" autocomplete="off"></label>`;
+  const mcpCmd = (ov) => {
+    const n = $('#mName', ov).value.trim() || '<name>', c = $('#mClient', ov).value, t = $('#mTrans', ov).value, s = $('#mScope', ov).value, x = $('#mTarget', ov).value.trim();
+    if (c === 'Codex') return t === 'http' ? `codex mcp add ${shq(n)} --url ${shq(x)}` : `codex mcp add ${shq(n)} -- ${x}`;
+    return t === 'http' ? `claude mcp add --transport http -s ${s} ${shq(n)} ${shq(x)}` : `claude mcp add -s ${s} ${shq(n)} -- ${x}`;
+  };
+
+  P.plugins = () => head('Plugins', 'Claude Code plugins. Toggling runs claude plugin enable / disable.',
+      `<button class="btn primary" data-act="installPlugin">Install plugin</button>`) + `
+    <section class="panel"><div class="list">${S.plugins.map((p, i) => `<div class="list-row">
+      <div class="grow"><div class="title">${esc(p.name)} <span class="tag">${esc(p.market)}</span></div><div class="meta">${esc(p.desc)}</div></div>
+      <span class="dim" style="font-size:12px">${p.enabled ? 'Enabled' : 'Disabled'}</span>
+      <button class="switch" role="switch" aria-checked="${p.enabled}" aria-label="${p.enabled ? 'Disable' : 'Enable'} ${esc(p.name)}" data-act="togglePlugin" data-i="${i}"></button></div>`).join('')}</div></section>
+    <p class="dim" style="margin:0;font-size:12.5px">Plugin changes apply to new Claude Code sessions. Running sessions keep what they loaded.</p>`;
+
+  P.nexus = () => {
+    const [ai, fi] = S.nexusSel;
+    const a = S.nexus[ai], f = a && a.files[fi];
+    return head('Nexus memory', 'Agent memory files in the vault at agent-memory/Nexus. Eyrie only edits inside this folder.') + `
+    <section class="panel"><div class="split">
+      <div class="left">${S.nexus.map((ag, i) => `<div class="agent-h">${esc(ag.agent)}</div>${ag.files.map((fl, j) => `<button class="filebtn" type="button" data-act="pickFile" data-a="${i}" data-f="${j}" aria-pressed="${i === ai && j === fi}"><span class="mono">${esc(fl.name)}</span><span class="meta">${rel(fl.updated)}</span></button>`).join('') || '<div class="dim" style="padding:8px 14px;font-size:12.5px">No files</div>'}`).join('')}</div>
+      <div style="display:flex;flex-direction:column;min-width:0">${f ? `
+        <div class="panel-head"><h2 class="mono" style="font-weight:500">${esc(a.agent)}/${esc(f.name)}</h2><div class="right"><button class="btn sm danger" data-act="delFile">Delete</button><button class="btn sm primary" data-act="saveFile">Save</button></div></div>
+        <div class="panel-body" style="flex:1;display:flex"><textarea id="nexusEd" rows="14" style="flex:1" aria-label="File contents">${esc(f.body)}</textarea></div>` : '<div class="panel-body dim">Pick a file on the left.</div>'}
+      </div></div></section>`;
+  };
+
+  function parseTasks() {
+    return S.taskLines.map((l, i) => { const m = l.match(/^- \[( |x)\] (.*)$/); return m ? { i, done: m[1] === 'x', text: m[2] } : null; }).filter(Boolean);
+  }
+  P.tasks = () => {
+    const tasks = parseTasks();
+    const banner = S.tasksConflict ? `<div class="banner"><div class="grow"><b>Tasks.md changed in Obsidian after you loaded it.</b> Your change was not saved, so nothing was overwritten. Reload to get the latest version, then make the change again.</div><button class="btn sm" data-act="reloadTasks">Reload</button></div>` : '';
+    return head('Tasks', 'Your personal checklist in the vault. Eyrie edits single lines in place, so headings and notes stay untouched.',
+      `<span class="chip mono">Personal/Tasks.md</span><button class="btn" data-act="simulateObsidian" title="Prototype only">Simulate an Obsidian edit</button>`) + banner + `
+    <section class="panel">
+      <form class="panel-head" id="taskForm" style="gap:8px"><input id="taskIn" type="text" placeholder="Add a task" autocomplete="off" style="flex:1;min-width:160px"><button class="btn primary" type="submit">Add</button></form>
+      <div>${tasks.map((t) => `<div class="task ${t.done ? 'done' : ''}"><input type="checkbox" id="t${t.i}" ${t.done ? 'checked' : ''} data-act="toggleTask" data-i="${t.i}"><label class="text" for="t${t.i}">${esc(t.text)}</label><button class="btn sm danger del" data-act="delTask" data-i="${t.i}" aria-label="Delete task">Delete</button></div>`).join('')}</div>
+    </section>
+    <section class="panel"><div class="panel-head"><h2>File on disk</h2><span class="sub">Lines Eyrie never touches are dimmed</span><div class="right"><button class="btn sm" data-act="raw">${S.showRaw ? 'Hide' : 'Show'}</button></div></div>
+      ${S.showRaw ? `<pre class="rawfile">${S.taskLines.map((l) => /^- \[( |x)\] /.test(l) ? esc(l) : `<span class="keep">${esc(l) || ' '}</span>`).join('\n')}</pre>` : ''}</section>`;
+  };
+  function tasksWrite(fn, msg, cmd) {
+    if (S.tasksStale) { S.tasksConflict = true; toast('Not saved: Tasks.md changed on disk (409)'); go('tasks'); return; }
+    fn(); run('tasks.write', cmd, msg); go('tasks');
+  }
+
+  function auditTable(limit) {
+    const rows = S.audit.slice(0, limit);
+    return `<div class="table-wrap"><table><thead><tr><th>When</th><th>Action</th><th>Command</th><th class="num">Exit</th></tr></thead>
+      <tbody>${rows.map((a) => `<tr><td class="dim" style="white-space:nowrap">${rel(a.t)}</td><td><span class="tag">${a.action}</span></td><td class="mono" style="word-break:break-all">${esc(a.cmd)}</td><td class="num">${a.code}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  P.activity = () => head('Activity log', 'Every action Eyrie performs, from ~/.eyrie/audit.jsonl. Try something on another page and it shows up here.') + `<section class="panel">${auditTable(100)}</section>`;
+
+  // ---------- router ----------
+  function go(route) {
+    route = P[route] ? route : 'overview';
+    if (location.hash.slice(1) !== route) { history.replaceState(null, '', '#' + route); }
+    renderNav(route);
+    $('#page').innerHTML = P[route]();
+    const t = $('#term'); if (t) t.scrollTop = t.scrollHeight;
+  }
+  const current = () => (P[location.hash.slice(1)] ? location.hash.slice(1) : 'overview');
+  window.addEventListener('hashchange', () => { go(current()); window.scrollTo(0, 0); });
+
+  // ---------- actions ----------
+  document.addEventListener('click', async (e) => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const act = el.dataset.act;
+    const sess = (id) => S.sessions.find((s) => s.id === id);
+
+    if (act === 'new') return newSession();
+    if (act === 'startIn') return newSession(el.dataset.repo, el.dataset.tool);
+    if (act === 'attach') { if (!S.attached.includes(el.dataset.id)) S.attached.push(el.dataset.id); S.activeTerm = el.dataset.id; go('sessions'); $('#termIn')?.focus(); return; }
+    if (act === 'tab') { S.activeTerm = el.dataset.id; go('sessions'); return; }
+    if (act === 'detach') { S.attached = S.attached.filter((x) => x !== el.dataset.id); toast(`Detached. ${el.dataset.id} keeps running in tmux.`); go('sessions'); return; }
+    if (act === 'copy') { try { await navigator.clipboard.writeText(el.dataset.text); toast('Copied'); } catch { toast('Copy failed. Select the command and copy it manually.'); } return; }
+    if (act === 'stop') {
+      const s = sess(el.dataset.id);
+      const r = await modal({ title: `Stop ${s.id}?`, desc: `Ends the ${s.tool === 'claude' ? 'Claude Code' : 'Codex'} session in <span class="mono">${esc(shortPath(s.repo))}</span>. The conversation stays on disk and can be resumed.`, cmd: `tmux kill-session -t ${s.id}`, confirm: 'Stop session', danger: true });
+      if (!r) return;
+      s.status = 'exited'; S.attached = S.attached.filter((x) => x !== s.id);
+      run('sessions.stop', r.cmd, `Stopped ${s.id}`); go('sessions'); return;
+    }
+    if (act === 'resume') {
+      const s = sess(el.dataset.id);
+      const cmd = `tmux new-session -d -s ${s.id} -c ${s.repo} ${s.tool === 'claude' ? 'claude --continue' : 'codex resume --last'}`;
+      const r = await modal({ title: `Resume ${s.id}`, desc: 'Starts a new tmux session that continues the latest conversation in this repo.', cmd, confirm: 'Resume' });
+      if (!r) return;
+      s.status = 'running'; s.started = Date.now(); S.attached.push(s.id); S.activeTerm = s.id;
+      S.termLines[s.id] = S.termLines[s.id] || [['d', `╭─ resumed ─ ${s.repo}`]];
+      run('sessions.resume', r.cmd, `Resumed ${s.id}`); go('sessions'); return;
+    }
+    if (act === 'resumeThread') {
+      const t = S.codexThreads.find((x) => x.id === el.dataset.id), id = newId();
+      const r = await modal({ title: 'Resume Codex thread', desc: esc(t.title), cmd: `tmux new-session -d -s ${id} -c ${t.repo} codex resume ${t.id}`, confirm: 'Resume in tmux' });
+      if (!r) return;
+      S.sessions.unshift({ id, tool: 'codex', repo: t.repo, status: 'running', started: Date.now(), tokens: t.tokens, model: t.model, title: t.title });
+      S.termLines[id] = [['d', `codex · ${t.repo} · resumed ${t.id}`]]; S.attached.push(id); S.activeTerm = id;
+      run('sessions.resume', r.cmd, `Resumed into ${id}`); location.hash = 'sessions'; return;
+    }
+    if (act === 'headless') {
+      const r = await modal({ title: 'Run a prompt', desc: 'Runs once without a terminal. Output streams into a session row you can open.',
+        body: `<label class="field">Repo<select id="hRepo">${ROOTS.map((x) => `<option>${x}</option>`).join('')}</select></label><label class="field">Prompt<textarea id="hPrompt" rows="3">Summarise what changed in this repo since Monday.</textarea></label>`,
+        getCmd: (ov) => `cd ${$('#hRepo', ov).value} && claude -p ${shq($('#hPrompt', ov).value.trim())}`, confirm: 'Run' });
+      if (!r) return;
+      const id = newId(), repo = $('#hRepo', r.el).value;
+      S.sessions.unshift({ id, tool: 'claude', repo, status: 'running', started: Date.now(), tokens: 0, model: 'claude-sonnet-5-5', title: 'Headless prompt' });
+      S.termLines[id] = [['d', `claude -p · ${repo}`], ['', $('#hPrompt', r.el).value], ['a', '● running…']];
+      run('sessions.headless', r.cmd, `Started ${id}`); go('sessions'); return;
+    }
+    if (act === 'metric') { S.usageMetric = el.dataset.v; go('usage'); return; }
+    if (act === 'range') { S.usageRange = +el.dataset.v; go('usage'); return; }
+    if (act === 'addMcp') {
+      const r = await modal({ title: 'Add MCP server', desc: 'Eyrie runs the client\'s own CLI; it never edits ~/.claude.json directly.', body: mcpForm, getCmd: mcpCmd, confirm: 'Add server' });
+      if (!r) return;
+      const q = (s) => $(s, r.el).value.trim();
+      S.mcp.push({ name: q('#mName') || 'unnamed', client: q('#mClient'), transport: q('#mTrans'), scope: q('#mScope'), status: 'unknown', detail: 'no session since added', target: q('#mTarget') });
+      run('mcp.add', r.cmd, `Added ${q('#mName')}`); go('mcp'); return;
+    }
+    if (act === 'rmMcp') {
+      const m = S.mcp[+el.dataset.i];
+      const cmd = m.client === 'Codex' ? `codex mcp remove ${shq(m.name)}` : `claude mcp remove -s ${m.scope} ${shq(m.name)}`;
+      const r = await modal({ title: `Remove ${m.name}?`, desc: `Running sessions keep their connection until they restart. You can add it back later.`, cmd, confirm: 'Remove server', danger: true });
+      if (!r) return;
+      S.mcp.splice(+el.dataset.i, 1); run('mcp.remove', r.cmd, `Removed ${m.name}`); go('mcp'); return;
+    }
+    if (act === 'togglePlugin') {
+      const p = S.plugins[+el.dataset.i]; p.enabled = !p.enabled;
+      run(p.enabled ? 'plugins.enable' : 'plugins.disable', `claude plugin ${p.enabled ? 'enable' : 'disable'} ${p.name}`, `${p.enabled ? 'Enabled' : 'Disabled'} ${p.name}`); go('plugins'); return;
+    }
+    if (act === 'installPlugin') {
+      const r = await modal({ title: 'Install plugin', body: `<label class="field">Plugin <span class="hint">name@marketplace</span><input id="pName" type="text" value="playwright-qa@community" autocomplete="off"></label>`,
+        getCmd: (ov) => `claude plugin install ${shq($('#pName', ov).value.trim())}`, confirm: 'Install' });
+      if (!r) return;
+      const [name, market = 'community'] = $('#pName', r.el).value.trim().split('@');
+      if (!S.plugins.find((p) => p.name === name)) S.plugins.push({ name, market, enabled: true, desc: 'Installed from Eyrie.' });
+      run('plugins.install', r.cmd, `Installed ${name}`); go('plugins'); return;
+    }
+    if (act === 'pickFile') { S.nexusSel = [+el.dataset.a, +el.dataset.f]; go('nexus'); return; }
+    if (act === 'saveFile') {
+      const [ai, fi] = S.nexusSel, a = S.nexus[ai], f = a.files[fi];
+      f.body = $('#nexusEd').value; f.updated = Date.now();
+      run('nexus.write', `write agent-memory/Nexus/${a.agent}/${f.name} (atomic, etag checked)`, `Saved ${f.name}`); go('nexus'); return;
+    }
+    if (act === 'delFile') {
+      const [ai, fi] = S.nexusSel, a = S.nexus[ai], f = a.files[fi];
+      const r = await modal({ title: `Delete ${f.name}?`, desc: 'Moves the file to the vault\'s .trash folder, so Obsidian can restore it.', cmd: `mv agent-memory/Nexus/${a.agent}/${f.name} .trash/`, confirm: 'Delete file', danger: true });
+      if (!r) return;
+      a.files.splice(fi, 1); S.nexusSel = [0, 0]; run('nexus.delete', r.cmd, `Deleted ${f.name}`); go('nexus'); return;
+    }
+    if (act === 'toggleTask') {
+      e.preventDefault();
+      const i = +el.dataset.i, line = S.taskLines[i];
+      tasksWrite(() => { S.taskLines[i] = line.startsWith('- [x]') ? line.replace('- [x]', '- [ ]') : line.replace('- [ ]', '- [x]'); }, 'Updated task', `edit Personal/Tasks.md line ${i + 1} in place`);
+      return;
+    }
+    if (act === 'delTask') {
+      const i = +el.dataset.i;
+      tasksWrite(() => { S.taskLines.splice(i, 1); }, 'Deleted task', `remove Personal/Tasks.md line ${i + 1}`);
+      return;
+    }
+    if (act === 'simulateObsidian') { S.tasksStale = true; toast('Simulated: Tasks.md was edited in Obsidian. The next change will be refused.'); return; }
+    if (act === 'reloadTasks') { S.tasksStale = false; S.tasksConflict = false; const at = S.taskLines.findIndex((l) => l.startsWith('Notes:')); S.taskLines.splice(at < 0 ? S.taskLines.length : at - 1, 0, '- [ ] Call the bank about the card replacement'); go('tasks'); toast('Reloaded from disk. 1 task was added in Obsidian.'); return; }
+    if (act === 'raw') { S.showRaw = !S.showRaw; go('tasks'); return; }
+  });
+
+  document.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (e.target.id === 'taskForm') {
+      const v = $('#taskIn').value.trim(); if (!v) return;
+      const lastTask = S.taskLines.reduce((a, l, i) => (/^- \[( |x)\] /.test(l) ? i : a), 1);
+      tasksWrite(() => { S.taskLines.splice(lastTask + 1, 0, '- [ ] ' + v); }, 'Added task', `insert Personal/Tasks.md line ${lastTask + 2}`);
+      $('#taskIn')?.focus();
+    }
+    if (e.target.id === 'termForm') {
+      const v = $('#termIn').value; if (!v) return;
+      const lines = S.termLines[S.activeTerm] = S.termLines[S.activeTerm] || [];
+      lines.push(['', '> ' + v], ['a', '● working…']);
+      go('sessions'); $('#termIn').focus();
+    }
+  });
+
+  // theme: system -> light -> dark
+  const modes = ['system', 'light', 'dark'];
+  let mode = 'system';
+  try { mode = localStorage.getItem('eyrie-proto-theme') || 'system'; } catch {}
+  const applyTheme = () => {
+    if (mode === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', mode);
+    $('#themeBtn').textContent = 'Theme: ' + mode;
+  };
+  $('#themeBtn').addEventListener('click', () => { mode = modes[(modes.indexOf(mode) + 1) % 3]; try { localStorage.setItem('eyrie-proto-theme', mode); } catch {} applyTheme(); });
+  applyTheme();
+  go(current());
+})();
+</script>

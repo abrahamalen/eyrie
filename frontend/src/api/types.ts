@@ -1,0 +1,33 @@
+// API types, aliased from generated.ts (generated from the backend's response models by
+// `make types`; don't edit that file). Keep this file to names and small derived types.
+import type { components } from './generated'
+
+type S = components['schemas']
+
+export type SourceInfo = S['SourceInfo']
+export type ClaudeProject = S['ClaudeProject']
+export type ClaudeUsage = S['ClaudeUsage']
+export type CodexThread = S['CodexThread']
+export type CodexUsage = S['CodexUsage']
+export type McpServer = S['McpServer']
+export type McpStatus = S['McpStatus']
+export type McpClient = McpServer['client']
+export type McpScope = McpServer['scope']
+export type Plugin = S['Plugin']
+export type PluginList = S['PluginList']
+export type ActionPreview = S['ActionPreview']
+export type ActionResult = S['ActionResult']
+export type AuditEntry = S['AuditEntry']
+export type NexusAgent = S['NexusAgent']
+export type NexusFile = S['NexusFile']
+export type Trashed = S['Trashed']
+export type Task = S['Task']
+export type TasksSnapshot = S['TasksSnapshot']
+export type UsageModel = S['UsageModel']
+export type UsageReport = S['UsageReport']
+export type Session = S['Session']
+export type SessionTool = NonNullable<Session['tool']>
+export type SessionsSnapshot = S['SessionsSnapshot']
+export type Conversation = S['Conversation']
+export type Screen = S['Screen']
+export type Meta = S['Meta']
