@@ -5,16 +5,14 @@ import { StatTile } from '@/components/StatTile'
 import { BarList } from '@/components/BarList'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/PageHeader'
 
 export function CodexPage() {
   const { data, error } = usePoll(api.codex, 10_000)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Codex</h1>
-        <p className="text-sm text-muted-foreground">Live from ~/.codex/state_5.sqlite</p>
-      </div>
+      <PageHeader eyebrow="Agents" title="Codex" description={<>Recent Codex threads, from ~/.codex/state_5.sqlite.</>} />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
 

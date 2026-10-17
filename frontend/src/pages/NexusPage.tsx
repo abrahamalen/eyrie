@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { PageHeader } from '@/components/PageHeader'
 
 type Sel = { agent: string; name: string }
 const same = (a: Sel | null, b: Sel | null) => !!a && !!b && a.agent === b.agent && a.name === b.name
@@ -120,13 +121,7 @@ export function NexusPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Nexus memory</h1>
-        <p className="text-sm text-muted-foreground">
-          What Nexus agents remember, in your vault at agent-memory/Nexus. Edit or remove a memory here; deleted files
-          go to the vault's .trash folder.
-        </p>
-      </div>
+      <PageHeader eyebrow="Agents" title="Nexus memory" description={<>What Nexus agents remember, in your vault at agent-memory/Nexus. Edit or remove a memory here; deleted files go to the vault's .trash folder.</>} />
       {list.error && <p className="text-sm text-destructive">Couldn't reach backend: {list.error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">

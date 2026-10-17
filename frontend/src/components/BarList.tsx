@@ -21,7 +21,7 @@ export function BarList({
               {shortPath(r.name)}
             </div>
             <div className="h-2.5 overflow-hidden rounded bg-muted">
-              <div className="h-full rounded bg-primary" style={{ width: `${pct}%` }} />
+              <div className="h-full rounded bg-brand" style={{ width: `${pct}%` }} />
             </div>
             <div className="text-right tabular-nums">{format(r.value)}</div>
           </div>

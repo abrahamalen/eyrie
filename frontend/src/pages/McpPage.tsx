@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/PageHeader'
 
 export function McpPage() {
   const { data, error, refresh } = usePoll(api.mcp, 10_000)
@@ -19,15 +20,16 @@ export function McpPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="mr-auto">
-          <h1 className="text-2xl font-semibold tracking-tight">MCP Servers</h1>
-          <p className="text-sm text-muted-foreground">
-            Claude Code and Codex servers. Changes go through each tool's own CLI.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Tools"
+        title="MCP servers"
+        description={<>Claude Code and Codex servers. Changes go through each tool's own CLI.</>}
+        actions={
+          <>
         <AddMcpDialog onDone={refresh} />
-      </div>
+          </>
+        }
+      />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
 

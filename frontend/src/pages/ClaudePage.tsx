@@ -5,16 +5,14 @@ import { StatTile } from '@/components/StatTile'
 import { BarList } from '@/components/BarList'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/PageHeader'
 
 export function ClaudePage() {
   const { data, error } = usePoll(api.claude, 10_000)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Claude Code</h1>
-        <p className="text-sm text-muted-foreground">Live from ~/.claude.json</p>
-      </div>
+      <PageHeader eyebrow="Agents" title="Claude Code" description={<>Each project's last Claude Code session, from ~/.claude.json. Full history is on the Usage page.</>} />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
 

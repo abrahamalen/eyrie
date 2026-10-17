@@ -8,6 +8,7 @@ import { UsageChart, UsageLegend } from '@/components/UsageChart'
 import { type Metric, seriesColor, seriesOf } from '@/usageSeries'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/PageHeader'
 
 const RANGES = [7, 30, 90] as const
 
@@ -50,17 +51,18 @@ export function UsagePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="mr-auto">
-          <h1 className="text-2xl font-semibold tracking-tight">Usage</h1>
-          <p className="text-sm text-muted-foreground">
-            Claude Code cost and tokens over time, from session transcripts.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Work"
+        title="Usage"
+        description={<>Claude Code cost and tokens over time, from session transcripts.</>}
+        actions={
+          <>
         <Segmented label="Metric" options={['cost', 'tokens'] as const} value={metric} onChange={setMetric}
           render={(m) => (m === 'cost' ? 'Cost' : 'Tokens')} />
         <Segmented label="Range" options={RANGES} value={days} onChange={setDays} render={(d) => `${d} days`} />
-      </div>
+          </>
+        }
+      />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
       {!data && !error && <Skeleton className="h-80" />}
@@ -105,7 +107,7 @@ export function UsagePage() {
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 <table className="w-full whitespace-nowrap text-sm">
-                  <thead className="text-xs text-muted-foreground">
+                  <thead className="eyebrow tracking-[0.06em]">
                     <tr>
                       <th className="py-1.5 text-left font-medium">Model</th>
                       <th className="py-1.5 pl-4 text-right font-medium">Cost</th>
