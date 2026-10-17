@@ -241,8 +241,15 @@ A container can't drive host tmux or the host's `claude`/`codex` with their cred
 
 ### 4.9 API and types (fixes P6)
 
-- `/api/v1` plus a WebSocket at `/api/v1/sessions/{id}/term`.
-- TS types are generated from OpenAPI (`openapi-typescript`) with `make types`. CI fails if the file is stale.
+Built in slice 7a.
+
+- **Response models**: every JSON route declares one (`backend/app/schemas.py`). They are the contract. Each source has its own typed route (`GET /api/v1/sources/<id>`), so each snapshot gets its own schema. A test fails if a route or a source is left untyped.
+- **Checked against real data**: when the models were written, every source's real snapshot on this laptop was validated against its model, and none dropped a field. This also caught a hand-written TS type that was wrong: `last_start_time` is epoch ms, not a string.
+- **Generation**: `make types` dumps OpenAPI with `python -m app.openapi`, which uses a throwaway data dir and never touches real state. It then runs `openapi-typescript` to write `frontend/src/api/generated.ts`. `frontend/src/api/types.ts` only aliases names from it.
+  - The generator needs TypeScript 5 and the app is on 6, so it runs through `npx -p typescript@5.9.3 -p openapi-typescript@7.13.0`, pinned and kept out of the app's dependencies.
+- **Staleness check**: `make types-check` regenerates into a temp dir and fails with a diff if the committed file is stale. `make check` runs tests, types-check, build and lint, which is everything CI runs.
+- **CI** (`.github/workflows/ci.yml`): runs `make check` on Ubuntu, with tmux installed for the integration tests. It's skipped on the `alenabraham-qure` fork so no work-account Actions minutes are used, and runs on the personal repo.
+- **Home path**: `GET /api/v1/meta` returns the home directory, so the UI no longer hardcodes it when shortening paths to `~/…`.
 
 ### 4.10 Frontend
 

@@ -47,9 +47,14 @@ eyrie/
 ## Running it
 
 ```bash
-make dev    # installs deps on first run, then API 127.0.0.1:8000 + UI -> http://localhost:5173
-make test   # backend tests
+make dev     # installs deps on first run, then API 127.0.0.1:8000 + UI -> http://localhost:5173
+make test    # backend tests
+make types   # regenerate frontend/src/api/generated.ts after changing backend/app/schemas.py
+make check   # tests + generated-types check + UI build + lint (what CI runs)
 ```
+
+The API contract lives in `backend/app/schemas.py`; the frontend's types are generated
+from it, so change the schema and run `make types` rather than editing types by hand.
 
 `make help` lists every target. Vite proxies `/api/*` to the backend.
 
