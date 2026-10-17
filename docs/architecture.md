@@ -31,6 +31,8 @@ v0 was built page by page, and these problems carry into the revamp:
 | Usage history? | **Yes, full history** from session transcripts |
 | Tasks home? | **Vault, personal only**: `Personal/Tasks.md` (created on first write). The vault-root work `Tasks.md` is never read or written |
 | Company tools? | **None.** Personal project, so no Qure-hosted integrations |
+| Remote / phone access? | **Laptop only** for now. Tailscale + token remains the path if it's ever wanted |
+| Docker? | **Dropped.** Native-first; the v0 Docker files are removed in the code phase |
 
 ## 3. Goals / non-goals
 
@@ -186,14 +188,14 @@ Control means Eyrie can run commands as you, so the threat to design against is 
 - **Host/Origin checks** block DNS rebinding and cross-site requests (only `localhost` / `127.0.0.1` are accepted).
 - **Commands**: no arbitrary command endpoint. Only the declared actions in §4.2, with validated arguments.
 - **Paths**: file actions are confined to their roots (resolve, then check the prefix) so `../` can't escape them.
-- **Remote/phone access** is out of scope. If it's wanted later, it goes through Tailscale plus the same token, never a port open to the internet.
+- **Remote/phone access**: laptop only (decided). If it's wanted later, it goes through Tailscale plus the same token, never a port open to the internet.
 
 ### 4.8 Deployment change
 
 A container can't drive host tmux or the host's `claude`/`codex` with their credentials, so the revamp is **native-first**:
 - `make dev` for development.
 - `make install` adds a macOS `launchd` agent so Eyrie runs in the background.
-- The Docker setup from v0 is dropped. If it's kept at all, it's a read-only "viewer" mode. Decide at the code phase.
+- The Docker setup from v0 is **dropped** (decided): `Dockerfile`s, `nginx.conf`, `docker-compose.yml` and `make up/down/logs` are removed in code slice 7.
 
 ### 4.9 API and types (fixes P6)
 
@@ -257,7 +259,7 @@ Each step is its own PR, reviewed before the next one starts.
    4. action layer: MCP and plugins via the CLIs, audit log
    5. session manager: tmux, xterm.js, headless jobs
    6. Nexus memory management
-   7. generated types, CI check, `launchd` install, README
+   7. generated types, CI check, `launchd` install, remove Docker, README
 
 ## 8. Risks
 
@@ -272,5 +274,4 @@ Each step is its own PR, reviewed before the next one starts.
 
 ## 9. Open questions
 
-1. **Phone access**: wanted later (Tailscale), or strictly this laptop?
-2. **Docker**: drop it, or keep a read-only viewer mode?
+None blocking. Prototype feedback lands here.
