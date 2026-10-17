@@ -7,6 +7,7 @@ import type {
   CodexUsage,
   McpStatus,
   NexusAgent,
+  NexusFile,
   Plugin,
   SessionsSnapshot,
   TasksSnapshot,
@@ -56,12 +57,20 @@ async function send<T>(method: string, path: string, body?: unknown, extra?: Rec
 }
 
 const source = <T>(id: string) => () => get<T>(`/api/v1/sources/${id}`)
+const enc = encodeURIComponent
 
 export const api = {
   claude: source<ClaudeUsage>('claude'),
   codex: source<CodexUsage>('codex'),
   mcp: source<McpStatus>('mcp'),
   nexus: source<{ agents: NexusAgent[] }>('nexus'),
+  nexusFile: {
+    read: (agent: string, name: string) => get<NexusFile>(`/api/v1/nexus/${enc(agent)}/${enc(name)}`),
+    write: (agent: string, name: string, content: string, etag: string) =>
+      send<NexusFile>('PUT', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, { content }, { 'If-Match': etag }),
+    remove: (agent: string, name: string, etag: string) =>
+      send<{ trashed_to: string }>('DELETE', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, undefined, { 'If-Match': etag }),
+  },
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
   plugins: source<{ plugins: Plugin[]; error: string | null }>('plugins'),
   sessions: {
