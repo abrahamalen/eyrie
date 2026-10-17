@@ -45,4 +45,4 @@ def test_writes_need_token(client):
 
 
 def test_writes_with_token(authed):
-    assert authed.post("/api/v1/tasks", json={"text": "x"}).status_code == 200
+    assert authed.post("/api/v1/tasks", json={"text": "x"}, headers={"If-Match": "absent"}).status_code == 200

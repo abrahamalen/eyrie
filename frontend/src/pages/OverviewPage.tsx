@@ -26,7 +26,7 @@ export function OverviewPage() {
   const mcpOk = mcp.data
     ? mcp.data.configured.length - mcp.data.configured.filter((m) => mcp.data!.last_known_failures.some((f) => f.name === m.name)).length
     : 0
-  const openTasks = tasks.data ? tasks.data.filter((t) => !t.done).length : 0
+  const openTasks = tasks.data ? tasks.data.tasks.filter((t) => !t.done).length : 0
   const latestThread = codex.data?.threads[0]
 
   const stats = [

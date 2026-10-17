@@ -52,6 +52,13 @@ export interface NexusAgent {
 }
 
 export interface Task {
+  id: string
   done: boolean
   text: string
+  line: number
+}
+
+export interface TasksSnapshot {
+  etag: string
+  tasks: Task[]
 }

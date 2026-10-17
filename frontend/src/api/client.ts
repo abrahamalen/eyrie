@@ -1,4 +1,4 @@
-import type { ClaudeUsage, CodexUsage, McpStatus, NexusAgent, Task } from './types'
+import type { ClaudeUsage, CodexUsage, McpStatus, NexusAgent, TasksSnapshot } from './types'
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -19,11 +19,24 @@ function token(): Promise<string> {
   return tokenPromise
 }
 
-async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { 'X-Eyrie-Token': await token() }
+/** The file changed on disk since it was read; `current` is what's there now. */
+export class StaleError<T> extends Error {
+  current: T
+  constructor(current: T) {
+    super('Changed on disk since it was loaded')
+    this.current = current
+  }
+}
+
+async function send<T>(method: string, path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
+  const headers: Record<string, string> = { 'X-Eyrie-Token': await token(), ...extra }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
-  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    if (err?.current) throw new StaleError<T>(err.current)
+    throw new Error(err?.detail ?? `${method} ${path} -> ${res.status}`)
+  }
   return res.json()
 }
 
@@ -35,9 +48,10 @@ export const api = {
   mcp: source<McpStatus>('mcp'),
   nexus: source<{ agents: NexusAgent[] }>('nexus'),
   tasks: {
-    list: () => get<Task[]>('/api/v1/tasks'),
-    add: (text: string) => send<Task[]>('POST', '/api/v1/tasks', { text }),
-    toggle: (index: number) => send<Task[]>('POST', `/api/v1/tasks/${index}/toggle`),
-    remove: (index: number) => send<Task[]>('DELETE', `/api/v1/tasks/${index}`),
+    list: () => get<TasksSnapshot>('/api/v1/tasks'),
+    add: (etag: string, text: string) => send<TasksSnapshot>('POST', '/api/v1/tasks', { text }, { 'If-Match': etag }),
+    update: (etag: string, id: string, patch: { done?: boolean; text?: string }) =>
+      send<TasksSnapshot>('PATCH', `/api/v1/tasks/${id}`, patch, { 'If-Match': etag }),
+    remove: (etag: string, id: string) => send<TasksSnapshot>('DELETE', `/api/v1/tasks/${id}`, undefined, { 'If-Match': etag }),
   },
 }
