@@ -40,9 +40,60 @@ export interface CodexUsage {
   available: boolean
 }
 
+export type McpClient = 'claude' | 'codex'
+export type McpScope = 'user' | 'local' | 'project'
+
+export interface McpServer {
+  name: string
+  client: McpClient
+  scope: McpScope
+  type: string
+  target: string
+  project: string | null
+}
+
 export interface McpStatus {
-  configured: { name: string; type: string; scope: string }[]
+  configured: McpServer[]
   last_known_failures: { name: string; status: string; detail: string }[]
+}
+
+export interface Plugin {
+  id: string
+  name: string
+  marketplace: string
+  version: string | null
+  scope: string | null
+  enabled: boolean
+  projectEnabled: boolean | null
+  installedAt: string | null
+  lastUpdated: string | null
+}
+
+export interface ActionPreview {
+  action: string
+  argv: string[]
+  destructive: boolean
+  dry_run: true
+}
+
+export interface ActionResult {
+  action: string
+  argv: string[]
+  ok: boolean
+  exit_code: number
+  message: string
+  duration_ms: number
+}
+
+export interface AuditEntry {
+  ts: string
+  action: string
+  argv: string[]
+  params: Record<string, unknown>
+  ok: boolean
+  exit_code: number
+  duration_ms: number
+  message: string
 }
 
 export interface NexusAgent {

@@ -7,6 +7,8 @@ import { McpPage } from '@/pages/McpPage'
 import { NexusPage } from '@/pages/NexusPage'
 import { TasksPage } from '@/pages/TasksPage'
 import { UsagePage } from '@/pages/UsagePage'
+import { PluginsPage } from '@/pages/PluginsPage'
+import { ActivityPage } from '@/pages/ActivityPage'
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
         <Route path="nexus" element={<NexusPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="usage" element={<UsagePage />} />
+        <Route path="plugins" element={<PluginsPage />} />
+        <Route path="activity" element={<ActivityPage />} />
       </Route>
     </Routes>
   )

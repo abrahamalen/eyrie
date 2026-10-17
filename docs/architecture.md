@@ -111,21 +111,33 @@ class Source(Protocol):
 
 ### 4.2 Action layer (write)
 
-**Rule: never hand-edit another tool's config files.** Changes go through that tool's own CLI, so Eyrie stays correct when those formats change:
+Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes go through that tool's own CLI; reads come from its config files.
 
-| Capability | Mechanism |
-|------------|-----------|
-| MCP servers (Claude) | `claude mcp add / add-json / remove / get / list` |
-| MCP servers (Codex) | `codex mcp ...` |
-| Plugins | `claude plugin install / enable / disable / list` |
-| Codex threads | `codex resume`, `codex exec` (via the session manager) |
-| Nexus memory | Direct file ops inside `agent-memory/Nexus` only (Eyrie-owned scope) |
-| Personal tasks | In-place line edits on `Personal/Tasks.md` (§4.5) |
+| Capability | Write (CLI) | Read |
+|------------|-------------|------|
+| MCP servers (Claude) | `claude mcp add` / `remove`, scopes user / local / project | `~/.claude.json` (user, and local per project) + each known project's `.mcp.json` |
+| MCP servers (Codex) | `codex mcp add` / `remove` (global only, stdio or http) | `~/.codex/config.toml` |
+| Plugins | `claude plugin enable` / `disable --json` | `claude plugin list --json`, cached until the plugin state files change (~0.7 s per call) |
+| Plugin install / uninstall | Not yet: marketplace installs can declare a command a person must approve by sha256 (`--accept-command`), which needs its own two-step flow | |
+| Codex threads, sessions | Slice 5 (session manager) | |
+| Nexus memory | Slice 6 (direct file ops inside `agent-memory/Nexus` only) | |
+| Personal tasks | Slice 2 (in-place line edits) | |
 
-- Actions are declared per source: `POST /api/v1/sources/{id}/actions/{action}`.
-- Arguments are validated with pydantic. CLI calls use an **argv list** (`subprocess.run([...], shell=False)`) and never build shell strings.
-- Destructive actions (remove an MCP server, delete a memory file, stop a session) need a confirm step in the UI and return a preview first.
-- Every action writes an audit record (`~/.eyrie/audit.jsonl`): who, what, args, exit code, stderr.
+- **No health checks**: `claude mcp list` / `get` health-check servers, which launches every stdio server. So they're never used for reads.
+- **Declared actions only**: `POST /api/v1/actions/{id}` with `{params, dry_run, confirm}`. The current ids are `mcp.add`, `mcp.remove`, `plugins.enable` and `plugins.disable`. There is no generic command action.
+- **Validation**: params are checked with pydantic before anything runs.
+  - Names: `[A-Za-z0-9][A-Za-z0-9._-]{0,63}`, so a value can't pass itself off as a flag.
+  - URLs: http(s) only.
+  - Env and header names are checked, and header values can't contain newlines.
+  - `project_dir` must be an existing absolute directory.
+  - Client-specific limits apply, for example Codex has no SSE and no scopes.
+- **Running**: argv list, `shell=False`, stdin closed, timeout, serialised by a lock. A stdio command always comes after `--`. Local and project scope run with `cwd` set to the project.
+- **Preview**: `dry_run` returns the exact argv, with env and header values masked. The UI shows it before any change.
+- **Confirm**: destructive actions (`mcp.remove`) return `428` until `confirm: true` is sent.
+- **Verify**: after a run, Eyrie checks the change actually happened, because some CLI paths exit 0 without doing it.
+  - `claude plugin enable` of a plugin that isn't installed reports success and records it as enabled. So plugin toggles are refused (`409`) unless the plugin is installed, and the enabled state is rechecked afterwards.
+- **Audit**: every run appends to `~/.eyrie/audit.jsonl`: action, masked argv, params with secret values masked, ok, exit code, duration, message. `GET /api/v1/audit` serves it, and the Activity page shows it.
+- **Sandbox**: `[cli] env` (e.g. `CLAUDE_CONFIG_DIR`, `CODEX_HOME`), together with matching `paths.*`, points the CLIs and reads at a scratch config. That's how this slice was tested end to end with the real CLIs.
 
 ### 4.3 Session manager
 
