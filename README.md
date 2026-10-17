@@ -1,65 +1,61 @@
 # Eyrie
 
-A local portal for keeping an eye on your AI coding tools — Claude Code, Codex, MCP
-servers, and installed agent plugins (e.g. Nexus) — plus a simple task list.
+A local control plane for your AI coding tools: Claude Code, Codex, MCP servers and
+agent plugins (e.g. Nexus), plus a personal task list. The revamp toward full control
+(sessions, MCP/plugin management, usage history) is in progress; see
+[`docs/architecture.md`](docs/architecture.md) and the clickable
+[`prototype/`](prototype/index.html).
 
-FastAPI backend + React/TypeScript frontend, run with `make dev` or Docker. No accounts, no cloud: everything
-reads what's already on your disk, live, on every request.
+FastAPI backend + React/TypeScript frontend, run natively with `make dev`. No accounts,
+no cloud: everything reads what's already on your disk, live, on every request.
 
 ## Architecture
 
 ```
 eyrie/
-├── backend/     FastAPI — app/services/*.py query ~/.claude.json, ~/.codex/*.sqlite,
-│                session transcripts, and the agent-memory vault directly, per-request
-│                (no batch/snapshot step — every API call reflects current state)
-└── frontend/    React + TypeScript (Vite), Tailwind v4 + shadcn/ui, react-router-dom —
-                 sidebar portal with a page per section, polling the backend every 10-15s
+├── backend/     FastAPI. app/sources/*.py each implement one Source (available + snapshot),
+│                registered from config and served at /api/v1/sources/{id}
+├── frontend/    React + TypeScript (Vite), Tailwind v4 + shadcn/ui, react-router-dom.
+│                Sidebar portal with a page per source, polling every 10-15s
+├── docs/        Architecture and design decisions
+└── prototype/   Clickable HTML mock of the revamped portal
 ```
 
 ## What it tracks
 
-- **Claude Code**: per-project cost, input/output tokens, and model breakdown, live
-  from `~/.claude.json`'s own session stats.
-- **Codex**: recent threads, tokens used, and which repos/models were active, live
-  from `~/.codex/state_5.sqlite`.
-- **MCP servers**: which are configured, and their last-known connect/fail status
-  recovered from recent session transcripts (not a live ping — nothing outside a
-  running Claude Code session can ping an MCP server).
-- **Agent plugins** (e.g. Nexus): which agents have run and how much memory they've
-  accumulated.
-- **Tasks**: a plain checklist, stored as markdown (`Obsidian Vault/Tasks.md` by
-  default) so it's editable from anywhere, Eyrie included.
+- **Claude Code**: per-project cost, tokens and models from `~/.claude.json`
+  (last session per project for now; full history comes with the usage indexer).
+- **Codex**: recent threads, tokens, repos and models from `~/.codex/state_5.sqlite`.
+- **MCP servers**: configured servers and last-known connect failures from recent
+  session transcripts (not a live ping).
+- **Nexus memory**: which agents have memory in the vault and how much.
+- **Tasks**: a plain markdown checklist in the vault at `Personal/Tasks.md`, editable
+  from Obsidian too. The vault-root `Tasks.md` is never touched.
 
-## Running it locally
+## Running it
 
 ```bash
-make dev   # installs deps on first run, then API :8000 + UI -> http://localhost:5173
+make dev    # installs deps on first run, then API 127.0.0.1:8000 + UI -> http://localhost:5173
+make test   # backend tests
 ```
 
-`make help` lists everything (`build`, `lint`, `clean`, ...). Vite proxies `/api/*`
-to the backend, so there's no CORS setup in dev.
-
-### Docker
-
-```bash
-make up    # builds + runs -> http://localhost:8080  (EYRIE_PORT to change)
-make down
-```
-
-nginx serves the built UI and proxies `/api` to the backend. `~/.claude.json`,
-`~/.claude`, `~/.codex` are mounted read-only; the Obsidian vault is mounted
-read-write (tasks). Paths are in `docker-compose.yml`.
+`make help` lists every target. Vite proxies `/api/*` to the backend.
 
 ## Configuration
 
-`backend/app/services/tasks.py` hardcodes the tasks file path (`TASKS_FILE`) —
-point it anywhere. Everything else reads from the standard `~/.claude` / `~/.codex`
-locations directly, no config needed yet.
+Copy `eyrie.example.toml` to `eyrie.toml` (gitignored) to change paths, enabled
+sources, or MCP servers to hide. Env vars override the file, e.g.
+`EYRIE_PATHS__VAULT=~/notes`. `EYRIE_CONFIG` points at a different config file.
 
-## Status
+## Security
 
-Personal project, built for one machine and one set of tools. Not yet portable
-(different OS paths, missing tools, etc.) or containerized — both are next steps
-once the feature set settles. Currently read-only: it observes Claude/Codex
-activity but can't launch or control sessions.
+Eyrie is moving toward changing local tool config and running sessions, so it only
+obeys this machine:
+
+- The API binds to `127.0.0.1` and rejects any `Host` or `Origin` that isn't loopback
+  (blocks DNS rebinding and other websites), and any cross-site browser fetch.
+- Every write needs the per-install token in `~/.eyrie/token` (created on first run,
+  mode 600) as `X-Eyrie-Token`. The portal fetches it from `/api/v1/auth/token`, which
+  only same-machine, same-origin pages can read.
+
+Laptop only: there's no remote access.
