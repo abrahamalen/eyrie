@@ -232,12 +232,22 @@ Control means Eyrie can run commands as you, so the threat to design against is 
 - **Paths**: file actions are confined to their roots (resolve, then check the prefix) so `../` can't escape them.
 - **Remote/phone access**: laptop only (decided). If it's wanted later, it goes through Tailscale plus the same token, never a port open to the internet.
 
-### 4.8 Deployment change
+### 4.8 Deployment (built in slice 7b)
 
-A container can't drive host tmux or the host's `claude`/`codex` with their credentials, so the revamp is **native-first**:
-- `make dev` for development.
-- `make install` adds a macOS `launchd` agent so Eyrie runs in the background.
-- The Docker setup from v0 is **dropped** (decided): `Dockerfile`s, `nginx.conf`, `docker-compose.yml` and `make up/down/logs` are removed in code slice 7.
+A container can't drive host tmux or the host's `claude`/`codex` with their credentials, so Eyrie runs natively. Docker was removed in slice 1.
+
+- **Development**: `make dev` runs Vite with hot reload on 5173, proxying `/api` (including WebSockets) to the API on 8000.
+- **Installed**: the backend serves the built UI itself (`app/ui.py`), so it's one process on one port, 8787 by default and separate from dev.
+  - Client-side routes fall back to `index.html`, and unknown `/api/*` paths are a JSON 404 for every method.
+  - Fingerprinted `assets/` are cached as immutable.
+  - Every response gets anti-framing headers (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) plus `nosniff` and `no-referrer`.
+- **`make install`**: a launchd agent `local.eyrie`, written by `scripts/launchd.py` (stdlib only, rendered with `plistlib`, then checked with `plutil -lint`).
+  - It records install-time `PATH`, because launchd's default can't find `claude`, `codex` or `tmux`.
+  - `KeepAlive`, with throttled restarts.
+  - **`AbandonProcessGroup`**, so restarting or unloading Eyrie never kills the tmux sessions it started.
+  - Default process type, not Background, so agents in those sessions aren't throttled.
+  - `make status`, `make logs` and `make uninstall` go with it. `DRY_RUN=1` prints everything without touching launchd.
+- **Other platforms**: `make serve` runs the same thing in the foreground.
 
 ### 4.9 API and types (fixes P6)
 

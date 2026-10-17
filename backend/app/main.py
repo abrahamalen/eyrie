@@ -11,6 +11,7 @@ from app.routers import actions, auth, nexus, sessions, sources, tasks, usage
 from app.schemas import Health, Meta
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
+from app.ui import mount_ui
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -41,6 +42,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/v1/meta", response_model=Meta)
     def meta():
         return {"home": str(Path.home()), "version": __version__}
+
+    # Last: a catch-all for the UI, so it never shadows an API route.
+    mount_ui(app, settings.server.ui_dir)
 
     return app
 

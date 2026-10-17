@@ -18,6 +18,9 @@ enabled = ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "u
 roots = []                            # e.g. ["~/personal/projects"]
 socket = "eyrie"                      # Eyrie's private tmux server: tmux -L eyrie ls
 
+[server]
+# ui_dir = "frontend/dist"           # built UI served at / (make build); default: this checkout's
+
 [privacy]
 hide_mcp = []                         # MCP server names to hide from the UI
 
