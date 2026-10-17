@@ -24,6 +24,7 @@ export interface ClaudeUsage {
 }
 
 export interface CodexThread {
+  id: string
   cwd: string
   model: string
   tokens_used: number
@@ -142,4 +143,35 @@ export interface UsageReport {
   index: { files: number; messages: number; oldest: string | null; last_scan_ms: number }
   pricing: { updated: string; unpriced_models: string[] }
   note: string
+}
+
+export type SessionTool = 'claude' | 'codex'
+
+export interface Session {
+  name: string
+  tool: SessionTool | null
+  cwd: string | null
+  mode: string | null
+  conversation_id: string | null
+  created: string | null
+  last_output: string | null
+  attached: number
+  alive: boolean
+  exit_status: number | null
+  command: string | null
+  attach: string
+}
+
+export interface SessionsSnapshot {
+  sessions: Session[]
+  dirs: string[]
+  error: string | null
+}
+
+export interface Conversation {
+  id: string
+  started: string
+  last: string
+  messages: number
+  project: string | null
 }

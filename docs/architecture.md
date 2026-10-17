@@ -141,17 +141,23 @@ Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes
 
 ### 4.3 Session manager
 
-Claude Code and Codex are interactive TUIs, so Eyrie runs them inside **tmux**. tmux 3.6 is already installed.
+Slice 5a (start, stop and resume, read-only screen) is built; 5b adds the in-browser terminal. Claude Code and Codex are interactive TUIs, so Eyrie runs them inside **tmux** (3.6 installed).
 
-- **Start**: `tmux new-session -d -s eyrie-<id> -c <repo> claude [--resume <sid>]`, or `codex` / `codex resume`.
-- **Attach in the browser**: a WebSocket bridges a tmux client pty to **xterm.js** in the portal.
-- **Attach from a terminal**: `tmux attach -t eyrie-<id>`. It's the same session, so the browser and terminal stay interchangeable.
-- **Survives restarts**: sessions keep running if Eyrie restarts or crashes. On boot, Eyrie rediscovers them with `tmux ls`.
-- **Stop**: `tmux kill-session`, after a confirm step.
-- **Headless jobs** ("run this prompt in repo X"): `claude -p` / `codex exec` with output streamed to the UI.
-- **Allowed repos**: sessions only start in directories from a config allowlist (`[sessions] roots`).
-
-Why tmux rather than an in-process pty: sessions outlive Eyrie, you get free terminal attach, and there's no pty lifecycle code to maintain. The cost is a dependency on tmux, which is acceptable for a single-machine tool.
+- **Private server**: `tmux -L eyrie -f ~/.eyrie/tmux.conf`. Eyrie's sessions never mix with your own tmux; `list-sessions` only shows Eyrie's. The config sets `remain-on-exit on` from server start, so a process that exits instantly still leaves its session and exit status. It also sets 50k lines of history and mouse support.
+- **Start** (`sessions.start` action):
+  - The command is `tmux new-session -d -s eyrie-<hex> -c <dir> <bin> <args…>`, followed by `set-option` calls for the `@eyrie_tool` / `@eyrie_cwd` / `@eyrie_mode` / `@eyrie_conv` tags.
+  - The program is always passed as **two or more arguments**, so tmux execs it directly; a single argument would go through `sh -c`. A test confirms that a directory named `a;b $HOME` reaches the process literally.
+  - Claude Code: `--session-id <uuid>` (new), `--continue`, `--resume <uuid>`. Eyrie chooses the conversation id for new sessions, so the tmux session links to its transcript and usage.
+  - Codex: `--cd <dir>`, plus `resume --last` or `resume <thread id>`.
+  - The UI generates the session name and conversation id before previewing, so the preview is exactly what runs.
+- **Where sessions may start**: a directory Claude Code or Codex already knows (`~/.claude.json` projects, Codex thread `cwd`s), or anything under `[sessions] roots`. Anything else is `409`.
+- **Rediscovery**: sessions outlive Eyrie. The list comes from tmux itself (`list-sessions -F` with the `@eyrie_*` tags), so a restart or crash loses nothing.
+- **Screen**: `GET /api/v1/sessions/{name}/screen` returns `capture-pane -p -J` as plain text; the UI refreshes it every 2 s (read-only).
+- **Attach from a terminal**: `tmux -L eyrie attach -t eyrie-<hex>`. The UI shows it with a copy button.
+- **Stop** (`sessions.stop`): `kill-session`, destructive, so it needs confirmation. Only `eyrie-*` names are accepted.
+- **Resume lists**: recent Claude Code conversations come from the usage index; recent Codex threads come from its SQLite DB.
+- **5b, in-browser terminal**: a WebSocket bridges a pty running `tmux -L eyrie attach` to xterm.js. Browsers can't set headers on a WebSocket, so the token travels in a subprotocol; Origin and Host checks apply as for HTTP.
+- **Headless jobs** (`claude -p` / `codex exec`): after 5b.
 
 ### 4.4 Usage history (fixes P3)
 
@@ -277,7 +283,7 @@ Each step is its own PR, reviewed before the next one starts.
    2. personal tasks: in-place edits, etag
    3. usage indexer and Usage page
    4. action layer: MCP and plugins via the CLIs, audit log
-   5. session manager: tmux, xterm.js, headless jobs
+   5. session manager: (a) tmux start/stop/resume + screen preview, (b) xterm.js terminal, then headless jobs
    6. Nexus memory management
    7. generated types, CI check, `launchd` install, remove Docker, README
 

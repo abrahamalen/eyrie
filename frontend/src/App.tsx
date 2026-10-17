@@ -9,6 +9,7 @@ import { TasksPage } from '@/pages/TasksPage'
 import { UsagePage } from '@/pages/UsagePage'
 import { PluginsPage } from '@/pages/PluginsPage'
 import { ActivityPage } from '@/pages/ActivityPage'
+import { SessionsPage } from '@/pages/SessionsPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="mcp" element={<McpPage />} />
         <Route path="nexus" element={<NexusPage />} />
         <Route path="tasks" element={<TasksPage />} />
+        <Route path="sessions" element={<SessionsPage />} />
         <Route path="usage" element={<UsagePage />} />
         <Route path="plugins" element={<PluginsPage />} />
         <Route path="activity" element={<ActivityPage />} />

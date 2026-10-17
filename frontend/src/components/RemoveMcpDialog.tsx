@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '@/api/client'
 import type { ActionResult, McpServer } from '@/api/types'
 import { CommandPreview, ResultLine } from '@/components/CommandPreview'
@@ -11,54 +11,56 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
-export function RemoveMcpButton({ server, onDone }: { server: McpServer; onDone: () => void }) {
+function paramsOf(m: McpServer) {
+  return { client: m.client, name: m.name, scope: m.scope, ...(m.project ? { project_dir: m.project } : {}) }
+}
+
+/** Page-level so polling can drop the server's row without closing this dialog. */
+export function RemoveMcpDialog({ server, onClose }: { server: McpServer | null; onClose: (removed: boolean) => void }) {
   const [argv, setArgv] = useState<string[] | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [result, setResult] = useState<ActionResult | null>(null)
   const [busy, setBusy] = useState(false)
-  const params = { client: server.client, name: server.name, scope: server.scope,
-    ...(server.project ? { project_dir: server.project } : {}) }
+  const [shown, setShown] = useState<McpServer | null>(null)
+  if (server && server !== shown) {
+    setShown(server)
+    setArgv(null)
+    setPreviewError(null)
+    setResult(null)
+  }
+  const key = server ? JSON.stringify(paramsOf(server)) : null
 
+  useEffect(() => {
+    if (key) {
+      api.actions.preview('mcp.remove', JSON.parse(key)).then((p) => setArgv(p.argv)).catch((e) => setPreviewError(e.message))
+    }
+  }, [key])
+
+  const m = shown
   return (
-    <AlertDialog
-      onOpenChange={(open) => {
-        // Refresh only once the dialog closes: refreshing first removes this row and the
-        // dialog with it, before the result can be read.
-        if (!open) {
-          if (result?.ok) onDone()
-          return
-        }
-        setResult(null)
-        api.actions.preview('mcp.remove', params).then((p) => setArgv(p.argv)).catch((e) => setPreviewError(e.message))
-      }}
-    >
-      <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="text-destructive" />}>
-        Remove
-      </AlertDialogTrigger>
+    <AlertDialog open={!!server} onOpenChange={(o) => !o && onClose(!!result?.ok)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Remove {server.name}?</AlertDialogTitle>
+          <AlertDialogTitle>Remove {m?.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Removes it from {server.client === 'claude' ? 'Claude Code' : 'Codex'} ({server.scope} scope). Running
-            sessions keep their connection until they restart. You can add it back later.
+            Removes it from {m?.client === 'codex' ? 'Codex' : 'Claude Code'} ({m?.scope} scope). Running sessions keep
+            their connection until they restart. You can add it back later.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <CommandPreview argv={argv} error={previewError} />
         <ResultLine result={result} />
         <AlertDialogFooter>
           <AlertDialogCancel>{result?.ok ? 'Close' : 'Cancel'}</AlertDialogCancel>
-          {!result?.ok && (
+          {!result?.ok && m && (
             <Button
               variant="destructive"
               disabled={busy || !argv}
               onClick={async () => {
                 setBusy(true)
                 try {
-                  const r = await api.actions.run('mcp.remove', params, true)
-                  setResult(r)
+                  setResult(await api.actions.run('mcp.remove', paramsOf(m), true))
                 } catch (e) {
                   setResult({ action: 'mcp.remove', argv: [], ok: false, exit_code: -1, duration_ms: 0, message: e instanceof Error ? e.message : String(e) })
                 } finally {

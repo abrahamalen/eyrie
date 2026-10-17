@@ -11,13 +11,19 @@ nexus_dir   = "agent-memory/Nexus"    # relative to vault
 data_dir    = "~/.eyrie"              # install token and usage.db (usage history)
 
 [sources]
-enabled = ["claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+enabled = ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+
+[sessions]
+# Sessions may start in any directory under these, or in one Claude Code / Codex already knows.
+roots = []                            # e.g. ["~/personal/projects"]
+socket = "eyrie"                      # Eyrie's private tmux server: tmux -L eyrie ls
 
 [privacy]
 hide_mcp = []                         # MCP server names to hide from the UI
 
 [cli]
 # claude_bin = "/opt/homebrew/bin/claude"   # default: found on PATH
+# tmux_bin   = "/opt/homebrew/bin/tmux"
 # codex_bin  = "/opt/homebrew/bin/codex"
 timeout_s = 60
 # Extra env for CLI calls. To try changes against a scratch config, point the CLIs and
