@@ -8,7 +8,8 @@ from app.config import Settings, get_settings
 from app.actions.audit import AuditLog
 from app.actions.runner import Runner
 from app.routers import actions, auth, nexus, sessions, sources, tasks, usage
-from app.schemas import Health, Meta
+from app.schemas import Meta, Status, Summary
+from app.summary import Versions, build_summary
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
 from app.ui import mount_ui
@@ -35,9 +36,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(sessions.router)
     app.include_router(nexus.router)
 
-    @app.get("/api/v1/health", response_model=Health)
+    @app.get("/api/v1/health", response_model=Status)
     def health():
         return {"status": "ok"}
+
+    versions = Versions(app.state.runner)
+
+    @app.get("/api/v1/summary", response_model=Summary)
+    def summary():
+        """What needs you and what's going on: the home page and the widget both read this."""
+        return build_summary(settings, app.state.registry, versions)
 
     @app.get("/api/v1/meta", response_model=Meta)
     def meta():
