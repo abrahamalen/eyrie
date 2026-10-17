@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { PageHeader } from '@/components/PageHeader'
 
 // xterm is large and only needed once a terminal opens.
 const SessionTerminal = lazy(() => import('@/components/SessionTerminal').then((m) => ({ default: m.SessionTerminal })))
@@ -46,17 +47,18 @@ export function SessionsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="mr-auto">
-          <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
-          <p className="text-sm text-muted-foreground">
-            Claude Code and Codex running in Eyrie's own tmux server. They keep running if Eyrie restarts.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Work"
+        title="Sessions"
+        description={<>Claude Code and Codex running in Eyrie's own tmux server. They keep running if Eyrie restarts.</>}
+        actions={
+          <>
         <Button onClick={() => setStart({ tool: 'claude' })} disabled={!data || !!data.error}>
           <Plus className="size-4" /> New session
         </Button>
-      </div>
+          </>
+        }
+      />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
       {data?.error && <p className="text-sm text-destructive">{data.error}</p>}

@@ -6,6 +6,7 @@ import { ResultLine } from '@/components/CommandPreview'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { PageHeader } from '@/components/PageHeader'
 
 export function PluginsPage() {
   const { data, error, refresh } = usePoll(api.plugins, 15_000)
@@ -32,12 +33,7 @@ export function PluginsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Plugins</h1>
-        <p className="text-sm text-muted-foreground">
-          Claude Code plugins. Switching one runs claude plugin enable or disable; new sessions pick it up.
-        </p>
-      </div>
+      <PageHeader eyebrow="Tools" title="Plugins" description={<>Claude Code plugins. Switching one runs claude plugin enable or disable; new sessions pick it up.</>} />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
       {data?.error && <p className="text-sm text-destructive">Couldn't list plugins: {data.error}</p>}

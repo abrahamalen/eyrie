@@ -1,8 +1,8 @@
 export function StatTile({ value, label }: { value: string | number; label: string }) {
   return (
-    <div className="rounded-xl bg-card px-4 py-3 text-card-foreground ring-1 ring-foreground/10">
-      <div className="text-2xl font-semibold tabular-nums tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+    <div className="rounded-xl bg-card px-5 py-4 text-card-foreground ring-1 ring-border">
+      <div className="font-mono text-[26px] leading-tight tracking-[-0.02em] tabular-nums">{value}</div>
+      <div className="mt-1 text-[13px] text-muted-foreground">{label}</div>
     </div>
   )
 }

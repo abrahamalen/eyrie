@@ -1,6 +1,18 @@
-import { Bot, ChartColumnStacked, ChevronRight, Cloud, History, LayoutDashboard, MonitorPlay, Plug, Puzzle, SquareTerminal, SquareCheck } from 'lucide-react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Bot,
+  ChartColumnStacked,
+  Cloud,
+  History,
+  LayoutDashboard,
+  MonitorPlay,
+  Plug,
+  Puzzle,
+  SquareCheck,
+  SquareTerminal,
+} from 'lucide-react'
+import { matchPath, NavLink, useLocation } from 'react-router-dom'
+import { Logo } from '@/components/Logo'
 import {
   Sidebar,
   SidebarContent,
@@ -11,133 +23,76 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
 
-const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex w-full items-center gap-2 ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`
+type Item = { to: string; label: string; icon: LucideIcon; end?: boolean }
+
+const GROUPS: { label: string; items: Item[] }[] = [
+  {
+    label: 'Work',
+    items: [
+      { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
+      { to: '/sessions', label: 'Sessions', icon: MonitorPlay },
+      { to: '/usage', label: 'Usage', icon: ChartColumnStacked },
+    ],
+  },
+  {
+    label: 'Agents',
+    items: [
+      { to: '/claude', label: 'Claude Code', icon: SquareTerminal },
+      { to: '/codex', label: 'Codex', icon: Cloud },
+      { to: '/nexus', label: 'Nexus memory', icon: Bot },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { to: '/mcp', label: 'MCP servers', icon: Plug },
+      { to: '/plugins', label: 'Plugins', icon: Puzzle },
+    ],
+  },
+  {
+    label: 'You',
+    items: [
+      { to: '/tasks', label: 'Tasks', icon: SquareCheck },
+      { to: '/activity', label: 'Activity', icon: History },
+    ],
+  },
+]
+
+// The active page reads as a small card on the paper, with the icon in the brand colour.
+const ACTIVE = 'data-active:bg-card data-active:ring-1 data-active:ring-border data-active:[&_svg]:text-brand'
 
 export function AppSidebar() {
-  const location = useLocation()
-  const claudeFamilyActive = location.pathname === '/claude' || location.pathname === '/nexus'
-
+  const { pathname } = useLocation()
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground text-sm font-bold">
-            E
-          </span>
-          <span className="font-semibold tracking-tight group-data-[collapsible=icon]:hidden">Eyrie</span>
-        </div>
+      <SidebarHeader className="px-3 pt-4 pb-2">
+        <Logo tagline={false} />
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton render={<NavLink to="/" end className={navLinkClass} />} tooltip="Overview">
-                  <LayoutDashboard className="size-4 shrink-0" />
-                  <span className="truncate">Overview</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton render={<NavLink to="/sessions" className={navLinkClass} />} tooltip="Sessions">
-                  <MonitorPlay className="size-4 shrink-0" />
-                  <span className="truncate">Sessions</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton render={<NavLink to="/usage" className={navLinkClass} />} tooltip="Usage">
-                  <ChartColumnStacked className="size-4 shrink-0" />
-                  <span className="truncate">Usage</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Coding Agents</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <Collapsible defaultOpen={claudeFamilyActive} className="group/collapsible">
-                <SidebarMenuItem>
-                  <SidebarMenuButton render={<NavLink to="/claude" className={navLinkClass} />} tooltip="Claude Code">
-                      <SquareTerminal className="size-4 shrink-0" />
-                      <span className="truncate">Claude Code</span>
-                  </SidebarMenuButton>
-                  <CollapsibleTrigger
-                    render={
-                      <SidebarMenuButton
-                        className="absolute right-1 top-1 h-6 w-6 p-0 data-[panel-open]:rotate-90"
-                        aria-label="Toggle Nexus Agents"
-                      />
-                    }
-                  >
-                    <ChevronRight className="size-3.5 transition-transform" />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton render={<NavLink to="/nexus" className={navLinkClass} />}>
-                            <Bot className="size-4 shrink-0" />
-                            <span className="truncate">Nexus Agents</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<NavLink to="/codex" className={navLinkClass} />} tooltip="Codex">
-                    <Cloud className="size-4 shrink-0" />
-                    <span className="truncate">Codex</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Tools</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<NavLink to="/mcp" className={navLinkClass} />} tooltip="MCP Servers">
-                    <Plug className="size-4 shrink-0" />
-                    <span className="truncate">MCP Servers</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<NavLink to="/plugins" className={navLinkClass} />} tooltip="Plugins">
-                  <Puzzle className="size-4 shrink-0" />
-                  <span className="truncate">Plugins</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<NavLink to="/tasks" className={navLinkClass} />} tooltip="Tasks">
-                    <SquareCheck className="size-4 shrink-0" />
-                    <span className="truncate">Tasks</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton render={<NavLink to="/activity" className={navLinkClass} />} tooltip="Activity">
-                  <History className="size-4 shrink-0" />
-                  <span className="truncate">Activity</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="gap-1 px-1">
+        {GROUPS.map((g) => (
+          <SidebarGroup key={g.label}>
+            <SidebarGroupLabel className="eyebrow text-[10.5px]">{g.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {g.items.map((it) => (
+                  <SidebarMenuItem key={it.to}>
+                    <SidebarMenuButton
+                      render={<NavLink to={it.to} end={it.end} />}
+                      isActive={!!matchPath({ path: it.to, end: !!it.end }, pathname)}
+                      className={ACTIVE}
+                      tooltip={it.label}
+                    >
+                      <it.icon className="size-4 shrink-0" />
+                      <span className="truncate">{it.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   )

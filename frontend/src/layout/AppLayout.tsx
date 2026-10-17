@@ -1,24 +1,24 @@
 import { Outlet } from 'react-router-dom'
 import { AppSidebar } from './AppSidebar'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 export function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger />
-            <Separator orientation="vertical" className="h-4" />
-            <span className="text-sm text-muted-foreground">Live, polling every 10-15s</span>
+      <SidebarInset className="bg-background">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+          <SidebarTrigger />
+          <span className="eyebrow hidden sm:inline">Agent control plane · 127.0.0.1</span>
+          <div className="ml-auto">
+            <ThemeToggle />
           </div>
-          <ThemeToggle />
         </header>
-        <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+        <main className="flex-1 overflow-auto px-5 py-7 sm:px-8">
+          <div className="mx-auto flex max-w-6xl flex-col">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>
