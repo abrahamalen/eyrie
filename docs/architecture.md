@@ -141,7 +141,7 @@ Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes
 
 ### 4.3 Session manager
 
-Slice 5a (start, stop and resume, read-only screen) is built; 5b adds the in-browser terminal. Claude Code and Codex are interactive TUIs, so Eyrie runs them inside **tmux** (3.6 installed).
+Slices 5a (start, stop, resume) and 5b (in-browser terminal) are built. Claude Code and Codex are interactive TUIs, so Eyrie runs them inside **tmux** (3.6 installed).
 
 - **Private server**: `tmux -L eyrie -f ~/.eyrie/tmux.conf`. Eyrie's sessions never mix with your own tmux; `list-sessions` only shows Eyrie's. The config sets `remain-on-exit on` from server start, so a process that exits instantly still leaves its session and exit status. It also sets 50k lines of history and mouse support.
 - **Start** (`sessions.start` action):
@@ -156,7 +156,14 @@ Slice 5a (start, stop and resume, read-only screen) is built; 5b adds the in-bro
 - **Attach from a terminal**: `tmux -L eyrie attach -t eyrie-<hex>`. The UI shows it with a copy button.
 - **Stop** (`sessions.stop`): `kill-session`, destructive, so it needs confirmation. Only `eyrie-*` names are accepted.
 - **Resume lists**: recent Claude Code conversations come from the usage index; recent Codex threads come from its SQLite DB.
-- **5b, in-browser terminal**: a WebSocket bridges a pty running `tmux -L eyrie attach` to xterm.js. Browsers can't set headers on a WebSocket, so the token travels in a subprotocol; Origin and Host checks apply as for HTTP.
+- **Browser terminal (5b)**: `WS /api/v1/sessions/{name}/term[?readonly=true]` runs `tmux -L eyrie attach-session -t <name> [-r]` in a pty and bridges it to xterm.js.
+  - Output and input are binary frames; resize is a JSON text frame.
+  - Closing the socket sends SIGHUP to that tmux client only, so the session keeps running. Killing the session closes the socket.
+  - The pty isn't the client's controlling terminal, so the kernel won't deliver SIGWINCH; Eyrie sends it after each resize.
+  - Auth: browsers can't set headers on a WebSocket, so the token is offered as subprotocol `eyrie.token.<token>`, and the server accepts `eyrie`. Host and Origin checks apply as for HTTP. A rejected handshake is closed with `4000+status` instead of an HTTP body, which isn't valid on a WebSocket.
+  - Watch-only mode uses tmux's `-r` and also drops input server-side.
+  - At most 8 terminals at once. Each one is recorded in the audit log when it closes (connection only, never keystrokes).
+  - xterm is loaded lazily, so it only downloads when a terminal opens.
 - **Headless jobs** (`claude -p` / `codex exec`): after 5b.
 
 ### 4.4 Usage history (fixes P3)

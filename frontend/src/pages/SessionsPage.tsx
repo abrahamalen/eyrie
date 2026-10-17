@@ -1,17 +1,19 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { api } from '@/api/client'
 import type { Session } from '@/api/types'
 import { usePoll } from '@/usePoll'
 import { fmtAgo, fmtNum, shortPath } from '@/format'
 import { CopyButton } from '@/components/CopyButton'
-import { SessionScreen } from '@/components/SessionScreen'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
 import { StopSessionDialog } from '@/components/StopSessionDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+// xterm is large and only needed once a terminal opens.
+const SessionTerminal = lazy(() => import('@/components/SessionTerminal').then((m) => ({ default: m.SessionTerminal })))
 
 function State({ s }: { s: Session }) {
   if (!s.alive) {
@@ -95,7 +97,7 @@ export function SessionsPage() {
                     <TableCell className="text-muted-foreground">{fmtAgo(s.last_output)}</TableCell>
                     <TableCell className="whitespace-nowrap text-right">
                       <Button variant="ghost" size="sm" onClick={() => setOpen(open === s.name ? null : s.name)}>
-                        {open === s.name ? 'Hide' : 'View'}
+                        {open === s.name ? 'Hide' : 'Open'}
                       </Button>
                       <CopyButton text={s.attach} label="Attach" />
                       <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setStopping(s)}>
@@ -117,7 +119,11 @@ export function SessionsPage() {
         </CardContent>
       </Card>
 
-      {openSession && <SessionScreen session={openSession} />}
+      {openSession && (
+        <Suspense fallback={<Skeleton className="h-[28rem]" />}>
+          <SessionTerminal key={openSession.name} session={openSession} />
+        </Suspense>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

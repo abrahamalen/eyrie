@@ -12,7 +12,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': `http://127.0.0.1:${process.env.EYRIE_BACKEND_PORT ?? 8000}`,
+      // ws: the browser terminal is a WebSocket under /api
+      '/api': { target: `http://127.0.0.1:${process.env.EYRIE_BACKEND_PORT ?? 8000}`, ws: true },
     },
   },
 })

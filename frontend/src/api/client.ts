@@ -22,7 +22,7 @@ async function get<T>(path: string): Promise<T> {
 // The backend only accepts writes carrying the per-install token; it hands that token
 // out to same-origin pages on this machine.
 let tokenPromise: Promise<string> | null = null
-function token(): Promise<string> {
+export function token(): Promise<string> {
   tokenPromise ??= get<{ token: string }>('/api/v1/auth/token')
     .then((r) => r.token)
     .catch((e) => {

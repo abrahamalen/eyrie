@@ -24,8 +24,9 @@ eyrie/
 ## What it tracks
 
 - **Sessions**: start, resume and stop Claude Code and Codex sessions in Eyrie's own
-  tmux server (`tmux -L eyrie`); they keep running if Eyrie restarts. Watch a live
-  read-only view of each, or attach from a terminal with the command Eyrie shows.
+  tmux server (`tmux -L eyrie`); they keep running if Eyrie restarts. Work in them from
+  the browser terminal (or in watch-only mode), or attach from any terminal with the
+  command Eyrie shows. Closing the browser terminal only detaches.
 - **Claude Code**: per-project cost, tokens and models from `~/.claude.json` (last
   session per project).
 - **Usage**: full Claude Code cost and token history by day, model and project,
