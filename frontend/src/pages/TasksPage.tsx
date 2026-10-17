@@ -24,7 +24,7 @@ export function TasksPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
         <p className="text-sm text-muted-foreground">
-          Stored as a plain checklist in Obsidian Vault/Tasks.md — editable there too.
+          Stored as a plain checklist in your vault at Personal/Tasks.md, so you can edit it in Obsidian too.
         </p>
       </div>
 

@@ -6,22 +6,38 @@ async function get<T>(path: string): Promise<T> {
   return res.json()
 }
 
+// The backend only accepts writes carrying the per-install token; it hands that token
+// out to same-origin pages on this machine.
+let tokenPromise: Promise<string> | null = null
+function token(): Promise<string> {
+  tokenPromise ??= get<{ token: string }>('/api/v1/auth/token')
+    .then((r) => r.token)
+    .catch((e) => {
+      tokenPromise = null
+      throw e
+    })
+  return tokenPromise
+}
+
+async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'X-Eyrie-Token': await token() }
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+  if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}`)
+  return res.json()
+}
+
+const source = <T>(id: string) => () => get<T>(`/api/v1/sources/${id}`)
+
 export const api = {
-  claude: () => get<ClaudeUsage>('/api/claude'),
-  codex: () => get<CodexUsage>('/api/codex'),
-  mcp: () => get<McpStatus>('/api/mcp'),
-  nexus: () => get<{ agents: NexusAgent[] }>('/api/nexus'),
+  claude: source<ClaudeUsage>('claude'),
+  codex: source<CodexUsage>('codex'),
+  mcp: source<McpStatus>('mcp'),
+  nexus: source<{ agents: NexusAgent[] }>('nexus'),
   tasks: {
-    list: () => get<Task[]>('/api/tasks'),
-    add: (text: string) =>
-      fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      }).then((r) => r.json() as Promise<Task[]>),
-    toggle: (index: number) =>
-      fetch(`/api/tasks/${index}/toggle`, { method: 'POST' }).then((r) => r.json() as Promise<Task[]>),
-    remove: (index: number) =>
-      fetch(`/api/tasks/${index}`, { method: 'DELETE' }).then((r) => r.json() as Promise<Task[]>),
+    list: () => get<Task[]>('/api/v1/tasks'),
+    add: (text: string) => send<Task[]>('POST', '/api/v1/tasks', { text }),
+    toggle: (index: number) => send<Task[]>('POST', `/api/v1/tasks/${index}/toggle`),
+    remove: (index: number) => send<Task[]>('DELETE', `/api/v1/tasks/${index}`),
   },
 }
