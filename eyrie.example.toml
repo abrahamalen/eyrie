@@ -1,0 +1,17 @@
+# Copy to eyrie.toml (gitignored) and edit. Every key is optional; these are the defaults.
+# Env vars override this file, e.g. EYRIE_PATHS__VAULT=~/notes.
+
+[paths]
+claude_home = "~/.claude"
+claude_json = "~/.claude.json"
+codex_home  = "~/.codex"
+vault       = "~/workspace/Obsidian Vault"
+tasks_file  = "Personal/Tasks.md"     # relative to vault
+nexus_dir   = "agent-memory/Nexus"    # relative to vault
+data_dir    = "~/.eyrie"              # token and, later, usage index + audit log
+
+[sources]
+enabled = ["claude", "codex", "mcp", "nexus", "tasks"]
+
+[privacy]
+hide_mcp = []                         # MCP server names to hide from the UI

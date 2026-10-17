@@ -1,22 +1,28 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import status, tasks
-
-app = FastAPI(title="Eyrie", description="Live view of Claude Code, Codex, MCP, and Nexus activity")
-
-# Dev-only: Vite's dev server runs on a different port than the API.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(status.router)
-app.include_router(tasks.router)
+from app.config import Settings, get_settings
+from app.routers import auth, sources, tasks
+from app.security import LocalOnlyMiddleware, load_or_create_token
+from app.sources.base import build_registry
 
 
-@app.get("/api/health")
-def health():
-    return {"status": "ok"}
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or get_settings()
+    token = load_or_create_token(settings.paths.data_dir)
+
+    app = FastAPI(title="Eyrie", description="Local control plane for Claude Code, Codex, MCP, and Nexus")
+    app.state.settings = settings
+    app.state.registry = build_registry(settings)
+    app.state.token = token
+    app.add_middleware(LocalOnlyMiddleware, token=token)
+
+    app.include_router(auth.router)
+    app.include_router(sources.router)
+    app.include_router(tasks.router)
+
+    @app.get("/api/v1/health")
+    def health():
+        return {"status": "ok"}
+
+    return app
+
