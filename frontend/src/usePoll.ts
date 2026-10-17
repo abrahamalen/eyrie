@@ -30,5 +30,5 @@ export function usePoll<T>(fetcher: () => Promise<T>, intervalMs = 10_000) {
     }
   }, [intervalMs])
 
-  return { data, error, refresh: () => fetcherRef.current().then(setData) }
+  return { data, error, refresh: () => fetcherRef.current().then(setData), set: setData }
 }

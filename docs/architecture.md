@@ -154,8 +154,8 @@ Why tmux rather than an in-process pty: sessions outlive Eyrie, you get free ter
 
 - Default file: `<vault>/Personal/Tasks.md`, configurable. The vault-root `Tasks.md` (work) is out of scope.
 - **Edit lines in place**: change only the target line and preserve every other line (headings, notes, blank lines).
-- Task ID = hash of the line text plus its ordinal among duplicates.
-- Writes carry the file's etag (mtime + size). If the file changed in Obsidian since the read, the write gets `409` and the UI refetches.
+- Task ID = hash of the task text (not the checkbox, so it survives toggling) plus its ordinal among duplicates.
+- Writes carry the file's etag in `If-Match`: a hash of the file content, so it can't be fooled by mtime granularity. If the file changed in Obsidian since the read, the write gets `409` with the current state, and the UI shows it.
 - Atomic writes (temp file + rename).
 
 ### 4.6 Config (fixes P2, P7)

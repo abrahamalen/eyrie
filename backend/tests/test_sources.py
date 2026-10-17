@@ -46,6 +46,7 @@ def test_hide_mcp(settings):
 
 def test_tasks_use_personal_file_and_leave_work_file_alone(authed, home):
     work_before = (home / "vault/Tasks.md").read_text()
-    assert authed.post("/api/v1/tasks", json={"text": "renew passport"}).json() == [{"done": False, "text": "renew passport"}]
+    r = authed.post("/api/v1/tasks", json={"text": "renew passport"}, headers={"If-Match": "absent"})
+    assert [t["text"] for t in r.json()["tasks"]] == ["renew passport"]
     assert "renew passport" in (home / "vault/Personal/Tasks.md").read_text()
     assert (home / "vault/Tasks.md").read_text() == work_before
