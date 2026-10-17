@@ -57,6 +57,8 @@ class LocalOnlyMiddleware:
                 await receive()
                 return await send({"type": "websocket.close", "code": 4000 + status, "reason": detail})
             return await JSONResponse({"detail": detail}, status_code=status)(scope, receive, send)
+        if scope["type"] == "http":
+            return await self.app(scope, receive, _with_headers(send))
         await self.app(scope, receive, send)
 
     def _check(self, scope: Scope, headers: dict[str, str]) -> tuple[int, str] | None:
@@ -77,3 +79,21 @@ class LocalOnlyMiddleware:
             if not hmac.compare_digest(supplied, self.token):
                 return 401, "Missing or invalid token"
         return None
+
+
+# Eyrie's pages have buttons that stop sessions and change config, so no other site may
+# frame them (clickjacking), and responses shouldn't leak where they came from.
+SECURITY_HEADERS = [
+    (b"x-frame-options", b"DENY"),
+    (b"content-security-policy", b"frame-ancestors 'none'"),
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"no-referrer"),
+]
+
+
+def _with_headers(send: Send) -> Send:
+    async def wrapped(message):
+        if message["type"] == "http.response.start":
+            message = {**message, "headers": [*message.get("headers", []), *SECURITY_HEADERS]}
+        await send(message)
+    return wrapped

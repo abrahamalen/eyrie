@@ -68,6 +68,16 @@ class Sessions(BaseModel):
         return [p.expanduser() for p in v]
 
 
+class Server(BaseModel):
+    # Built UI to serve at / (make build). Absent in development, where Vite serves it.
+    ui_dir: Path = REPO_ROOT / "frontend" / "dist"
+
+    @field_validator("ui_dir")
+    @classmethod
+    def _expand(cls, v: Path) -> Path:
+        return v.expanduser()
+
+
 class Cli(BaseModel):
     # Paths to the claude / codex / tmux binaries; default is whatever is on PATH.
     claude_bin: str | None = None
@@ -86,6 +96,7 @@ class Settings(BaseSettings):
     sources: Sources = Sources()
     privacy: Privacy = Privacy()
     cli: Cli = Cli()
+    server: Server = Server()
     sessions: Sessions = Sessions()
     # $/MTok per model id; merged over the built-in table in app/usage/prices.py
     pricing: dict[str, ModelPrice] = {}
