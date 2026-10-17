@@ -189,8 +189,40 @@ One installer per OS. It contains the widget, the Eyrie backend as a self-contai
 | Data | Unchanged: `~/.eyrie` (token, usage DB, audit log, tmux.conf) and your `eyrie.toml`. Install, upgrade and uninstall never delete it |
 | Upgrade | Install the new package; the widget restarts the service if `eyrie-server`'s version changed |
 | Uninstall | The widget's **Quit and remove service** (and the `.deb`'s `prerm`) unload the service. Sessions keep running |
-| CI | A release workflow (tag `v*`) with a matrix of `macos-14` and `ubuntu-24.04` builds the `.dmg` and `.deb` as artifacts. It's skipped on the `alenabraham-qure` fork, like `ci.yml` |
-| Dev install | **Built.** `make install` runs from a checkout on both platforms through `scripts/service.py`: a launchd agent on macOS, or a systemd user unit `eyrie.service` on Linux (`KillMode=process`, `Restart=on-failure`, logs appended to `~/.eyrie/logs/eyrie.log`). Both record your login shell's PATH from a clean environment, so it no longer matters where install runs from. Verified on Ubuntu 24.04 in a container: the full backend suite passes (Python 3.12.3, tmux 3.4) and `systemd-analyze verify` accepts the unit. Not yet exercised under a live `systemd --user` manager |
+| CI | A release workflow (tag `v*`) builds `.dmg`, `.deb`, `.rpm`, AppImage and the Windows installer (see §5.1). It's skipped on the `alenabraham-qure` fork, like `ci.yml` |
+| Dev install | `make install` stays for running from a checkout. It also gains Ubuntu support (a systemd user unit), so dev and packaged installs behave the same |
+
+### 5.1 Platforms
+
+Target list: **macOS, Ubuntu, Fedora, other Linux, Windows**. What changes per platform:
+
+| Platform | Package | Background service | Widget (tray) | Sessions (tmux) | Status |
+|---|---|---|---|---|---|
+| **macOS** 13+ (Apple Silicon and Intel) | `.dmg` (`Eyrie.app`) | launchd agent | Menu bar: click → panel, right-click → menu | tmux (Homebrew) | Service built; app and widget next |
+| **Ubuntu** 24.04 / Debian | `.deb` | systemd user unit | GNOME top bar via AppIndicator (enabled by default on Ubuntu); click → menu with "Show panel" | tmux (apt) | Service built; suite passes on 24.04 |
+| **Fedora** 40+ | `.rpm` (Tauri bundles it) | systemd user unit (same unit as Ubuntu) | **Fedora's GNOME has no tray by default.** It needs the *AppIndicator and KStatusNotifierItem Support* extension; KDE works as is. Without a tray, the widget opens as a small window from the app launcher and the first run says how to enable the extension | tmux (dnf) | To verify in a `fedora` container (suite + `systemd-analyze`) |
+| **Other Linux** | AppImage | systemd user unit, if present; otherwise `make serve` / autostart | AppIndicator / StatusNotifier, depending on the desktop | tmux | An AppImage moves on disk, so on first run the server binary is copied to `~/.local/lib/eyrie/` and the unit points there |
+| **Windows** 10/11 | `.msi` / NSIS installer | Per-user scheduled task at logon | System tray: click → panel (Windows has real click events) | **Native session layer** (no tmux). See below | **Deferred**: native, after the others are stable |
+
+**Windows.** The Eyrie backend is portable, but two parts aren't:
+
+1. **The session manager is built on tmux.** There's no native tmux on Windows.
+2. **The browser terminal uses Unix ptys** (`pty`, `fcntl`, `termios`, signals in `sessions/terminal.py`).
+
+Smaller gaps: the token file's mode 600 needs a Windows ACL instead; service install would use a per-user scheduled task at logon (there's no launchd or systemd); and path and CLI resolution need `.exe`/`.cmd` handling.
+
+**Decision (2026-10-18): native Windows (option B), deferred.** It starts only once macOS, Ubuntu, Fedora and other Linux are stable and working, and its scope will be shaped by feedback from those users. Until then, nothing Windows-specific is built, and the code just keeps Unix-only pieces confined (today they're all in `sessions/terminal.py` and tmux) so a second session layer can slot in behind an interface later. The options considered:
+
+- **A. Through WSL2 (recommended first).**
+  - Eyrie's backend and tmux run inside WSL2 (Ubuntu), exactly as on Linux, with a systemd user unit; WSL supports systemd.
+  - The **widget runs natively on Windows** and talks to `127.0.0.1:8787`, which WSL forwards to Windows by default.
+  - You get everything, including sessions, for little new code. The cost: it manages the Claude Code and Codex installed *inside WSL*, not native Windows installs.
+- **B. Native Windows.**
+  - Replace tmux with an Eyrie-owned session supervisor: a small background process that keeps each session in a ConPTY (via `pywinpty`) and outlives the API server.
+  - Replace the pty bridge with a ConPTY bridge, and read Windows-native Claude Code and Codex state.
+  - That's a real second implementation of the session layer behind an interface, and the most work of anything on this list.
+
+**CI.** The release workflow builds and tests on `macos-14`, `ubuntu-24.04` and a `fedora:41` container. `windows-latest` joins when native Windows work starts.
 
 ## 6. Repo layout
 

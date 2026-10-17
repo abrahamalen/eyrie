@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { api } from '@/api/client'
 import type { Session } from '@/api/types'
@@ -38,7 +39,9 @@ export function SessionsPage() {
   const convs = usePoll(() => api.sessions.conversations(10), 30_000)
   const codex = usePoll(api.codex, 30_000)
   const [start, setStart] = useState<StartRequest | null>(null)
-  const [open, setOpen] = useState<string | null>(null)
+  // ?open=<name> (from the home page or the widget) opens that session's terminal.
+  const [params] = useSearchParams()
+  const [open, setOpen] = useState<string | null>(params.get('open'))
   const [stopping, setStopping] = useState<Session | null>(null)
   const dirs = data?.dirs ?? []
   const allowed = (cwd: string | null) => !!cwd && dirs.includes(cwd)
