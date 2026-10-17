@@ -29,8 +29,11 @@ eyrie/
   indexed from session transcripts into `~/.eyrie/usage.db` (kept after Claude Code
   prunes old transcripts) and priced from `backend/app/usage/prices.py`.
 - **Codex**: recent threads, tokens, repos and models from `~/.codex/state_5.sqlite`.
-- **MCP servers**: configured servers and last-known connect failures from recent
-  session transcripts (not a live ping).
+- **MCP servers**: Claude Code (user, local, project scopes) and Codex servers, with
+  last-known connect failures from recent transcripts (not a live ping). Add and remove
+  them from Eyrie; it runs `claude mcp` / `codex mcp` and shows the exact command first.
+- **Plugins**: Claude Code plugins, enabled or disabled from Eyrie via `claude plugin`.
+- **Activity**: every change Eyrie makes, in `~/.eyrie/audit.jsonl` (secrets masked).
 - **Nexus memory**: which agents have memory in the vault and how much.
 - **Tasks**: a plain markdown checklist in the vault at `Personal/Tasks.md`, editable
   from Obsidian too. The vault-root `Tasks.md` is never touched.

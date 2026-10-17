@@ -1,4 +1,15 @@
-import type { ClaudeUsage, CodexUsage, McpStatus, NexusAgent, TasksSnapshot, UsageReport } from './types'
+import type {
+  ActionPreview,
+  ActionResult,
+  AuditEntry,
+  ClaudeUsage,
+  CodexUsage,
+  McpStatus,
+  NexusAgent,
+  Plugin,
+  TasksSnapshot,
+  UsageReport,
+} from './types'
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -35,7 +46,9 @@ async function send<T>(method: string, path: string, body?: unknown, extra?: Rec
   if (!res.ok) {
     const err = await res.json().catch(() => null)
     if (err?.current) throw new StaleError<T>(err.current)
-    throw new Error(err?.detail ?? `${method} ${path} -> ${res.status}`)
+    // FastAPI puts a message in `detail`; some errors nest it one level down.
+    const detail = typeof err?.detail === 'object' ? err.detail?.detail : err?.detail
+    throw new Error(detail ?? `${method} ${path} -> ${res.status}`)
   }
   return res.json()
 }
@@ -48,6 +61,14 @@ export const api = {
   mcp: source<McpStatus>('mcp'),
   nexus: source<{ agents: NexusAgent[] }>('nexus'),
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
+  plugins: source<{ plugins: Plugin[]; error: string | null }>('plugins'),
+  audit: (limit = 200) => get<AuditEntry[]>(`/api/v1/audit?limit=${limit}`),
+  actions: {
+    preview: (id: string, params: object) =>
+      send<ActionPreview>('POST', `/api/v1/actions/${id}`, { params, dry_run: true }),
+    run: (id: string, params: object, confirm = false) =>
+      send<ActionResult>('POST', `/api/v1/actions/${id}`, { params, confirm }),
+  },
   tasks: {
     list: () => get<TasksSnapshot>('/api/v1/tasks'),
     add: (etag: string, text: string) => send<TasksSnapshot>('POST', '/api/v1/tasks', { text }, { 'If-Match': etag }),

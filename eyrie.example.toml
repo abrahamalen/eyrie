@@ -11,10 +11,18 @@ nexus_dir   = "agent-memory/Nexus"    # relative to vault
 data_dir    = "~/.eyrie"              # install token and usage.db (usage history)
 
 [sources]
-enabled = ["claude", "codex", "mcp", "nexus", "tasks", "usage"]
+enabled = ["claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
 
 [privacy]
 hide_mcp = []                         # MCP server names to hide from the UI
+
+[cli]
+# claude_bin = "/opt/homebrew/bin/claude"   # default: found on PATH
+# codex_bin  = "/opt/homebrew/bin/codex"
+timeout_s = 60
+# Extra env for CLI calls. To try changes against a scratch config, point the CLIs and
+# paths.* at the same place:
+# env = { CLAUDE_CONFIG_DIR = "/tmp/eyrie-sandbox/claude", CODEX_HOME = "/tmp/eyrie-sandbox/codex" }
 
 # $/MTok. Overrides or adds to the built-in table in backend/app/usage/prices.py.
 # [pricing."claude-opus-5-5"]
