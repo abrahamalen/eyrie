@@ -23,8 +23,11 @@ eyrie/
 
 ## What it tracks
 
-- **Claude Code**: per-project cost, tokens and models from `~/.claude.json`
-  (last session per project for now; full history comes with the usage indexer).
+- **Claude Code**: per-project cost, tokens and models from `~/.claude.json` (last
+  session per project).
+- **Usage**: full Claude Code cost and token history by day, model and project,
+  indexed from session transcripts into `~/.eyrie/usage.db` (kept after Claude Code
+  prunes old transcripts) and priced from `backend/app/usage/prices.py`.
 - **Codex**: recent threads, tokens, repos and models from `~/.codex/state_5.sqlite`.
 - **MCP servers**: configured servers and last-known connect failures from recent
   session transcripts (not a live ping).

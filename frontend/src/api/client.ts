@@ -1,4 +1,4 @@
-import type { ClaudeUsage, CodexUsage, McpStatus, NexusAgent, TasksSnapshot } from './types'
+import type { ClaudeUsage, CodexUsage, McpStatus, NexusAgent, TasksSnapshot, UsageReport } from './types'
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -47,6 +47,7 @@ export const api = {
   codex: source<CodexUsage>('codex'),
   mcp: source<McpStatus>('mcp'),
   nexus: source<{ agents: NexusAgent[] }>('nexus'),
+  usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
   tasks: {
     list: () => get<TasksSnapshot>('/api/v1/tasks'),
     add: (etag: string, text: string) => send<TasksSnapshot>('POST', '/api/v1/tasks', { text }, { 'If-Match': etag }),

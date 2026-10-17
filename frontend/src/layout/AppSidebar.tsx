@@ -1,4 +1,4 @@
-import { Bot, ChevronRight, Cloud, LayoutDashboard, Plug, SquareTerminal, SquareCheck } from 'lucide-react'
+import { Bot, ChartColumnStacked, ChevronRight, Cloud, LayoutDashboard, Plug, SquareTerminal, SquareCheck } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
@@ -40,6 +40,12 @@ export function AppSidebar() {
               <SidebarMenuButton render={<NavLink to="/" end className={navLinkClass} />} tooltip="Overview">
                   <LayoutDashboard className="size-4 shrink-0" />
                   <span className="truncate">Overview</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<NavLink to="/usage" className={navLinkClass} />} tooltip="Usage">
+                  <ChartColumnStacked className="size-4 shrink-0" />
+                  <span className="truncate">Usage</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

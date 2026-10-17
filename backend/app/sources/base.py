@@ -21,6 +21,7 @@ class Source(Protocol):
 
 def build_registry(settings: Settings) -> dict[str, Source]:
     from app.sources import claude, codex, mcp, nexus, tasks
+    from app.usage.source import UsageSource
 
     known: dict[str, Source] = {
         "claude": claude.ClaudeSource(settings),
@@ -28,6 +29,7 @@ def build_registry(settings: Settings) -> dict[str, Source]:
         "mcp": mcp.McpSource(settings),
         "nexus": nexus.NexusSource(settings),
         "tasks": tasks.TasksSource(settings),
+        "usage": UsageSource(settings),
     }
     return {sid: known[sid] for sid in settings.sources.enabled if sid in known}
 

@@ -143,12 +143,20 @@ Why tmux rather than an in-process pty: sessions outlive Eyrie, you get free ter
 
 ### 4.4 Usage history (fixes P3)
 
-- Transcripts (`~/.claude/projects/*/*.jsonl`) carry per-message `usage` (input, output, cache read, cache creation). This was verified on the current Claude Code (2.1.x).
-- An **incremental indexer** tracks `(file, byte offset)`, parses only appended lines, and writes per-message rows to `~/.eyrie/usage.db` (SQLite). It runs on start and then on file changes (`watchfiles`).
-- The DB is a cache: deleting it triggers a full rebuild.
-- **Cost** = tokens × a pricing table in config (transcripts don't store dollars), with "prices last updated" shown in the UI. `lastCost` from `~/.claude.json` is kept as a sanity check.
-- **Codex**: `threads.tokens_used` + `updated_at` from its SQLite give per-thread and per-day history. It's read directly and not copied.
-- **New Usage page**: daily and weekly cost and tokens, split by model and project, plus top sessions.
+Built in slice 3. What the real transcripts showed, and how the design handles it:
+
+- **Source**: transcripts (`~/.claude/projects/*/*.jsonl`, plus `*/<session>/subagents/*.jsonl`) carry per-response `usage`. Subagent runs are billed to their parent session, so they're included.
+- **Dedupe**: one API response is written as several lines (one per content block), each repeating its usage. Naive summing overcounts about 2.3×. Streaming lines can carry partial output counts. Rows are keyed on `(message.id, requestId)` and keep the max of each counter.
+- **Retention**: Claude Code prunes old transcripts, so `~/.eyrie/usage.db` is the **system of record** for history, not a disposable cache. Rows outlive their files. A schema change needs a migration, not a rebuild.
+- **Incremental**: each file is read from its last byte offset, and only up to its last complete line. A replaced or truncated file is reread, which the upsert keeps idempotent. Measured on this laptop: cold scan of 97 MB / 79 files takes 260 ms; warm scan takes 6 ms. So scanning runs inline on request, throttled to every 10 s, with no background worker.
+- **Cost**: tokens × a per-model price table (`app/usage/prices.py`, overridable under `[pricing]`), applied at query time, so a price fix corrects all history. 5-minute and 1-hour cache writes are priced separately; 1-hour writes are about 8× the volume here.
+  - Validated against Claude Code's own `cost-state` records: its token counts priced with this table land within a few percent of the cost it reports.
+  - `cost-state` itself isn't usable as the source: it has no timestamps, resets on each resumed run, and omits subagents.
+  - Transcript-based cost reads 0–15% low, because Claude Code doesn't log some background calls (titles, compaction). The UI says so.
+- **Model ids** are normalised (`[1m]`, `-YYYYMMDD` suffixes). Unknown models are listed as unpriced instead of silently counting $0.
+- **Projects**: a session counts toward the directory it started in, even if it later `cd`s.
+- **Codex**: `threads.tokens_used` is a lifetime total per thread (one thread holds over 1B tokens), so spreading it by day would be wrong. It's reported per model, for threads active in the range.
+- **Usage page**: daily cost or tokens (7/30/90 days) stacked by model, by-model table, by-project bars, and a Codex panel. `GET /api/v1/usage?days=N`.
 
 ### 4.5 Personal tasks (fixes P4, P8)
 

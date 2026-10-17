@@ -12,6 +12,8 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
+from app.usage.prices import ModelPrice
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -46,7 +48,7 @@ class Paths(BaseModel):
 
 
 class Sources(BaseModel):
-    enabled: list[str] = ["claude", "codex", "mcp", "nexus", "tasks"]
+    enabled: list[str] = ["claude", "codex", "mcp", "nexus", "tasks", "usage"]
 
 
 class Privacy(BaseModel):
@@ -59,6 +61,8 @@ class Settings(BaseSettings):
     paths: Paths = Paths()
     sources: Sources = Sources()
     privacy: Privacy = Privacy()
+    # $/MTok per model id; merged over the built-in table in app/usage/prices.py
+    pricing: dict[str, ModelPrice] = {}
 
     @classmethod
     def settings_customise_sources(
