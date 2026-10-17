@@ -5,18 +5,16 @@ lists, blank lines, line endings) byte-for-byte untouched. Each write must carry
 etag the client last read; if Obsidian changed the file since, the write is refused.
 """
 import hashlib
-import os
 import re
-import tempfile
 import threading
 from dataclasses import dataclass
 
 from app.config import Settings
+from app.fsutil import atomic_write as _atomic_write, etag as _etag, read_text
 from app.sources.base import Availability
 
 # Obsidian checklist items: any bullet, any status char ("x" done, " " open, "/" "-" etc.)
 TASK_RE = re.compile(r"^(?P<lead>\s*[-*+] \[)(?P<status>.)(?P<mid>\] )(?P<text>.*?)(?P<eol>\r?\n)?$")
-ABSENT = "absent"
 NEW_FILE_HEADER = "# Personal tasks\n\n"
 
 
@@ -34,12 +32,6 @@ class Task:
     done: bool
     text: str
     line: int
-
-
-def _etag(content: str | None) -> str:
-    if content is None:
-        return ABSENT
-    return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 
 def _parse(lines: list[str]) -> list[Task]:
@@ -113,11 +105,7 @@ class TasksSource:
         return self._write(etag, change)
 
     def _read(self) -> str | None:
-        try:
-            with open(self.file, newline="") as f:
-                return f.read()
-        except FileNotFoundError:
-            return None
+        return read_text(self.file)
 
     def _write(self, etag: str, change) -> dict:
         with self._lock:
@@ -145,16 +133,3 @@ def _find(lines: list[str], task_id: str) -> Task:
         if t.id == task_id:
             return t
     raise NotFound(task_id)
-
-
-def _atomic_write(path, content: str) -> None:
-    mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", newline="") as f:
-            f.write(content)
-        os.chmod(tmp, mode)
-        os.replace(tmp, path)
-    except BaseException:
-        os.unlink(tmp)
-        raise
