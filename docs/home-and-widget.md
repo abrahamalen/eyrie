@@ -207,8 +207,12 @@ Each step is its own PR.
    3. The widget in dev mode (`npm run tauri dev`) against an installed Eyrie: tray, popover, Rust proxy, autostart
    4. Packaging: the PyInstaller sidecar, bundling, first-run service install, and a release CI building `.dmg` and `.deb`
 
-## 9. Open questions
+## 9. Decisions on the open questions
 
-1. **macOS signing**: an unsigned, ad-hoc signed app shows a Gatekeeper warning the first time you open it (right-click → Open). Proper signing and notarization need an Apple Developer account ($99 a year). Is ad-hoc fine for personal use?
-2. **Ubuntu target**: 24.04 LTS with the default GNOME desktop? It ships the AppIndicator extension enabled. Other desktops vary.
-3. **Cost in the macOS menu bar**: show today's cost next to the icon, or icon only?
+Defaults taken when the design merged without answers; each is cheap to change.
+
+| Question | Default |
+|----------|---------|
+| macOS signing | **Ad-hoc**, for personal use. The first launch needs right-click → Open. Developer ID signing and notarization can be added later in release CI |
+| Ubuntu target | **24.04 LTS, default GNOME** (AppIndicator extension enabled by default) |
+| Cost in the macOS menu bar | **Shown** next to the icon (`$8.42`), with a widget setting to switch to icon only |
