@@ -62,3 +62,33 @@ export interface TasksSnapshot {
   etag: string
   tasks: Task[]
 }
+
+export interface UsageModel {
+  model: string
+  priced: boolean
+  cost: number
+  input: number
+  output: number
+  cache_read: number
+  cache_write: number
+  tokens: number
+  messages: number
+}
+
+export interface UsageReport {
+  range: { days: number; start: string; end: string }
+  days: { day: string; models: Record<string, { cost: number; tokens: number }> }[]
+  by_model: UsageModel[]
+  by_project: { project: string; cost: number; tokens: number; sessions: number }[]
+  totals: { cost: number; tokens: number; messages: number; sessions: number }
+  codex: {
+    available: boolean
+    threads: number
+    tokens: number
+    by_model: { model: string; threads: number; tokens: number }[]
+    error?: string
+  }
+  index: { files: number; messages: number; oldest: string | null; last_scan_ms: number }
+  pricing: { updated: string; unpriced_models: string[] }
+  note: string
+}

@@ -8,10 +8,18 @@ codex_home  = "~/.codex"
 vault       = "~/workspace/Obsidian Vault"
 tasks_file  = "Personal/Tasks.md"     # relative to vault
 nexus_dir   = "agent-memory/Nexus"    # relative to vault
-data_dir    = "~/.eyrie"              # token and, later, usage index + audit log
+data_dir    = "~/.eyrie"              # install token and usage.db (usage history)
 
 [sources]
-enabled = ["claude", "codex", "mcp", "nexus", "tasks"]
+enabled = ["claude", "codex", "mcp", "nexus", "tasks", "usage"]
 
 [privacy]
 hide_mcp = []                         # MCP server names to hide from the UI
+
+# $/MTok. Overrides or adds to the built-in table in backend/app/usage/prices.py.
+# [pricing."claude-opus-5-5"]
+# input = 4.0
+# output = 20.0
+# cache_write_5m = 5.0
+# cache_write_1h = 8.0
+# cache_read = 0.20

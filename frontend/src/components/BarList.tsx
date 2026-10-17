@@ -1,6 +1,14 @@
 import { fmtNum, shortPath } from '../format'
 
-export function BarList({ rows, emptyLabel }: { rows: { name: string; value: number }[]; emptyLabel: string }) {
+export function BarList({
+  rows,
+  emptyLabel,
+  format = fmtNum,
+}: {
+  rows: { name: string; value: number }[]
+  emptyLabel: string
+  format?: (n: number) => string
+}) {
   if (!rows.length) return <div className="text-sm italic text-muted-foreground">{emptyLabel}</div>
   const max = Math.max(...rows.map((r) => r.value), 1)
   return (
@@ -15,7 +23,7 @@ export function BarList({ rows, emptyLabel }: { rows: { name: string; value: num
             <div className="h-2.5 overflow-hidden rounded bg-muted">
               <div className="h-full rounded bg-primary" style={{ width: `${pct}%` }} />
             </div>
-            <div className="text-right tabular-nums">{fmtNum(r.value)}</div>
+            <div className="text-right tabular-nums">{format(r.value)}</div>
           </div>
         )
       })}

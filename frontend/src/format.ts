@@ -11,3 +11,7 @@ export function fmtUsd(n: number | null | undefined): string {
 export function shortPath(p: string): string {
   return p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p
 }
+
+export function fmtCompact(n: number | null | undefined): string {
+  return (n ?? 0).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+}
