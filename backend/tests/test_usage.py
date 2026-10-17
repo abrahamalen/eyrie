@@ -152,7 +152,7 @@ def test_codex_reported_per_model_not_per_day(client, home):
         con.executemany("INSERT INTO threads VALUES (?,?,?,?)",
                         [("gpt-x", 1000, recent, 0), ("gpt-x", 500, recent, 0), ("gpt-y", 9, old, 0), ("gpt-x", 7, recent, 1)])
     cx = report(client)["codex"]
-    assert cx == {"available": True, "threads": 2, "tokens": 1500, "by_model": [{"model": "gpt-x", "threads": 2, "tokens": 1500}]}
+    assert cx == {"available": True, "threads": 2, "tokens": 1500, "by_model": [{"model": "gpt-x", "threads": 2, "tokens": 1500}], "error": None}
 
 
 def test_days_param_validated(client):

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.schemas import NexusFile, Trashed
 from app.sources.nexus import Conflict, NexusSource, NotFound
 
 router = APIRouter(prefix="/api/v1/nexus", tags=["nexus"])
@@ -26,7 +27,7 @@ def _rel(agent: str, name: str) -> str:
     return f"agent-memory/Nexus/{agent}/{name}"
 
 
-@router.get("/{agent}/{name}")
+@router.get("/{agent}/{name}", response_model=NexusFile)
 def read_file(agent: str, name: str, request: Request):
     source = _source(request)
     try:
@@ -37,7 +38,7 @@ def read_file(agent: str, name: str, request: Request):
         raise HTTPException(422, str(e))
 
 
-@router.put("/{agent}/{name}")
+@router.put("/{agent}/{name}", response_model=NexusFile)
 def write_file(agent: str, name: str, body: FileBody, request: Request, if_match: str = Header()):
     """Create (If-Match: absent) or replace a memory file."""
     source = _source(request)
@@ -60,7 +61,7 @@ def write_file(agent: str, name: str, body: FileBody, request: Request, if_match
     return result
 
 
-@router.delete("/{agent}/{name}")
+@router.delete("/{agent}/{name}", response_model=Trashed)
 def delete_file(agent: str, name: str, request: Request, if_match: str = Header()):
     """Moves the file to the vault's .trash folder (recoverable)."""
     source = _source(request)

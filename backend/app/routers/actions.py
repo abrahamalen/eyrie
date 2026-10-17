@@ -5,6 +5,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.actions.registry import ACTIONS, Context, redact
 from app.actions.runner import CliNotFound
+from app.schemas import ActionPreview, ActionResult, AuditEntry
 from app.sessions.dirs import is_allowed
 
 router = APIRouter(prefix="/api/v1", tags=["actions"])
@@ -20,7 +21,7 @@ def _errors(e: ValidationError) -> str:
     return "; ".join(err["msg"].removeprefix("Value error, ") for err in e.errors())
 
 
-@router.post("/actions/{action_id}")
+@router.post("/actions/{action_id}", response_model=ActionPreview | ActionResult)
 def run_action(action_id: str, body: ActionRequest, request: Request):
     action = ACTIONS.get(action_id)
     if action is None:
@@ -120,6 +121,6 @@ def _safe_params(params) -> dict:
     return d
 
 
-@router.get("/audit")
+@router.get("/audit", response_model=list[AuditEntry])
 def audit(request: Request, limit: int = Query(100, ge=1, le=1000)):
     return request.app.state.audit.recent(limit)

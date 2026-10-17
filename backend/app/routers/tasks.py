@@ -2,6 +2,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.schemas import TasksSnapshot
 from app.sources.tasks import Conflict, NotFound, TasksSource
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["tasks"])
@@ -43,24 +44,24 @@ def _run(source: TasksSource, fn):
         raise HTTPException(422, str(e))
 
 
-@router.get("")
+@router.get("", response_model=TasksSnapshot)
 def list_tasks(request: Request):
     return _tasks(request).snapshot()
 
 
-@router.post("")
+@router.post("", response_model=TasksSnapshot)
 def add_task(body: NewTask, request: Request, if_match: str = Header()):
     source = _tasks(request)
     return _run(source, lambda: source.add(body.text, if_match))
 
 
-@router.patch("/{task_id}")
+@router.patch("/{task_id}", response_model=TasksSnapshot)
 def update_task(task_id: str, body: TaskPatch, request: Request, if_match: str = Header()):
     source = _tasks(request)
     return _run(source, lambda: source.update(task_id, if_match, done=body.done, text=body.text))
 
 
-@router.delete("/{task_id}")
+@router.delete("/{task_id}", response_model=TasksSnapshot)
 def delete_task(task_id: str, request: Request, if_match: str = Header()):
     source = _tasks(request)
     return _run(source, lambda: source.delete(task_id, if_match))

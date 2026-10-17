@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, WebSocket
 from starlette.concurrency import run_in_threadpool
 
 from app.actions.runner import CliNotFound
+from app.schemas import Conversation, Screen
 from app.security import WS_PROTOCOL
 from app.sessions.terminal import TooManyTerminals, bridge
 from app.sessions.tmux import NAME_RE, base_args
@@ -11,7 +12,7 @@ from app.sessions.tmux import NAME_RE, base_args
 router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 
 
-@router.get("/conversations")
+@router.get("/conversations", response_model=list[Conversation])
 def conversations(request: Request, limit: int = Query(20, ge=1, le=100)):
     """Recent Claude Code conversations (from the usage index), to resume into a session."""
     usage = request.app.state.registry.get("usage")
@@ -21,7 +22,7 @@ def conversations(request: Request, limit: int = Query(20, ge=1, le=100)):
     return usage.index.recent_sessions(limit)
 
 
-@router.get("/{name}/screen")
+@router.get("/{name}/screen", response_model=Screen)
 def screen(name: str, request: Request, lines: int = Query(80, ge=10, le=2000)):
     """The session's visible screen plus scrollback, as plain text (read-only)."""
     if not NAME_RE.match(name):
