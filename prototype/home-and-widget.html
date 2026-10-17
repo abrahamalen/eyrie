@@ -3,191 +3,320 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap">
 <style>
-/* Layout: a view switcher over three stages: the real app's new home page, and the widget on a macOS and an Ubuntu desktop. Tokens mirror the app (shadcn neutral + Geist + validated series palette). */
+/* Layout: one switcher over five stages (public landing, app home, app Sessions page, widget on macOS, widget on Ubuntu). Design language follows the Nexus site: warm paper, navy ink, hairlines, mono eyebrows, one italic serif phrase; Eyrie's own accent (sky teal), switchable to Nexus rust for comparison. */
 :root {
-  --bg: oklch(0.99 0.002 260); --surface: oklch(1 0 0); --sidebar: oklch(0.975 0.003 260);
-  --fg: oklch(0.18 0.01 260); --muted: oklch(0.52 0.012 260); --border: oklch(0.91 0.005 260);
-  --hover: oklch(0.955 0.005 260); --primary: oklch(0.22 0.01 260); --primary-fg: oklch(0.985 0 0);
-  --accent: #2a78d6; --ok: oklch(0.58 0.15 150); --warn: oklch(0.68 0.15 70); --bad: oklch(0.577 0.22 27);
-  --popover: oklch(1 0 0 / 92%); --overlay: oklch(0.2 0.01 260 / 40%);
-  --mac-bar: oklch(0.97 0.005 250 / 72%); --mac-bar-fg: oklch(0.2 0 0);
-  --mac-wall-a: oklch(0.82 0.08 230); --mac-wall-b: oklch(0.72 0.12 300); --mac-wall-c: oklch(0.86 0.06 40);
-  --gnome-bar: oklch(0.16 0 0); --gnome-bar-fg: oklch(0.96 0 0); --gnome-menu: oklch(0.24 0.005 300); --gnome-menu-fg: oklch(0.95 0 0); --gnome-hover: oklch(0.32 0.01 300);
-  --ubu-wall-a: oklch(0.38 0.12 330); --ubu-wall-b: oklch(0.55 0.17 40);
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --paper: hsl(40 25% 97%); --card: hsl(0 0% 100%); --ink: hsl(222 30% 14%); --sub: hsl(220 12% 40%);
+  --line: hsl(35 15% 85%); --tint: hsl(35 22% 91%); --soft: hsl(35 20% 93%); --hover: hsl(35 20% 94%);
+  --accent: hsl(192 82% 30%); --accent-ink: hsl(0 0% 100%);
+  --ok: hsl(150 55% 36%); --warn: hsl(36 90% 44%); --bad: hsl(4 70% 48%);
+  --code-bg: hsl(222 32% 13%); --code-fg: hsl(220 14% 90%);
+  --overlay: hsl(222 30% 14% / 40%); --pop: hsl(40 25% 98% / 94%);
+  --mac-bar: hsl(40 25% 97% / 70%); --mac-fg: hsl(222 30% 14%);
+  --wall-a: hsl(200 60% 80%); --wall-b: hsl(260 45% 78%); --wall-c: hsl(30 70% 86%);
+  --gnome-bar: hsl(0 0% 9%); --gnome-fg: hsl(0 0% 96%); --gnome-menu: hsl(300 4% 17%); --gnome-hover: hsl(300 5% 25%);
+  --ubu-a: hsl(320 45% 32%); --ubu-b: hsl(22 80% 48%);
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
 }
+:root[data-accent="rust"] { --accent: hsl(18 84% 38%); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: oklch(0.15 0.005 260); --surface: oklch(0.19 0.006 260); --sidebar: oklch(0.17 0.006 260);
-    --fg: oklch(0.96 0.003 260); --muted: oklch(0.7 0.01 260); --border: oklch(1 0 0 / 10%);
-    --hover: oklch(0.24 0.008 260); --primary: oklch(0.93 0.003 260); --primary-fg: oklch(0.2 0.01 260);
-    --accent: #3987e5; --ok: oklch(0.74 0.15 150); --warn: oklch(0.82 0.14 75); --bad: oklch(0.7 0.19 22);
-    --popover: oklch(0.22 0.006 260 / 94%); --overlay: oklch(0 0 0 / 55%);
-    --mac-bar: oklch(0.2 0.005 260 / 72%); --mac-bar-fg: oklch(0.96 0 0);
-    --mac-wall-a: oklch(0.32 0.08 250); --mac-wall-b: oklch(0.28 0.1 300); --mac-wall-c: oklch(0.36 0.07 30);
+    --paper: hsl(222 28% 9%); --card: hsl(222 23% 12%); --ink: hsl(40 20% 94%); --sub: hsl(220 12% 70%);
+    --line: hsl(222 17% 25%); --tint: hsl(222 20% 16%); --soft: hsl(222 20% 15%); --hover: hsl(222 20% 17%);
+    --accent: hsl(190 75% 60%); --accent-ink: hsl(222 28% 9%);
+    --ok: hsl(150 50% 55%); --warn: hsl(40 90% 62%); --bad: hsl(4 80% 64%);
+    --code-bg: hsl(222 30% 7%); --overlay: hsl(0 0% 0% / 55%); --pop: hsl(222 23% 12% / 94%);
+    --mac-bar: hsl(222 28% 9% / 70%); --mac-fg: hsl(40 20% 94%);
+    --wall-a: hsl(215 45% 24%); --wall-b: hsl(265 35% 22%); --wall-c: hsl(25 40% 26%);
     color-scheme: dark;
   }
+  :root:not([data-theme="light"])[data-accent="rust"] { --accent: hsl(24 95% 65%); }
 }
 :root[data-theme="dark"] {
-  --bg: oklch(0.15 0.005 260); --surface: oklch(0.19 0.006 260); --sidebar: oklch(0.17 0.006 260);
-  --fg: oklch(0.96 0.003 260); --muted: oklch(0.7 0.01 260); --border: oklch(1 0 0 / 10%);
-  --hover: oklch(0.24 0.008 260); --primary: oklch(0.93 0.003 260); --primary-fg: oklch(0.2 0.01 260);
-  --accent: #3987e5; --ok: oklch(0.74 0.15 150); --warn: oklch(0.82 0.14 75); --bad: oklch(0.7 0.19 22);
-  --popover: oklch(0.22 0.006 260 / 94%); --overlay: oklch(0 0 0 / 55%);
-  --mac-bar: oklch(0.2 0.005 260 / 72%); --mac-bar-fg: oklch(0.96 0 0);
-  --mac-wall-a: oklch(0.32 0.08 250); --mac-wall-b: oklch(0.28 0.1 300); --mac-wall-c: oklch(0.36 0.07 30);
+  --paper: hsl(222 28% 9%); --card: hsl(222 23% 12%); --ink: hsl(40 20% 94%); --sub: hsl(220 12% 70%);
+  --line: hsl(222 17% 25%); --tint: hsl(222 20% 16%); --soft: hsl(222 20% 15%); --hover: hsl(222 20% 17%);
+  --accent: hsl(190 75% 60%); --accent-ink: hsl(222 28% 9%);
+  --ok: hsl(150 50% 55%); --warn: hsl(40 90% 62%); --bad: hsl(4 80% 64%);
+  --code-bg: hsl(222 30% 7%); --overlay: hsl(0 0% 0% / 55%); --pop: hsl(222 23% 12% / 94%);
+  --mac-bar: hsl(222 28% 9% / 70%); --mac-fg: hsl(40 20% 94%);
+  --wall-a: hsl(215 45% 24%); --wall-b: hsl(265 35% 22%); --wall-c: hsl(25 40% 26%);
   color-scheme: dark;
 }
+:root[data-theme="dark"][data-accent="rust"] { --accent: hsl(24 95% 65%); }
+
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; margin: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; margin: 0; -webkit-font-smoothing: antialiased; }
 button, input { font: inherit; color: inherit; }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.mono { font-family: var(--font-mono); font-size: 12.5px; }
-.dim { color: var(--muted); }
+p { margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+::selection { background: color-mix(in hsl, var(--accent) 20%, transparent); }
+.mono { font-family: var(--mono); }
+.sub { color: var(--sub); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sub); display: inline-flex; gap: 10px; align-items: center; }
+.eyebrow.acc { color: var(--accent); }
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.serif { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--accent); letter-spacing: -0.01em; }
 
-.wrap { max-width: 1180px; margin: 0 auto; padding-block: 16px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
-.switcher { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.switcher .title { font-weight: 600; margin-right: auto; }
-.switcher .title span { color: var(--muted); font-weight: 400; }
-.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--surface); }
-.seg button { border: 0; background: none; padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--muted); }
-.seg button[aria-pressed="true"] { background: var(--hover); color: var(--fg); font-weight: 500; }
-.note { font-size: 12.5px; color: var(--muted); max-width: 75ch; }
-.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--surface); padding: 5px 11px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
+/* proto chrome */
+.proto { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 40; background: var(--paper); }
+.proto .in { max-width: 1240px; margin: 0 auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.proto .label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sub); margin-right: auto; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--card); }
+.seg button { border: 0; background: none; padding: 5px 11px; cursor: pointer; font-size: 13px; color: var(--sub); }
+.seg button[aria-pressed="true"] { background: var(--soft); color: var(--ink); font-weight: 500; }
+.note { max-width: 1240px; margin: 14px auto 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: 13px; color: var(--sub); }
+
+/* shared controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--card); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; color: var(--ink); }
 .btn:hover { background: var(--hover); }
-.btn.sm { padding: 2px 9px; font-size: 12.5px; }
-.btn.primary { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.btn.ink { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.ink:hover { opacity: 0.9; }
+.btn.sm { padding: 4px 10px; font-size: 13px; border-radius: 7px; }
 .btn.ghost { border-color: transparent; background: none; }
-.chip { border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; background: var(--surface); cursor: pointer; font-family: var(--font-mono); }
-.chip:hover { background: var(--hover); }
-
-/* ---------- home ---------- */
-.app { display: grid; grid-template-columns: 210px minmax(0, 1fr); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--bg); min-height: 640px; }
-.side { background: var(--sidebar); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
-.side .brand { display: flex; gap: 8px; align-items: center; font-weight: 600; padding: 2px 8px 12px; }
-.side .mark { width: 24px; height: 24px; border-radius: 7px; background: var(--primary); color: var(--primary-fg); display: grid; place-items: center; font-size: 12px; }
-.side a { padding: 5px 8px; border-radius: 7px; color: var(--fg); text-decoration: none; }
-.side a[aria-current] { background: var(--hover); font-weight: 500; }
-.main { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.main-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.main-head h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; min-width: 0; }
-.card-head { display: flex; align-items: center; gap: 8px; padding: 11px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-.card-head h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); }
-.card-head .right { margin-left: auto; display: flex; gap: 6px; }
-.card-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.row .grow { flex: 1; min-width: 0; }
-.row .t { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.row .m { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sev { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.link { color: var(--ink); text-decoration: none; font-weight: 500; font-size: 13.5px; display: inline-flex; gap: 4px; align-items: center; }
+.link:hover { color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.cmd { background: var(--tint); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--ink); overflow-x: auto; white-space: pre; }
+.cmd-wrap { display: flex; flex-direction: column; gap: 8px; }
+.copy { align-self: flex-start; border: 0; background: none; color: var(--accent); font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; padding: 0; }
+.chip { display: inline-flex; border-radius: 6px; padding: 2px 8px; font-size: 12px; background: var(--soft); color: var(--sub); }
+.sev { width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block; }
 .sev.problem { background: var(--bad); } .sev.attention { background: var(--warn); } .sev.ok { background: var(--ok); }
-.att-row { padding: 9px 0; border-bottom: 1px solid var(--border); }
-.att-row:last-child { border-bottom: 0; }
-.empty { color: var(--muted); padding: 6px 0; }
-.big { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.delta { font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.spark text { fill: var(--muted); font-size: 10px; font-family: var(--font-sans); }
-.task { display: flex; gap: 10px; align-items: center; }
-.task input[type="checkbox"] { accent-color: var(--primary); width: 15px; height: 15px; }
-.task.done label { color: var(--muted); text-decoration: line-through; }
-.health { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
-.health span { display: inline-flex; align-items: center; gap: 6px; }
-.add { display: flex; gap: 6px; }
-.add input { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; background: var(--surface); }
+.ico { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- landing ---------- */
+.site { background: var(--paper); }
+.site-head { border-bottom: 1px solid var(--line); }
+.site-head .in, .section .in, .site-foot .in { max-width: 1200px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.site-head .in { display: flex; align-items: center; gap: 14px; padding-block: 16px; flex-wrap: wrap; }
+.logo { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo .tile { width: 30px; height: 30px; border-radius: 8px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; letter-spacing: -0.04em; }
+.logo .tile b { color: var(--accent); }
+.logo .name { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+.logo .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--sub); border-left: 1px solid var(--line); padding-left: 12px; }
+.site-nav { display: flex; gap: 22px; margin: 0 auto; font-size: 14px; color: var(--sub); }
+.site-nav a { text-decoration: none; }
+.site-nav a:hover { color: var(--ink); }
+.section { padding-block: 72px; border-bottom: 1px solid var(--line); }
+.section:last-of-type { border-bottom: 0; }
+.hero .in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 56px; align-items: center; }
+.hero h1 { font-size: clamp(42px, 6.2vw, 78px); line-height: 0.98; letter-spacing: -0.045em; font-weight: 700; margin-top: 22px; }
+.hero h1 .serif { font-size: 1.04em; }
+.hero .lede { font-size: 19px; color: var(--sub); max-width: 34em; margin-top: 26px; line-height: 1.55; }
+.hero .ctas { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+.hero .fine { font-family: var(--mono); font-size: 12px; color: var(--sub); margin-top: 22px; }
+.deal { padding: 28px 30px; }
+.deal-head { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.deal-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px; padding-top: 22px; }
+.deal-row .n { font-family: var(--mono); font-size: 12px; color: var(--sub); padding-top: 3px; }
+.deal-row h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.deal-row p { color: var(--sub); font-size: 14.5px; margin-top: 4px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stats > div { padding: 22px 24px; border-left: 1px solid var(--line); }
+.stats > div:first-child { border-left: 0; padding-left: 0; }
+.stats .v { font-family: var(--mono); font-size: 26px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stats .k { font-size: 13px; color: var(--sub); margin-top: 2px; }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; margin-bottom: 36px; }
+.sec-head h2 { font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -0.035em; line-height: 1.05; font-weight: 700; margin-top: 14px; }
+.sec-head p { color: var(--sub); font-size: 16px; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.feature { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.feature .top { display: flex; justify-content: space-between; align-items: center; }
+.feature .badge-ico { width: 38px; height: 38px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); display: grid; place-items: center; color: var(--accent); }
+.feature h3 { font-size: 19px; letter-spacing: -0.02em; font-weight: 600; }
+.feature p { color: var(--sub); font-size: 14.5px; flex: 1; }
+.feature .cmd { white-space: pre-wrap; word-break: break-word; }
+.feature .foot { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--sub); border-top: 1px solid var(--line); padding-top: 12px; }
+.steps { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); padding: 0; overflow: hidden; }
+.steps .left { padding: 36px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 18px; }
+.steps .right { padding: 36px; }
+.tl { display: flex; flex-direction: column; }
+.tl-item { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 16px; position: relative; padding-bottom: 26px; }
+.tl-item:last-child { padding-bottom: 0; }
+.tl-item::before { content: ""; position: absolute; left: 17.5px; top: 36px; bottom: 0; width: 1px; background: var(--line); }
+.tl-item:last-child::before { display: none; }
+.tl-ico { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--soft); display: grid; place-items: center; }
+.tl-item h3 { font-size: 16px; font-weight: 600; }
+.tl-item p { color: var(--sub); font-size: 14.5px; margin-top: 2px; }
+.tl-item .tags { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-top: 6px; }
+.safety { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.safety > div { padding: 22px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; }
+.safety > div:nth-child(odd) { padding-right: 32px; }
+.safety > div:nth-child(even) { padding-left: 32px; border-left: 1px solid var(--line); }
+.safety h3 { font-size: 16px; font-weight: 600; }
+.safety p { color: var(--sub); font-size: 14.5px; margin-top: 2px; }
+.install { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.install .card { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.install h3 { font-size: 17px; font-weight: 600; }
+.soon { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--sub); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.site-foot { padding-block: 28px; border-top: 1px solid var(--line); }
+.site-foot .in { display: flex; gap: 18px; font-size: 13px; color: var(--sub); flex-wrap: wrap; }
+
+/* ---------- app shell ---------- */
+.app { max-width: 1240px; margin: 16px auto 40px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper); }
+.wrapx { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.app-head { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--paper); flex-wrap: wrap; }
+.app-head .logo .name { font-size: 16px; }
+.app-head .logo .tile { width: 26px; height: 26px; font-size: 14px; border-radius: 7px; }
+.status-pill { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px; }
+.app-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 720px; }
+.app-side { border-right: 1px solid var(--line); padding: 18px 12px; display: flex; flex-direction: column; gap: 18px; }
+.app-side .grp { display: flex; flex-direction: column; gap: 1px; }
+.app-side .glabel { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sub); padding: 0 10px 6px; }
+.app-side a { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 8px; text-decoration: none; font-size: 14px; color: var(--ink); }
+.app-side a:hover { background: var(--hover); }
+.app-side a[aria-current] { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-weight: 500; }
+.app-side a[aria-current] .ico { color: var(--accent); }
+.app-side .count { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--sub); }
+.app-main { padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.page-head { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
+.page-head h1 { font-size: 34px; letter-spacing: -0.035em; font-weight: 700; margin-top: 8px; line-height: 1.05; }
+.page-head p { color: var(--sub); margin-top: 6px; max-width: 60ch; }
+.page-head .act { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.panel-head .right { margin-left: auto; }
+.panel-body { padding: 8px 20px 16px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.lrow { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.lrow:last-child { border-bottom: 0; }
+.lrow .grow { flex: 1; min-width: 0; }
+.lrow .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .m { font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.mstats > div { padding: 16px 20px; border-left: 1px solid var(--line); }
+.mstats > div:first-child { border-left: 0; }
+.mstats .v { font-family: var(--mono); font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.mstats .k { font-size: 13px; color: var(--sub); }
+.spark text { fill: var(--sub); font-size: 10px; font-family: var(--mono); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-top: 12px; }
+.pchip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 3px 11px; font-size: 12.5px; font-family: var(--mono); cursor: pointer; }
+.pchip:hover { border-color: var(--accent); color: var(--accent); }
+.task { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.task input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+.add { display: flex; gap: 8px; padding-top: 12px; }
+.add input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--paper); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; padding: 12px 0; }
+.tools span { display: inline-flex; gap: 7px; align-items: center; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sub); font-weight: 500; padding: 12px 20px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 13px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+tr[aria-selected="true"] td { background: var(--soft); }
+.table-wrap { overflow-x: auto; }
+.term { background: var(--code-bg); color: var(--code-fg); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.term .bar { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid hsl(0 0% 100% / 8%); font-family: var(--mono); font-size: 12px; color: hsl(220 10% 65%); }
+.term pre { margin: 0; padding: 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; min-height: 220px; white-space: pre-wrap; }
+.term .acc { color: hsl(190 75% 65%); } .term .ok { color: hsl(150 50% 60%); } .term .d { color: hsl(220 10% 55%); }
+.term-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--card); color: var(--sub); font-size: 13px; }
 
 /* ---------- desktop stages ---------- */
-.stage { position: relative; border-radius: 12px; overflow: hidden; min-height: 620px; border: 1px solid var(--border); }
-.stage.mac { background: radial-gradient(120% 90% at 10% 100%, var(--mac-wall-c), transparent 60%), linear-gradient(135deg, var(--mac-wall-a), var(--mac-wall-b)); }
-.stage.ubu { background: linear-gradient(140deg, var(--ubu-wall-a), var(--ubu-wall-b)); }
+.stage { position: relative; max-width: 1240px; margin: 16px auto 40px; border-radius: 14px; overflow: hidden; min-height: 640px; border: 1px solid var(--line); }
+.stage.mac { background: radial-gradient(110% 90% at 0% 100%, var(--wall-c), transparent 60%), linear-gradient(140deg, var(--wall-a), var(--wall-b)); }
+.stage.ubu { background: linear-gradient(140deg, var(--ubu-a), var(--ubu-b)); }
 .menubar { display: flex; align-items: center; gap: 14px; height: 30px; padding: 0 12px; font-size: 13px; position: relative; z-index: 3; }
-.mac .menubar { background: var(--mac-bar); color: var(--mac-bar-fg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-.mac .menubar b { font-weight: 600; }
-.ubu .menubar { background: var(--gnome-bar); color: var(--gnome-bar-fg); height: 32px; justify-content: space-between; }
+.mac .menubar { background: var(--mac-bar); color: var(--mac-fg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.ubu .menubar { background: var(--gnome-bar); color: var(--gnome-fg); height: 32px; justify-content: space-between; }
 .menubar .items { display: flex; gap: 14px; align-items: center; }
 .menubar .status { margin-left: auto; display: flex; gap: 12px; align-items: center; }
 .ubu .menubar .status { margin-left: 0; }
-.tray { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 2px 7px; border-radius: 5px; cursor: pointer; color: inherit; position: relative; font-variant-numeric: tabular-nums; }
-.tray:hover, .tray[aria-expanded="true"] { background: oklch(0.5 0 0 / 22%); }
+.tray { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 2px 7px; border-radius: 5px; cursor: pointer; color: inherit; position: relative; font-variant-numeric: tabular-nums; font-family: var(--sans); }
+.tray:hover, .tray[aria-expanded="true"] { background: hsl(0 0% 50% / 22%); }
 .tray svg { width: 17px; height: 17px; }
-.badge { position: absolute; top: 1px; left: 17px; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--mac-bar); }
-.ubu .badge { border-color: var(--gnome-bar); }
+.badge { position: absolute; top: 1px; left: 17px; width: 7px; height: 7px; border-radius: 50%; }
 .badge.attention { background: var(--warn); } .badge.problem { background: var(--bad); }
-.fake-ico { width: 15px; height: 15px; opacity: 0.85; }
-.desk-hint { position: absolute; left: 24px; bottom: 22px; color: oklch(1 0 0 / 85%); font-size: 13px; max-width: 46ch; text-shadow: 0 1px 2px oklch(0 0 0 / 40%); }
-
-.pop { position: absolute; top: 38px; right: 14px; width: 360px; max-width: calc(100% - 28px); background: var(--popover); color: var(--fg); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 18px 50px oklch(0 0 0 / 30%); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); z-index: 5; overflow: hidden; }
-.ubu .pop { top: 42px; border-radius: 12px; }
-.pop-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
-.pop-head .name { font-weight: 600; }
-.pop-head .state { margin-left: auto; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: center; }
-.pop-sec { padding: 6px 14px 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
-.pop-sec h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; padding-top: 4px; }
-.pop-foot { display: flex; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.fake { width: 15px; height: 15px; opacity: 0.85; }
+.desk-hint { position: absolute; left: 24px; bottom: 22px; color: hsl(0 0% 100% / 88%); font-size: 13px; max-width: 48ch; text-shadow: 0 1px 2px hsl(0 0% 0% / 40%); }
+.pop { position: absolute; top: 38px; right: 14px; width: 368px; max-width: calc(100% - 28px); background: var(--pop); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 60px hsl(222 30% 10% / 30%); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); z-index: 5; overflow: hidden; }
+.ubu .pop { top: 42px; }
+.pop-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.pop-head .tile { width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+.pop-head .tile b { color: var(--accent); }
+.pop-head .st { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--sub); }
+.pop-sec { padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.pop-sec .eyebrow { font-size: 10.5px; margin-bottom: 4px; }
+.prow { display: flex; gap: 10px; align-items: center; padding: 5px 0; min-width: 0; }
+.prow .grow { flex: 1; min-width: 0; }
+.prow .t { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow .m { font-size: 12px; color: var(--sub); }
+.pop-foot { display: flex; gap: 6px; padding: 12px 16px; flex-wrap: wrap; }
 .pop-foot .btn:last-child { margin-left: auto; }
-.picker { display: flex; flex-direction: column; gap: 4px; }
-.picker button { text-align: left; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 6px 9px; cursor: pointer; }
-.picker button:hover { background: var(--hover); }
-
-.ctx { position: absolute; top: 34px; right: 14px; min-width: 200px; background: var(--popover); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 30px oklch(0 0 0 / 25%); padding: 4px; z-index: 6; backdrop-filter: blur(24px); }
+.picker { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+.picker button { text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 9px; cursor: pointer; font-family: var(--mono); font-size: 12.5px; }
+.picker button:hover { border-color: var(--accent); }
+.ctx { position: absolute; top: 34px; right: 14px; min-width: 220px; background: var(--pop); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 10px 30px hsl(0 0% 0% / 25%); padding: 4px; z-index: 6; backdrop-filter: blur(24px); }
 .ctx button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 13px; }
-.ctx button:hover { background: var(--accent); color: oklch(1 0 0); }
-.ctx hr, .gmenu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 6px; }
-
-.gmenu { position: absolute; top: 38px; right: 10px; width: 300px; max-width: calc(100% - 20px); background: var(--gnome-menu); color: var(--gnome-menu-fg); border-radius: 12px; box-shadow: 0 12px 34px oklch(0 0 0 / 45%); padding: 8px; z-index: 6; font-size: 13.5px; }
-.gmenu hr { border-top-color: oklch(1 0 0 / 12%); }
+.ctx button:hover { background: var(--accent); color: var(--accent-ink); }
+.ctx hr, .gmenu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+.gmenu { position: absolute; top: 38px; right: 10px; width: 310px; max-width: calc(100% - 20px); background: var(--gnome-menu); color: var(--gnome-fg); border-radius: 12px; box-shadow: 0 12px 34px hsl(0 0% 0% / 45%); padding: 8px; z-index: 6; font-size: 13.5px; }
+.gmenu hr { border-top-color: hsl(0 0% 100% / 12%); }
 .gmenu .item { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; border: 0; background: none; color: inherit; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
 .gmenu .item:hover { background: var(--gnome-hover); }
 .gmenu .item[disabled] { cursor: default; opacity: 0.75; }
 .gmenu .item[disabled]:hover { background: none; }
-.gmenu .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.6; padding: 6px 10px 2px; }
-
-.ctrls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; }
-.ctrls label { display: inline-flex; gap: 6px; align-items: center; }
+.gmenu .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; padding: 6px 10px 2px; }
+.below { max-width: 1240px; margin: -28px auto 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: 13.5px; }
 
 /* modal + toast */
 .overlay { position: fixed; inset: 0; background: var(--overlay); display: grid; place-items: center; z-index: 50; padding: 16px; }
-.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: min(480px, 100%); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px oklch(0 0 0 / 25%); }
-.modal h3 { font-size: 16px; font-weight: 600; }
-.cmd { background: oklch(0.17 0.01 260); color: oklch(0.92 0 0); border-radius: 8px; padding: 9px 11px; font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
-.cmd::before { content: "$ "; opacity: 0.55; }
+.modal { background: var(--card); border: 1px solid var(--line); border-radius: 14px; width: min(500px, 100%); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 24px 60px hsl(0 0% 0% / 25%); }
+.modal h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
 .modal .foot { display: flex; justify-content: flex-end; gap: 8px; }
 .toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: min(420px, calc(100vw - 32px)); }
-.toast { background: var(--primary); color: var(--primary-fg); border-radius: 10px; padding: 9px 13px; font-size: 13px; box-shadow: 0 8px 24px oklch(0 0 0 / 20%); }
+.toast { background: var(--ink); color: var(--paper); border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 8px 24px hsl(0 0% 0% / 20%); }
 
-@media (max-width: 820px) {
-  .app { grid-template-columns: minmax(0, 1fr); }
-  .side { display: none; }
-  .grid2 { grid-template-columns: minmax(0, 1fr); }
-  .main { padding: 16px; }
-  .menubar .items .opt, .menubar .status .opt { display: none; }
+@media (max-width: 980px) {
+  .hero .in, .sec-head, .steps { grid-template-columns: minmax(0, 1fr); }
+  .steps .left { border-right: 0; border-bottom: 1px solid var(--line); }
+  .features, .install { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-nav { display: none; }
+}
+@media (max-width: 760px) {
+  .features, .install, .safety, .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .safety > div:nth-child(even) { padding-left: 0; border-left: 0; }
+  .safety > div:nth-child(odd) { padding-right: 0; }
+  .stats, .mstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats > div:nth-child(3) { border-left: 0; padding-left: 0; }
+  .mstats > div:nth-child(3) { border-left: 0; }
+  .app-body { grid-template-columns: minmax(0, 1fr); }
+  .app-side { display: none; }
+  .app-main { padding: 20px 16px; }
+  .section { padding-block: 48px; }
+  .logo .tag { display: none; }
+  .menubar .opt { display: none; }
+  .app { margin-left: 16px; margin-right: 16px; }
+  .stage { margin-left: 16px; margin-right: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="wrap">
-  <div class="switcher">
-    <div class="title">Eyrie prototype <span>· home page and top-bar widget, example data</span></div>
-    <div class="seg" role="group" aria-label="View" id="views">
-      <button type="button" data-view="home" aria-pressed="true">Home page</button>
-      <button type="button" data-view="mac" aria-pressed="false">Widget · macOS</button>
-      <button type="button" data-view="ubu" aria-pressed="false">Widget · Ubuntu</button>
-    </div>
-    <div class="seg" role="group" aria-label="Example state" id="states">
-      <button type="button" data-state="problem" aria-pressed="false">Problem</button>
-      <button type="button" data-state="attention" aria-pressed="true">Needs you</button>
-      <button type="button" data-state="ok" aria-pressed="false">All fine</button>
-    </div>
-    <button class="btn sm" id="themeBtn" type="button">Theme: system</button>
+<div class="proto"><div class="in">
+  <span class="label">Eyrie prototype · example data</span>
+  <div class="seg" role="group" aria-label="View" id="views">
+    <button type="button" data-view="landing" aria-pressed="true">Landing page</button>
+    <button type="button" data-view="home" aria-pressed="false">App · Home</button>
+    <button type="button" data-view="sessions" aria-pressed="false">App · Sessions</button>
+    <button type="button" data-view="mac" aria-pressed="false">Widget · macOS</button>
+    <button type="button" data-view="ubu" aria-pressed="false">Widget · Ubuntu</button>
   </div>
-  <p class="note" id="viewNote"></p>
-  <div id="stage"></div>
-</div>
+  <div class="seg" role="group" aria-label="Example state" id="states">
+    <button type="button" data-state="problem" aria-pressed="false">Problem</button>
+    <button type="button" data-state="attention" aria-pressed="true">Needs you</button>
+    <button type="button" data-state="ok" aria-pressed="false">All fine</button>
+  </div>
+  <div class="seg" role="group" aria-label="Accent" id="accents">
+    <button type="button" data-accent="teal" aria-pressed="true">Eyrie teal</button>
+    <button type="button" data-accent="rust" aria-pressed="false">Nexus rust</button>
+  </div>
+  <button class="btn sm" id="themeBtn" type="button">Theme: system</button>
+</div></div>
+<p class="note" id="viewNote"></p>
+<div id="stage"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div id="modalRoot"></div>
 
@@ -197,234 +326,297 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const money = (n) => '$' + n.toFixed(2)
 
-  // ---------- shared example state (what GET /api/v1/summary would return) ----------
+  const I = {
+    term: '<path d="M4 17l6-6-6-6M12 19h8"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    plug: '<path d="M12 22v-5M9 8V2M15 8V2M18 8H6v4a6 6 0 0 0 12 0z"/>', puzzle: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+    brain: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', check: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',
+    history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>', home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    file: '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>', cmd: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/>',
+    box: '<path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/>', log: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>', key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3"/>',
+    shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>', eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    down: '<path d="M12 5v14M6 13l6 6 6-6"/>', ext: '<path d="M7 17 17 7M8 7h9v9"/>', apple: '', frame: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>',
+  }
+  const ico = (k, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`
+
+  // ---------- shared example state (summary endpoint) ----------
   const S = {
-    view: 'home',
-    exampleState: 'attention',
-    showCost: true,
-    macOpen: false, macCtx: false, ubuMenu: false, ubuPanel: false, picking: false,
+    view: 'landing', st: 'attention', showCost: true,
+    macOpen: false, macCtx: false, ubuMenu: false, ubuPanel: false, picking: false, open: 'eyrie-7f3a',
     sessions: [
-      { name: 'eyrie-7f3a', tool: 'Claude Code', project: '~/personal/projects/eyrie', alive: true, idle: 14, last: '14 min ago' },
-      { name: 'eyrie-2c91', tool: 'Codex', project: '~/personal/projects/dotfiles', alive: true, idle: 0, last: 'just now' },
+      { name: 'eyrie-7f3a', tool: 'Claude Code', project: '~/personal/projects/eyrie', idle: 14, started: '42 min ago' },
+      { name: 'eyrie-2c91', tool: 'Codex', project: '~/personal/projects/dotfiles', idle: 0, started: '3 h ago' },
     ],
-    exited: { name: 'eyrie-b40e', tool: 'Claude Code', project: '~/personal/projects/blog', code: 1 },
-    mcpFail: { name: 'context7', when: '2 h ago' },
-    spend: { today: 8.42, days: [5.1, 9.8, 7.2, 12.4, 15.9, 11.3, 8.42], prev7: 62.4 },
-    topProject: '~/personal/projects/eyrie',
+    spend: { days: [5.1, 9.8, 7.2, 12.4, 15.9, 11.3, 8.42], prev7: 62.4 },
     tasks: [
       { text: 'Renew passport before December', done: false },
       { text: 'Back up homelab Postgres to B2', done: false },
       { text: 'Sync eyrie fork back to personal GitHub', done: false },
-      { text: 'Book dentist appointment', done: true },
     ],
     recent: ['~/personal/projects/eyrie', '~/personal/projects/blog', '~/personal/projects/dotfiles', '~/personal/projects/homelab'],
-    tools: { tmux: '3.6a', claude: '2.1.302', codex: '0.162.1' },
   }
-
-  function attention() {
-    const items = []
-    if (S.exampleState === 'problem') {
-      items.push({ sev: 'problem', title: 'codex isn’t found', detail: 'Codex sessions and MCP changes can’t run. Install it, or set cli.codex_bin.', action: 'How to fix', href: '/mcp' })
-      items.push({ sev: 'problem', title: `${S.exited.name} exited with code ${S.exited.code}`, detail: `${S.exited.tool} · ${S.exited.project}`, action: 'Open', href: `/sessions?open=${S.exited.name}` })
-    }
-    if (S.exampleState !== 'ok') {
-      const idle = S.sessions.find((s) => s.idle >= 10)
-      if (idle) items.push({ sev: 'attention', title: `${idle.name} has been idle ${idle.idle} min`, detail: `Probably waiting for you · ${idle.tool} · ${idle.project}`, action: 'Open', href: `/sessions?open=${idle.name}` })
-      items.push({ sev: 'attention', title: `MCP server ${S.mcpFail.name} failed to connect`, detail: `Last seen ${S.mcpFail.when}`, action: 'MCP page', href: '/mcp' })
-    }
-    return items
-  }
-  const stateOf = () => { const a = attention(); return a.some((x) => x.sev === 'problem') ? 'problem' : a.length ? 'attention' : 'ok' }
-  const stateText = () => { const n = attention().length; return n ? `${n} need${n === 1 ? 's' : ''} you` : 'All fine' }
+  const today = () => S.spend.days[S.spend.days.length - 1]
   const weekChange = () => { const t = S.spend.days.reduce((a, b) => a + b, 0); return ((t - S.spend.prev7) / S.spend.prev7) * 100 }
-  const openTasks = () => S.tasks.filter((t) => !t.done)
+  const deltaTxt = () => { const c = weekChange(); return `${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(0)}% vs previous 7 days` }
+  function attention() {
+    const a = []
+    if (S.st === 'problem') {
+      a.push({ sev: 'problem', title: 'codex isn’t installed', detail: 'Codex sessions and MCP changes can’t run · brew install codex, or set cli.codex_bin', act: 'Fix', href: '/mcp' })
+      a.push({ sev: 'problem', title: 'eyrie-b40e exited with code 1', detail: 'Claude Code · ~/personal/projects/blog', act: 'Open', href: '/sessions?open=eyrie-b40e' })
+    }
+    if (S.st !== 'ok') {
+      const idle = S.sessions.find((s) => s.idle >= 10)
+      if (idle) a.push({ sev: 'attention', title: `${idle.name} has been idle ${idle.idle} min`, detail: `Probably waiting for you · ${idle.tool} · ${idle.project}`, act: 'Open', href: `/sessions?open=${idle.name}` })
+      a.push({ sev: 'attention', title: 'MCP server context7 failed to connect', detail: 'Claude Code · user scope · last seen 2 h ago', act: 'Fix', href: '/mcp' })
+    }
+    return a
+  }
+  const state = () => { const a = attention(); return a.some((x) => x.sev === 'problem') ? 'problem' : a.length ? 'attention' : 'ok' }
+  const stateText = () => { const n = attention().length; return n ? `${n} need${n === 1 ? 's' : ''} you` : 'All fine' }
+  const idleSev = (s) => (s.idle >= 10 && S.st !== 'ok' ? 'attention' : 'ok')
 
-  function toast(msg) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg; $('#toasts').appendChild(el); setTimeout(() => el.remove(), 3800) }
-  function opens(href) { toast(`Opens http://127.0.0.1:8787${href} in your browser`) }
+  function toast(m) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = m; $('#toasts').appendChild(el); setTimeout(() => el.remove(), 3800) }
+  const opens = (href) => toast(`Opens http://127.0.0.1:8787${href}`)
 
   function startSession(project) {
     const name = 'eyrie-' + Math.random().toString(16).slice(2, 6)
     const conv = crypto.randomUUID ? crypto.randomUUID() : '6b56297d-74c3-45a0-8d8c-af3de8486f43'
-    const root = $('#modalRoot')
-    root.innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="modal">
-      <h3 id="mt">New session in ${esc(project)}</h3>
-      <div class="dim">Starts Claude Code detached in Eyrie's tmux server.</div>
-      <div><div class="dim" style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Eyrie will run</div>
-      <div class="cmd">tmux -L eyrie new-session -d -s ${name} -c ${esc(project)} claude --session-id ${conv}</div></div>
-      <div class="foot"><button class="btn" data-m="cancel" type="button">Cancel</button><button class="btn primary" data-m="ok" type="button">Start session</button></div>
-    </div></div>`
-    const ov = root.firstElementChild
-    const close = () => { root.innerHTML = '' }
+    $('#modalRoot').innerHTML = `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="modal">
+      <span class="eyebrow">New session</span><h3 id="mt">Start Claude Code in ${esc(project.split('/').pop())}</h3>
+      <p class="sub" style="font-size:14px">Runs detached in Eyrie's tmux server. You can open it here or attach from any terminal.</p>
+      <div><span class="eyebrow" style="font-size:10.5px">Eyrie will run</span><div class="cmd" style="margin-top:6px;white-space:pre-wrap;word-break:break-all">tmux -L eyrie new-session -d -s ${name} \\
+  -c ${esc(project)} \\
+  claude --session-id ${conv}</div></div>
+      <div class="foot"><button class="btn" data-m="cancel" type="button">Cancel</button><button class="btn ink" data-m="ok" type="button">Start session</button></div></div></div>`
+    const ov = $('#modalRoot').firstElementChild
     ov.addEventListener('click', (e) => {
-      if (e.target === ov || e.target.dataset.m === 'cancel') close()
-      if (e.target.dataset.m === 'ok') {
-        S.sessions.unshift({ name, tool: 'Claude Code', project, alive: true, idle: 0, last: 'just now' })
-        S.picking = false
-        close(); toast(`Started ${name}`); render()
-      }
+      if (e.target === ov || e.target.dataset.m === 'cancel') $('#modalRoot').innerHTML = ''
+      if (e.target.dataset.m === 'ok') { S.sessions.unshift({ name, tool: 'Claude Code', project, idle: 0, started: 'just now' }); S.open = name; S.picking = false; $('#modalRoot').innerHTML = ''; toast(`Started ${name}`); render() }
     })
     $('[data-m="ok"]', ov).focus()
   }
 
-  // ---------- icon ----------
-  // An eyrie is a high nest: a bowl of twigs with an eye/bird above it. Monochrome (template image on macOS).
-  const ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
-    <path d="M3.5 13.5c1.4 4 4.6 6 8.5 6s7.1-2 8.5-6"/><path d="M5 14.2l14 0"/><path d="M6.5 16.6l11-1.6"/>
-    <circle cx="12" cy="7.2" r="2.6" fill="currentColor" stroke="none"/></svg>`
-  const trayButton = (id, expanded, label) => {
-    const st = stateOf()
-    return `<button class="tray" id="${id}" type="button" aria-expanded="${expanded}" aria-label="${label}: ${stateText()}">${ICON}${st !== 'ok' ? `<span class="badge ${st}"></span>` : ''}${id === 'macTray' && S.showCost ? `<span>${money(S.spend.today)}</span>` : ''}</button>`
-  }
-
-  // ---------- pieces shared by the home page and the popover ----------
-  function sparkline(w, h, labels) {
-    const d = S.spend.days, max = Math.max(...d) * 1.1, n = d.length
-    const pad = labels ? 14 : 3
-    const x = (i) => 3 + (i * (w - 6)) / (n - 1), y = (v) => pad / 2 + (h - pad - 2) * (1 - v / max)
-    const pts = d.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
-    const last = [x(n - 1), y(d[n - 1])]
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Today']
-    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Claude cost per day, last 7 days, today ${money(d[n - 1])}">
-      <polygon points="3,${h - pad / 2} ${pts} ${(w - 3).toFixed(1)},${h - pad / 2}" fill="var(--accent)" fill-opacity="0.12"/>
+  // ---------- pieces ----------
+  const NEST = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3.5 13.5c1.4 4 4.6 6 8.5 6s7.1-2 8.5-6"/><path d="M5 14.2h14"/><path d="M6.5 16.6l11-1.6"/><circle cx="12" cy="7.2" r="2.6" fill="currentColor" stroke="none"/></svg>`
+  const logo = (tag) => `<a class="logo" href="#" aria-label="Eyrie"><span class="tile">e<b>.</b></span><span class="name">Eyrie</span>${tag ? `<span class="tag">${tag}</span>` : ''}</a>`
+  function spark(w, h, labels) {
+    const d = S.spend.days, max = Math.max(...d) * 1.12, n = d.length, pad = labels ? 16 : 3
+    const x = (i) => 4 + (i * (w - 8)) / (n - 1), y = (v) => 4 + (h - pad - 6) * (1 - v / max)
+    const pts = d.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '), base = h - pad + 2
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Today']
+    return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" role="img" aria-label="Claude cost per day for the last 7 days; today ${money(today())}">
+      <line x1="4" x2="${w - 4}" y1="${base}" y2="${base}" stroke="var(--line)"/>
+      <polygon points="4,${base} ${pts} ${(w - 4).toFixed(1)},${base}" fill="var(--accent)" fill-opacity="0.10"/>
       <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx="${last[0]}" cy="${last[1]}" r="3.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>
-      ${labels ? days.map((t, i) => (i === 0 || i === n - 1 || i === 3) ? `<text x="${x(i)}" y="${h - 1}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${t}</text>` : '').join('') : ''}
-    </svg>`
+      ${d.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === n - 1 ? 4 : 9}" fill="${i === n - 1 ? 'var(--accent)' : 'transparent'}" ${i === n - 1 ? 'stroke="var(--card)" stroke-width="2"' : ''}><title>${names[i]}: ${money(v)}</title></circle>`).join('')}
+      ${labels ? names.map((t, i) => (i === 0 || i === 3 || i === n - 1) ? `<text x="${x(i)}" y="${h - 2}" text-anchor="${i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${t.toUpperCase()}</text>` : '').join('') : ''}</svg>`
   }
-  const deltaHtml = () => { const c = weekChange(); return `<span class="delta dim">${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(0)}% vs previous 7 days</span>` }
 
-  // ---------- home page ----------
-  function home() {
-    const att = attention()
-    const live = S.sessions
-    return `<div class="app">
-      <nav class="side" aria-label="Sections"><div class="brand"><span class="mark">E</span>Eyrie</div>
-        <a href="#" aria-current="page">Overview</a><a href="#">Sessions</a><a href="#">Usage</a><a href="#">Claude Code</a><a href="#">Codex</a><a href="#">MCP servers</a><a href="#">Plugins</a><a href="#">Nexus memory</a><a href="#">Tasks</a><a href="#">Activity</a></nav>
-      <div class="main">
-        <div class="main-head"><h1>Overview</h1><span class="dim">Sat 17 Oct</span>
-          <span class="dim" style="margin-left:auto;display:inline-flex;gap:6px;align-items:center"><span class="sev ${stateOf()}"></span>${stateText()}</span></div>
-        <section class="card" aria-labelledby="h-att"><div class="card-head"><h2 id="h-att">Needs attention${att.length ? ` (${att.length})` : ''}</h2></div>
-          <div class="card-body" style="gap:0">${att.length ? att.map((a) => `<div class="row att-row"><span class="sev ${a.sev}"></span><div class="grow"><div class="t">${esc(a.title)}</div><div class="m">${esc(a.detail)}</div></div><button class="btn sm" data-open="${a.href}" type="button">${a.action}</button></div>`).join('') : '<div class="empty">Nothing needs you right now.</div>'}</div></section>
-        <div class="grid2">
-          <section class="card" aria-labelledby="h-ses"><div class="card-head"><h2 id="h-ses">Sessions (${live.length} live)</h2><div class="right"><button class="btn sm" data-open="/sessions" type="button">All sessions</button></div></div>
-            <div class="card-body">${live.map((s) => `<div class="row"><span class="sev ${s.idle >= 10 && S.exampleState !== 'ok' ? 'attention' : 'ok'}"></span><div class="grow"><div class="t mono">${s.name}</div><div class="m">${s.tool} · ${esc(s.project)} · ${s.idle >= 10 ? `idle ${s.idle} min` : `output ${s.last}`}</div></div><button class="btn sm" data-open="/sessions?open=${s.name}" type="button">Open</button></div>`).join('')}
-              <div class="row" style="flex-wrap:wrap;gap:6px"><span class="dim" style="font-size:12.5px">Start in:</span>${S.recent.map((p) => `<button class="chip" data-start="${esc(p)}" type="button">${esc(p.split('/').pop())}</button>`).join('')}</div></div></section>
-          <section class="card" aria-labelledby="h-spend"><div class="card-head"><h2 id="h-spend">Spend</h2><div class="right"><button class="btn sm" data-open="/usage" type="button">Usage</button></div></div>
-            <div class="card-body"><div class="row" style="align-items:baseline;gap:10px;flex-wrap:wrap"><span class="big">${money(S.spend.today)}</span><span class="dim">today</span>${deltaHtml()}</div>
-              ${sparkline(440, 74, true)}<div class="m dim">Top today: <span class="mono">${esc(S.topProject)}</span></div></div></section>
-          <section class="card" aria-labelledby="h-tasks"><div class="card-head"><h2 id="h-tasks">Tasks (${openTasks().length} open)</h2><div class="right"><button class="btn sm" data-open="/tasks" type="button">All tasks</button></div></div>
-            <div class="card-body">${openTasks().slice(0, 3).map((t) => { const i = S.tasks.indexOf(t); return `<div class="task"><input type="checkbox" id="t${i}" data-task="${i}"><label for="t${i}">${esc(t.text)}</label></div>` }).join('') || '<div class="empty">No open tasks.</div>'}
-              <form class="add" data-add><input id="homeTask" placeholder="Add a task" autocomplete="off" aria-label="New task"><button class="btn sm" type="submit">Add</button></form></div></section>
-          <section class="card" aria-labelledby="h-tools"><div class="card-head"><h2 id="h-tools">Tools</h2></div>
-            <div class="card-body"><div class="health">
-              <span><span class="sev ok"></span>tmux ${S.tools.tmux}</span><span><span class="sev ok"></span>claude ${S.tools.claude}</span>
-              <span><span class="sev ${S.exampleState === 'problem' ? 'problem' : 'ok'}"></span>codex ${S.exampleState === 'problem' ? 'not found' : S.tools.codex}</span>
-              <span><span class="sev ok"></span>usage index current</span></div>
-              <div class="m dim">4 MCP servers · 3 plugins enabled · 1 Nexus agent with memory</div></div></section>
+  // ---------- landing (public, static) ----------
+  const FEATURES = [
+    ['cmd', 'Sessions', 'Start, resume and stop Claude Code and Codex in Eyrie’s own tmux server. Type into them in the browser, or attach from any terminal.', 'tmux -L eyrie attach -t eyrie-7f3a'],
+    ['chart', 'Usage', 'Cost and tokens per day, model and project, from session transcripts. History is kept after Claude Code prunes them.', 'GET /api/v1/usage?days=30'],
+    ['plug', 'MCP servers', 'Claude Code and Codex servers across user, local and project scope. Add or remove one; see the exact command first.', 'claude mcp add -s user sqlite -- uvx mcp-server-sqlite'],
+    ['puzzle', 'Plugins', 'Turn Claude Code plugins on and off, with a check that the change really happened.', 'claude plugin disable archify@archify --json'],
+    ['brain', 'Nexus memory', 'Read and edit what your Nexus agents remember. Edits never overwrite an agent’s change; deletes go to the vault’s trash.', 'agent-memory/Nexus/<agent>/*.md'],
+    ['history', 'Activity', 'Every change Eyrie makes, with the command, the result and secrets masked.', '~/.eyrie/audit.jsonl'],
+  ]
+  function landing() {
+    return `<div class="site">
+      <header class="site-head"><div class="in">${logo('AGENT CONTROL PLANE')}
+        <nav class="site-nav" aria-label="Sections"><a href="#what">What it does</a><a href="#how">How it works</a><a href="#safe">Safety</a><a href="#install">Install</a></nav>
+        <a class="link" href="#" data-toast="Opens the repository on GitHub">GitHub ${ico('ext')}</a></div></header>
+
+      <section class="section hero"><div class="in">
+        <div><span class="eyebrow"><span class="dot"></span>Local · on your machine only</span>
+          <h1>Every coding agent on your machine, <span class="serif">in one place.</span></h1>
+          <p class="lede">Eyrie runs your Claude Code and Codex sessions, manages their MCP servers, plugins and memory, and tracks what they cost. It works with the files and CLIs those tools already use, and nothing leaves your laptop.</p>
+          <div class="ctas"><a class="btn ink" href="#install">Install Eyrie ${ico('arrow')}</a><a class="btn" href="#how">See how it works ${ico('down')}</a></div>
+          <p class="fine">127.0.0.1 only · No accounts · Open source</p></div>
+        <div class="card deal"><div class="deal-head"><span class="eyebrow" style="font-size:11px">The deal</span><span class="eyebrow acc" style="font-size:11px">01–04</span></div>
+          ${[['Reads what’s already there', 'Your tools’ own config, transcripts and state. No sync, no second copy.'], ['Changes through their CLIs', 'claude mcp, claude plugin, codex mcp. Eyrie never edits their files behind their back.'], ['Shows the command first', 'Every change previews the exact command. Destructive ones ask again.'], ['Logs everything it does', 'An audit trail of every action, with secrets masked.']].map(([h, p], i) => `<div class="deal-row"><span class="n">0${i + 1}</span><div><h3>${h}</h3><p>${p}</p></div></div>`).join('')}</div>
+      </div></section>
+
+      <div class="in" style="max-width:1200px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))">
+        <div class="stats"><div><div class="v">02</div><div class="k">Coding agents: Claude Code, Codex</div></div><div><div class="v">03</div><div class="k">MCP scopes managed</div></div><div><div class="v">10</div><div class="k">Pages in the app</div></div><div><div class="v">v0.1.0</div><div class="k">Current release</div></div></div></div>
+
+      <section class="section" id="what"><div class="in">
+        <div class="sec-head"><div><span class="eyebrow acc">01 / What it does</span><h2>One place for the tools you already run.</h2></div><p>Each page is a thin layer over something you’d otherwise do by hand: a tmux command, a CLI call, a file in your vault. Eyrie shows you the thing it runs.</p></div>
+        <div class="features">${FEATURES.map(([k, h, p, c]) => `<article class="card feature"><div class="top"><span class="badge-ico">${ico(k)}</span><span class="chip">${h === 'Usage' || h === 'Activity' ? 'Read-only' : 'Manage'}</span></div><h3>${h}</h3><p>${p}</p>
+          <div class="cmd-wrap"><div class="cmd">${esc(c)}</div><button class="copy" data-copy="${esc(c)}" type="button">${ico('copy')} Copy</button></div></article>`).join('')}</div>
+      </div></section>
+
+      <section class="section" id="how"><div class="in">
+        <div class="sec-head"><div><span class="eyebrow acc">02 / How it works</span><h2>Thin, local, and honest about what it does.</h2></div><p>A FastAPI service on 127.0.0.1 with a React UI, plus a small widget for your menu bar or top bar.</p></div>
+        <div class="card steps"><div class="left"><span class="eyebrow"><span class="dot"></span>Example · starting a session</span><h3 style="font-size:24px;letter-spacing:-0.025em">You click <span class="serif">New session.</span></h3><p class="sub">Pick a project. Eyrie shows the exact tmux command, runs it, and records it. The session is yours: it keeps running if Eyrie stops.</p>
+          <div class="cmd">tmux -L eyrie new-session -d -s eyrie-7f3a \\
+  -c ~/personal/projects/eyrie \\
+  claude --session-id 0f3c9a52-8d1e-4b7a-9c2f</div></div>
+          <div class="right"><span class="eyebrow" style="font-size:11px;display:block;margin-bottom:22px">What happens</span><div class="tl">
+            ${[['eye', 'Read', 'Eyrie reads Claude Code’s and Codex’s own config, transcripts and state on every request.', 'Files · no copies'], ['cmd', 'Preview', 'Any change is built as an argument list for the tool’s own CLI and shown to you before it runs.', 'Command · confirm'], ['box', 'Run', 'The CLI does the change; sessions start in Eyrie’s private tmux server, separate from yours.', 'CLI · tmux -L eyrie'], ['shield', 'Verify and log', 'Eyrie checks the change actually happened, then writes it to the audit log.', 'Verified · audited']].map(([k, h, p, t]) => `<div class="tl-item"><span class="tl-ico">${ico(k)}</span><div><h3>${h}</h3><p>${p}</p><div class="tags">${t}</div></div></div>`).join('')}</div></div></div>
+      </div></section>
+
+      <section class="section" id="safe"><div class="in">
+        <div class="sec-head"><div><span class="eyebrow acc">03 / Safe by design</span><h2>It can run commands as you, so it only listens to you.</h2></div><p>Built for one person on one laptop. The defaults assume another website might try to drive it.</p></div>
+        <div class="safety">${[['lock', 'Localhost only', 'Listens on 127.0.0.1. Requests from other hosts, other origins and DNS-rebinding pages are refused.'], ['key', 'A token for every change', 'Writes need the per-install token in ~/.eyrie/token, readable only by you.'], ['cmd', 'No “run anything”', 'A fixed list of actions. CLIs are called with argument lists, never a shell.'], ['file', 'Never overwrites your edits', 'Every write checks the file hasn’t changed since you loaded it.'], ['frame', 'Can’t be framed', 'Pages refuse to load inside other sites, so nobody can trick a click.'], ['log', 'Everything is logged', 'Each change is recorded with its command and result; secrets are masked.']].map(([k, h, p]) => `<div><span style="color:var(--accent)">${ico(k)}</span><div><h3>${h}</h3><p>${p}</p></div></div>`).join('')}</div>
+      </div></section>
+
+      <section class="section" id="install"><div class="in">
+        <div class="sec-head"><div><span class="eyebrow acc">04 / Install</span><h2>Two minutes, then it’s in your menu bar.</h2></div><p>Needs tmux and whichever of Claude Code and Codex you use. Your data stays in ~/.eyrie and your own config.</p></div>
+        <div class="install">
+          <div class="card"><div class="top" style="display:flex;justify-content:space-between"><h3>macOS</h3><span class="soon">Coming soon</span></div><p class="sub" style="font-size:14.5px">Eyrie.app in a .dmg, with the menu-bar widget. Starts at login.</p><div class="cmd">Eyrie-0.1.0.dmg</div></div>
+          <div class="card"><div class="top" style="display:flex;justify-content:space-between"><h3>Ubuntu 24.04</h3><span class="soon">Coming soon</span></div><p class="sub" style="font-size:14.5px">A .deb with the top-bar widget and a systemd user service.</p><div class="cmd">sudo apt install ./eyrie_0.1.0_amd64.deb</div></div>
+          <div class="card"><h3>From source, today</h3><p class="sub" style="font-size:14.5px">Clone the repo and install the background service.</p><div class="cmd-wrap"><div class="cmd">git clone …/eyrie && cd eyrie
+make install</div><button class="copy" data-copy="make install" type="button">${ico('copy')} Copy</button></div></div>
         </div>
-      </div></div>`
+      </div></section>
+
+      <footer class="site-foot"><div class="in"><span>Eyrie · a personal project by Alen Abraham</span><a href="#" data-toast="Opens the repository">GitHub</a><a href="#" data-toast="Opens the Nexus site">Built alongside Nexus</a><span style="margin-left:auto">MIT License</span></div></footer>
+    </div>`
   }
 
-  // ---------- popover (same on both OSes) ----------
-  function popover(os) {
+  // ---------- app shell ----------
+  const NAV = [['Work', [['home', 'Overview', 'home'], ['cmd', 'Sessions', 'sessions'], ['chart', 'Usage']]], ['Agents', [['term', 'Claude Code'], ['box', 'Codex'], ['brain', 'Nexus memory']]], ['Tools', [['plug', 'MCP servers'], ['puzzle', 'Plugins']]], ['You', [['check', 'Tasks'], ['history', 'Activity']]]]
+  function shell(current, body) {
+    return `<div class="app"><header class="app-head">${logo('AGENT CONTROL PLANE')}
+        <span class="status-pill"><span class="sev ${state()}"></span>${stateText()}</span></header>
+      <div class="app-body"><nav class="app-side" aria-label="Pages">${NAV.map(([g, items]) => `<div class="grp"><span class="glabel">${g}</span>${items.map(([k, label, v]) => `<a href="#" ${v ? `data-view="${v}"` : 'data-toast="Restyled the same way in the real app"'} ${v === current ? 'aria-current="page"' : ''}>${ico(k)}${label}${label === 'Sessions' ? `<span class="count">${S.sessions.length}</span>` : label === 'Tasks' ? `<span class="count">${S.tasks.filter((t) => !t.done).length}</span>` : ''}</a>`).join('')}</div>`).join('')}</nav>
+        <main class="app-main">${body}</main></div></div>`
+  }
+
+  function appHome() {
+    const att = attention(), open = S.tasks.filter((t) => !t.done)
+    return shell('home', `
+      <div class="page-head"><div><span class="eyebrow">Overview · Sat 17 Oct</span><h1>Here’s what’s going on.</h1><p>Live from your tools. Refreshes every few seconds.</p></div>
+        <div class="act"><a class="link" href="#" data-toast="Opens alenabraham.me/eyrie">What is Eyrie? ${ico('ext')}</a></div></div>
+      <section class="card" aria-labelledby="h-att"><div class="panel-head"><span class="eyebrow ${att.length ? 'acc' : ''}" id="h-att">${att.length ? `<span class="dot"></span>Needs you · ${att.length}` : 'Needs you'}</span></div>
+        <div class="panel-body">${att.length ? att.map((a) => `<div class="lrow"><span class="sev ${a.sev}"></span><div class="grow"><div class="t">${esc(a.title)}</div><div class="m">${esc(a.detail)}</div></div><button class="btn sm" data-open="${a.href}" type="button">${a.act}</button></div>`).join('') : '<div class="lrow"><span class="sev ok"></span><div class="grow"><div class="t">Nothing needs you right now.</div><div class="m">Sessions, servers and tools all look fine.</div></div></div>'}</div></section>
+      <div class="mstats"><div><div class="v">${S.sessions.length}</div><div class="k">Live sessions</div></div><div><div class="v">${money(today())}</div><div class="k">Claude cost today</div></div><div><div class="v">4</div><div class="k">MCP servers</div></div><div><div class="v">${open.length}</div><div class="k">Open tasks</div></div></div>
+      <div class="grid2">
+        <section class="card"><div class="panel-head"><span class="eyebrow">Sessions</span><a class="link right" href="#" data-view="sessions">All sessions ${ico('arrow')}</a></div><div class="panel-body">
+          ${S.sessions.map((s) => `<div class="lrow"><span class="sev ${idleSev(s)}"></span><div class="grow"><div class="t mono" style="font-size:13.5px">${s.name}</div><div class="m">${s.tool} · ${esc(s.project.split('/').pop())} · ${s.idle >= 10 ? `idle ${s.idle} min` : 'running'}</div></div><button class="btn sm" data-goto="${s.name}" type="button">Open</button></div>`).join('')}
+          <div class="chips"><span class="eyebrow" style="font-size:10.5px">Start in</span>${S.recent.map((p) => `<button class="pchip" data-start="${esc(p)}" type="button">${esc(p.split('/').pop())}</button>`).join('')}</div></div></section>
+        <section class="card"><div class="panel-head"><span class="eyebrow">Spend · last 7 days</span><a class="link right" href="#" data-toast="Opens Usage">Usage ${ico('arrow')}</a></div><div class="panel-body" style="display:flex;flex-direction:column;gap:10px;padding-top:16px">
+          <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="mono" style="font-size:32px;letter-spacing:-0.03em">${money(today())}</span><span class="sub">today</span><span class="sub" style="font-size:13px;margin-left:auto">${deltaTxt()}</span></div>
+          ${spark(460, 82, true)}<div class="sub" style="font-size:13px">Top project today · <span class="mono">eyrie</span></div></div></section>
+        <section class="card"><div class="panel-head"><span class="eyebrow">Tasks · Personal/Tasks.md</span><a class="link right" href="#" data-toast="Opens Tasks">All tasks ${ico('arrow')}</a></div><div class="panel-body">
+          ${open.slice(0, 3).map((t) => { const i = S.tasks.indexOf(t); return `<div class="task"><input type="checkbox" id="t${i}" data-task="${i}"><label for="t${i}">${esc(t.text)}</label></div>` }).join('') || '<div class="lrow"><div class="grow sub">No open tasks.</div></div>'}
+          <form class="add" data-add><input id="homeTask" placeholder="Add a task" autocomplete="off" aria-label="New task"><button class="btn sm" type="submit">Add</button></form></div></section>
+        <section class="card"><div class="panel-head"><span class="eyebrow">Your setup</span></div><div class="panel-body">
+          <div class="tools"><span><span class="sev ok"></span>tmux 3.6a</span><span><span class="sev ok"></span>claude 2.1.302</span><span><span class="sev ${S.st === 'problem' ? 'problem' : 'ok'}"></span>codex ${S.st === 'problem' ? 'not installed' : '0.162.1'}</span><span><span class="sev ok"></span>usage index current</span></div>
+          <div class="lrow"><div class="grow"><div class="m">Vault</div><div class="t mono" style="font-size:13px">~/workspace/Obsidian Vault</div></div></div>
+          <div class="lrow"><div class="grow"><div class="m">Top-bar widget</div><div class="t" style="font-size:14px">Running · starts at login</div></div></div></div></section>
+      </div>`)
+  }
+
+  function appSessions() {
+    const s = S.sessions.find((x) => x.name === S.open) || S.sessions[0]
+    return shell('sessions', `
+      <div class="page-head"><div><span class="eyebrow">Sessions</span><h1>Sessions</h1><p>Claude Code and Codex running in Eyrie’s own tmux server. They keep running if Eyrie restarts.</p></div>
+        <div class="act"><button class="btn ink" data-start="${esc(S.recent[0])}" type="button">+ New session</button></div></div>
+      <section class="card"><div class="table-wrap"><table><thead><tr><th>Session</th><th>Directory</th><th>State</th><th>Started</th><th></th></tr></thead><tbody>
+        ${S.sessions.map((x) => `<tr aria-selected="${x.name === s.name}"><td><div class="mono" style="font-size:13.5px">${x.name}</div><div class="sub" style="font-size:12.5px">${x.tool}</div></td><td class="mono" style="font-size:13px">${esc(x.project)}</td>
+          <td><span style="display:inline-flex;gap:7px;align-items:center"><span class="sev ${idleSev(x)}"></span>${x.idle >= 10 ? `idle ${x.idle} min` : 'running'}</span></td><td class="sub">${x.started}</td>
+          <td style="text-align:right;white-space:nowrap"><button class="btn sm" data-goto="${x.name}" type="button">Open</button> <button class="btn sm ghost" data-toast="Asks to confirm, then stops it" type="button" style="color:var(--bad)">Stop</button></td></tr>`).join('')}
+      </tbody></table></div></section>
+      <div class="term"><div class="bar"><span>${s.name}</span><span>·</span><span>${esc(s.project)}</span><span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center"><span class="sev ok"></span>connected</span></div>
+        <pre><span class="d">╭─ Claude Code ─ ${esc(s.project)}</span>
+<span class="acc">❯</span> port the codex service onto the new Source protocol
+<span class="acc">●</span> Reading backend/app/sources/codex.py
+<span class="ok">✓</span> Edited backend/app/sources/codex.py (+48 −31)
+<span class="d">  tokens 182.4k · context 41%</span>
+<span class="acc">❯</span> <span class="d">█</span></pre>
+        <div class="term-foot"><span>Closing this only detaches. From a terminal:</span><span class="cmd" style="padding:3px 10px;font-size:12px">tmux -L eyrie attach -t ${s.name}</span><button class="copy" data-copy="tmux -L eyrie attach -t ${s.name}" type="button">${ico('copy')} Copy</button></div></div>
+      <div class="grid2"><section class="card"><div class="panel-head"><span class="eyebrow">Resume · Claude Code</span></div><div class="panel-body">
+        ${[['eyrie', '2 min ago · 211 responses'], ['blog', '1 d ago · 36 responses']].map(([p, m]) => `<div class="lrow"><div class="grow"><div class="t mono" style="font-size:13px">~/personal/projects/${p}</div><div class="m">${m}</div></div><button class="btn sm" data-start="~/personal/projects/${p}" type="button">Resume</button></div>`).join('')}</div></section>
+        <section class="card"><div class="panel-head"><span class="eyebrow">Resume · Codex</span></div><div class="panel-body">
+        ${[['Refactor zsh prompt segments', 'dotfiles · 3 h ago'], ['Add Caddy reverse proxy', 'homelab · 2 d ago']].map(([t, m]) => `<div class="lrow"><div class="grow"><div class="t">${t}</div><div class="m">${m}</div></div><button class="btn sm" data-toast="Resumes the thread in a new session" type="button">Resume</button></div>`).join('')}</div></section></div>`)
+  }
+
+  // ---------- widget ----------
+  const trayBtn = (id, exp) => { const st = state(); return `<button class="tray" id="${id}" type="button" aria-expanded="${exp}" aria-label="Eyrie: ${stateText()}">${NEST}${st !== 'ok' ? `<span class="badge ${st}"></span>` : ''}${id === 'macTray' && S.showCost ? `<span>${money(today())}</span>` : ''}</button>` }
+  function popover() {
     const att = attention()
     return `<div class="pop" role="dialog" aria-label="Eyrie">
-      <div class="pop-head"><span style="width:18px;height:18px;display:inline-flex">${ICON}</span><span class="name">Eyrie</span><span class="state"><span class="sev ${stateOf()}"></span>${stateText()}</span></div>
-      ${att.length ? `<div class="pop-sec"><h3>Needs you</h3>${att.map((a) => `<div class="row"><span class="sev ${a.sev}"></span><div class="grow"><div class="t" style="font-size:13px">${esc(a.title)}</div></div><button class="btn sm" data-open="${a.href}" type="button">${a.action === 'MCP page' ? 'Fix' : a.action === 'How to fix' ? 'Fix' : 'Open'}</button></div>`).join('')}</div>` : ''}
-      <div class="pop-sec"><h3>Sessions</h3>${S.sessions.map((s) => `<div class="row"><span class="sev ${s.idle >= 10 && S.exampleState !== 'ok' ? 'attention' : 'ok'}"></span><div class="grow"><div class="t mono">${s.name}</div><div class="m">${s.tool} · ${esc(s.project.split('/').pop())} · ${s.idle >= 10 ? `idle ${s.idle} min` : 'running'}</div></div><button class="btn sm ghost" data-open="/sessions?open=${s.name}" type="button">Open</button></div>`).join('')}
-        ${S.picking ? `<div class="picker">${S.recent.map((p) => `<button data-start="${esc(p)}" type="button"><span class="mono">${esc(p)}</span></button>`).join('')}</div>` : ''}</div>
-      <div class="pop-sec"><h3>Today</h3><div class="row" style="gap:12px"><span class="big" style="font-size:22px">${money(S.spend.today)}</span><div class="grow">${sparkline(180, 34, false)}</div></div>${deltaHtml()}</div>
-      <div class="pop-foot"><button class="btn sm" data-pick type="button">${S.picking ? 'Cancel' : '+ Session in…'}</button><button class="btn sm" data-addtask type="button">+ Task</button><button class="btn sm primary" data-open="/" type="button">Open Eyrie</button></div>
-    </div>`
+      <div class="pop-head"><span class="tile">e<b>.</b></span><b style="font-weight:600">Eyrie</b><span class="st"><span class="sev ${state()}"></span>${stateText()}</span></div>
+      ${att.length ? `<div class="pop-sec"><span class="eyebrow acc"><span class="dot"></span>Needs you</span>${att.map((a) => `<div class="prow"><span class="sev ${a.sev}"></span><div class="grow"><div class="t">${esc(a.title)}</div></div><button class="btn sm" data-open="${a.href}" type="button">${a.act}</button></div>`).join('')}</div>` : ''}
+      <div class="pop-sec"><span class="eyebrow">Sessions</span>${S.sessions.map((s) => `<div class="prow"><span class="sev ${idleSev(s)}"></span><div class="grow"><div class="t mono" style="font-size:13px">${s.name}</div><div class="m">${s.tool} · ${esc(s.project.split('/').pop())} · ${s.idle >= 10 ? `idle ${s.idle} min` : 'running'}</div></div><button class="btn sm ghost" data-open="/sessions?open=${s.name}" type="button">Open</button></div>`).join('')}
+        ${S.picking ? `<div class="picker">${S.recent.map((p) => `<button data-start="${esc(p)}" type="button">${esc(p)}</button>`).join('')}</div>` : ''}</div>
+      <div class="pop-sec"><span class="eyebrow">Today</span><div class="prow" style="gap:14px"><span class="mono" style="font-size:22px;letter-spacing:-0.03em">${money(today())}</span><div class="grow">${spark(190, 34, false)}</div></div><div class="m sub" style="font-size:12px">${deltaTxt()}</div></div>
+      <div class="pop-foot"><button class="btn sm" data-pick type="button">${S.picking ? 'Cancel' : '+ Session in…'}</button><button class="btn sm" data-addtask type="button">+ Task</button><button class="btn sm ink" data-open="/" type="button">Open Eyrie</button></div></div>`
   }
-
-  // ---------- macOS ----------
+  const wifi = '<svg class="fake opt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>'
+  const batt = '<svg class="fake" viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="21" height="12" rx="3"/><rect x="3" y="3" width="13" height="8" rx="1.5" fill="currentColor" stroke="none"/></svg>'
+  const apple = '<svg class="fake" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.8-1.5 0-2.9.9-3.6 2.2-1.6 2.7-.4 6.7 1.1 8.9.8 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7 1.4 0 1.8.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.5-.9-2.5-3.4zM14.3 6c.6-.8 1.1-1.8.9-2.9-.9 0-2 .6-2.6 1.3-.6.6-1.1 1.7-1 2.7 1 .1 2.1-.5 2.7-1.1z"/></svg>'
   function mac() {
-    return `<div class="stage mac" id="desk">
-      <div class="menubar"><svg class="fake-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8-.7 0-1.7-.8-2.9-.8-1.5 0-2.9.9-3.6 2.2-1.6 2.7-.4 6.7 1.1 8.9.8 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7 1.4 0 1.8.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.5-.9-2.5-3.4zM14.3 6c.6-.8 1.1-1.8.9-2.9-.9 0-2 .6-2.6 1.3-.6.6-1.1 1.7-1 2.7 1 .1 2.1-.5 2.7-1.1z"/></svg><span class="items"><b>Finder</b><span class="opt">File</span><span class="opt">Edit</span><span class="opt">View</span><span class="opt">Go</span></span>
-        <span class="status"><svg class="fake-ico opt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
-          <svg class="fake-ico opt" viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="21" height="12" rx="3"/><rect x="3" y="3" width="13" height="8" rx="1.5" fill="currentColor" stroke="none"/><path d="M24 5v4"/></svg>
-          ${trayButton('macTray', S.macOpen, 'Eyrie')}<span>Sat 17 Oct 23:42</span></span></div>
-      ${S.macOpen ? popover('mac') : ''}
-      ${S.macCtx ? `<div class="ctx" role="menu"><button role="menuitem" data-ctx="panel" type="button">Show panel</button><button role="menuitem" data-open="/" type="button">Open Eyrie</button><hr><button role="menuitem" data-ctx="cost" type="button">${S.showCost ? 'Hide' : 'Show'} today's cost in menu bar</button><button role="menuitem" data-ctx="autostart" type="button">✓ Start at login</button><hr><button role="menuitem" data-ctx="quit" type="button">Quit widget</button></div>` : ''}
-      <div class="desk-hint">Click the Eyrie icon in the menu bar for the panel; right-click it for the menu.</div>
-    </div>
-    <div class="ctrls"><label><input type="checkbox" id="costToggle" ${S.showCost ? 'checked' : ''}> Show today's cost in the menu bar</label></div>`
+    return `<div class="stage mac"><div class="menubar">${apple}<span class="items"><b style="font-weight:600">Finder</b><span class="opt">File</span><span class="opt">Edit</span><span class="opt">View</span></span>
+      <span class="status">${wifi}${batt}${trayBtn('macTray', S.macOpen)}<span>Sat 17 Oct 23:42</span></span></div>
+      ${S.macOpen ? popover() : ''}
+      ${S.macCtx ? `<div class="ctx" role="menu"><button role="menuitem" data-ctx="panel" type="button">Show panel</button><button role="menuitem" data-open="/" type="button">Open Eyrie</button><hr><button role="menuitem" data-ctx="cost" type="button">${S.showCost ? 'Hide' : 'Show'} today’s cost in the menu bar</button><button role="menuitem" data-ctx="login" type="button">✓ Start at login</button><hr><button role="menuitem" data-ctx="quit" type="button">Quit widget</button></div>` : ''}
+      <div class="desk-hint">Click the Eyrie icon for the panel; right-click it for the menu.</div></div>
+      <div class="below"><label style="display:inline-flex;gap:8px;align-items:center"><input type="checkbox" id="costToggle" ${S.showCost ? 'checked' : ''}> Show today’s cost in the menu bar</label></div>`
   }
-
-  // ---------- Ubuntu ----------
   function ubu() {
-    const att = attention()
-    return `<div class="stage ubu" id="desk">
-      <div class="menubar"><span class="items"><span>Activities</span></span><span>Sat 17 Oct  23:42</span>
-        <span class="status">${trayButton('ubuTray', S.ubuMenu, 'Eyrie indicator')}
-          <svg class="fake-ico opt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
-          <svg class="fake-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7"/></svg>
-          <svg class="fake-ico" viewBox="0 0 26 14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="21" height="12" rx="3"/><rect x="3" y="3" width="13" height="8" rx="1.5" fill="currentColor" stroke="none"/></svg></span></div>
-      ${S.ubuMenu ? `<div class="gmenu" role="menu" aria-label="Eyrie">
-        <button class="item" role="menuitem" data-ctx="upanel" type="button"><b>Show panel</b></button><hr>
-        <div class="label">${stateText()}</div>
+    const att = attention(), c = weekChange()
+    return `<div class="stage ubu"><div class="menubar"><span class="items"><span>Activities</span></span><span>Sat 17 Oct  23:42</span>
+      <span class="status">${trayBtn('ubuTray', S.ubuMenu)}${wifi}<svg class="fake" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 0 1 0 7"/></svg>${batt}</span></div>
+      ${S.ubuMenu ? `<div class="gmenu" role="menu" aria-label="Eyrie"><button class="item" role="menuitem" data-ctx="upanel" type="button"><b>Show panel</b></button><hr><div class="lbl">${stateText()}</div>
         ${att.map((a) => `<button class="item" role="menuitem" data-open="${a.href}" type="button"><span class="sev ${a.sev}"></span>${esc(a.title)}</button>`).join('') || '<button class="item" disabled type="button">Nothing needs you</button>'}
-        <div class="label">Sessions</div>
-        ${S.sessions.map((s) => `<button class="item" role="menuitem" data-open="/sessions?open=${s.name}" type="button"><span class="mono">${s.name}</span><span style="opacity:.65;margin-left:auto">${s.idle >= 10 ? `idle ${s.idle}m` : 'running'}</span></button>`).join('')}
-        <button class="item" disabled type="button">Today ${money(S.spend.today)} · ${weekChange() >= 0 ? '+' : '−'}${Math.abs(weekChange()).toFixed(0)}% vs last week</button><hr>
+        <div class="lbl">Sessions</div>${S.sessions.map((s) => `<button class="item" role="menuitem" data-open="/sessions?open=${s.name}" type="button"><span class="mono" style="font-size:12.5px">${s.name}</span><span style="opacity:.65;margin-left:auto">${s.idle >= 10 ? `idle ${s.idle}m` : 'running'}</span></button>`).join('')}
+        <button class="item" disabled type="button">Today ${money(today())} · ${c >= 0 ? '+' : '−'}${Math.abs(c).toFixed(0)}% vs last week</button><hr>
         <button class="item" role="menuitem" data-open="/" type="button">Open Eyrie</button><button class="item" role="menuitem" data-ctx="quit" type="button">Quit widget</button></div>` : ''}
-      ${S.ubuPanel ? popover('ubu') : ''}
-      <div class="desk-hint">On Ubuntu the indicator can only show a menu (AppIndicator has no click events). The menu carries the key facts; "Show panel" opens the same panel as on macOS.</div>
-    </div>`
+      ${S.ubuPanel ? popover() : ''}
+      <div class="desk-hint">On Ubuntu the indicator can only show a menu (AppIndicator has no click events). The menu carries the key facts; Show panel opens the same panel as on macOS.</div></div>`
   }
 
   const NOTES = {
-    home: 'The new Overview: what needs you first, then live sessions (start one in a recent project with one click), real spend from the usage index, your next tasks and a tool health line. The hero banner and the decorative terminal are gone. Use "Example state" to see problem / needs-you / all-fine.',
-    mac: 'macOS menu bar: a monochrome icon with a status dot and today’s cost. Click opens the panel under the icon; right-click opens the menu. Actions go through Eyrie’s action API (preview, confirm, audit), the same as the web app.',
-    ubu: 'Ubuntu 24.04 (GNOME + AppIndicator): clicking the indicator opens a menu with the key facts. "Show panel" opens the same panel at the top right. The panel and menu read the same summary as the home page.',
+    landing: 'Public landing page for alenabraham.me/eyrie: static, explains Eyrie. Lives as static/eyrie/ in the site repo, so it keeps its own design separate from the blog theme. No live data.',
+    home: 'In-app home (127.0.0.1:8787): what’s going on right now, in the new design language. Header, sidebar, page header and cards are what every page gets.',
+    sessions: 'An inner page restyled the same way, to show the app-wide refresh: mono eyebrows, hairline table, warm command boxes, the terminal as a dark panel.',
+    mac: 'macOS menu bar: monochrome nest icon with a status dot and (optionally) today’s cost. Click for the panel; right-click for the menu.',
+    ubu: 'Ubuntu 24.04 (GNOME + AppIndicator): click the indicator for a menu with the key facts; Show panel opens the same panel.',
   }
-
   function render() {
     $('#viewNote').textContent = NOTES[S.view]
-    $('#stage').innerHTML = S.view === 'home' ? home() : S.view === 'mac' ? mac() : ubu()
+    $('#stage').innerHTML = { landing, home: appHome, sessions: appSessions, mac, ubu }[S.view]()
     document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)))
-    document.querySelectorAll('#states button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === S.exampleState)))
+    document.querySelectorAll('#states button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === S.st)))
   }
+  const closeAll = () => { S.macOpen = S.macCtx = S.ubuMenu = S.ubuPanel = S.picking = false }
 
-  // ---------- events ----------
-  document.addEventListener('click', (e) => {
-    const t = e.target.closest('button, [data-open], input[type=checkbox]')
-    const inPop = e.target.closest('.pop, .ctx, .gmenu, .tray, .modal')
-    if (!t) { if (!inPop && (S.macOpen || S.macCtx || S.ubuMenu || S.ubuPanel)) { S.macOpen = S.macCtx = S.ubuMenu = S.ubuPanel = S.picking = false; render() } return }
-    if (t.dataset.view) { S.view = t.dataset.view; S.macOpen = S.macCtx = S.ubuMenu = S.ubuPanel = S.picking = false; render(); return }
-    if (t.dataset.state) { S.exampleState = t.dataset.state; render(); return }
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('button, a, input[type=checkbox]')
+    if (!t) { if (!e.target.closest('.pop, .ctx, .gmenu') && (S.macOpen || S.macCtx || S.ubuMenu || S.ubuPanel)) { closeAll(); render() } return }
+    if (t.matches('a[href^="#"]') && !t.dataset.view && !t.getAttribute('href').slice(1)) e.preventDefault()
+    if (t.dataset.view) { e.preventDefault(); S.view = t.dataset.view; closeAll(); render(); window.scrollTo(0, 0); return }
+    if (t.dataset.state) { S.st = t.dataset.state; render(); return }
+    if (t.dataset.accent) { document.documentElement.toggleAttribute('data-accent', t.dataset.accent === 'rust'); if (t.dataset.accent === 'rust') document.documentElement.setAttribute('data-accent', 'rust'); document.querySelectorAll('#accents button').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); return }
+    if (t.dataset.toast) { e.preventDefault(); toast(t.dataset.toast); return }
+    if (t.dataset.copy) { try { await navigator.clipboard.writeText(t.dataset.copy); toast('Copied') } catch { toast('Copy isn’t allowed here; select the text instead') } return }
     if (t.id === 'macTray') { S.macOpen = !S.macOpen; S.macCtx = false; S.picking = false; render(); return }
     if (t.id === 'ubuTray') { S.ubuMenu = !S.ubuMenu; render(); return }
-    if (t.dataset.open) { opens(t.dataset.open); S.macOpen = S.macCtx = S.ubuMenu = false; render(); return }
+    if (t.dataset.open) { opens(t.dataset.open); closeAll(); render(); return }
+    if (t.dataset.goto) { S.open = t.dataset.goto; S.view = 'sessions'; render(); return }
     if (t.dataset.start) { startSession(t.dataset.start); return }
     if ('pick' in t.dataset) { S.picking = !S.picking; render(); return }
-    if ('addtask' in t.dataset) {
-      const text = 'Reply to the landlord'
-      S.tasks.splice(openTasks().length, 0, { text, done: false })
-      toast(`Added task “${text}” to Personal/Tasks.md`); render(); return
-    }
+    if ('addtask' in t.dataset) { S.tasks.push({ text: 'Reply to the landlord', done: false }); toast('Added “Reply to the landlord” to Personal/Tasks.md'); render(); return }
     if (t.dataset.ctx === 'panel') { S.macCtx = false; S.macOpen = true; render(); return }
     if (t.dataset.ctx === 'upanel') { S.ubuMenu = false; S.ubuPanel = true; render(); return }
     if (t.dataset.ctx === 'cost') { S.showCost = !S.showCost; S.macCtx = false; render(); return }
-    if (t.dataset.ctx === 'autostart') { toast('Start at login is on (LaunchAgent / ~/.config/autostart)'); S.macCtx = false; render(); return }
-    if (t.dataset.ctx === 'quit') { toast('The widget quits; Eyrie and your sessions keep running'); S.macCtx = S.ubuMenu = false; render(); return }
+    if (t.dataset.ctx === 'login') { toast('Starts at login (LaunchAgent / ~/.config/autostart)'); S.macCtx = false; render(); return }
+    if (t.dataset.ctx === 'quit') { toast('The widget quits; Eyrie and your sessions keep running'); closeAll(); render(); return }
     if (t.dataset.task !== undefined) { S.tasks[+t.dataset.task].done = true; toast('Ticked off'); setTimeout(render, 250); return }
   })
-  document.addEventListener('contextmenu', (e) => {
-    if (e.target.closest('#macTray')) { e.preventDefault(); S.macCtx = !S.macCtx; S.macOpen = false; render() }
-  })
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest('#macTray')) { e.preventDefault(); S.macCtx = !S.macCtx; S.macOpen = false; render() } })
   document.addEventListener('change', (e) => { if (e.target.id === 'costToggle') { S.showCost = e.target.checked; render() } })
-  document.addEventListener('submit', (e) => {
-    e.preventDefault()
-    if (e.target.matches('[data-add]')) { const v = $('#homeTask').value.trim(); if (!v) return; S.tasks.splice(openTasks().length, 0, { text: v, done: false }); render(); $('#homeTask').focus() }
-  })
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { S.macOpen = S.macCtx = S.ubuMenu = S.ubuPanel = S.picking = false; $('#modalRoot').innerHTML = ''; render() } })
+  document.addEventListener('submit', (e) => { e.preventDefault(); if (e.target.matches('[data-add]')) { const v = $('#homeTask').value.trim(); if (v) { S.tasks.push({ text: v, done: false }); render(); $('#homeTask').focus() } } })
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAll(); $('#modalRoot').innerHTML = ''; render() } })
 
   const modes = ['system', 'light', 'dark']; let mode = 'system'
-  try { mode = localStorage.getItem('eyrie-proto2-theme') || 'system' } catch {}
+  try { mode = localStorage.getItem('eyrie-proto3-theme') || 'system' } catch {}
   const applyTheme = () => { if (mode === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', mode); $('#themeBtn').textContent = 'Theme: ' + mode }
-  $('#themeBtn').addEventListener('click', () => { mode = modes[(modes.indexOf(mode) + 1) % 3]; try { localStorage.setItem('eyrie-proto2-theme', mode) } catch {} applyTheme() })
+  $('#themeBtn').addEventListener('click', () => { mode = modes[(modes.indexOf(mode) + 1) % 3]; try { localStorage.setItem('eyrie-proto3-theme', mode) } catch {} applyTheme() })
   applyTheme(); render()
 })()
 </script>
