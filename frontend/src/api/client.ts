@@ -13,6 +13,7 @@ import type {
   Trashed,
   Meta,
   SessionsSnapshot,
+  Summary,
   TasksSnapshot,
   UsageReport,
 } from './types'
@@ -77,6 +78,7 @@ export const api = {
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
   plugins: source<PluginList>('plugins'),
   meta: () => get<Meta>('/api/v1/meta'),
+  summary: () => get<Summary>('/api/v1/summary'),
   sessions: {
     list: source<SessionsSnapshot>('sessions'),
     screen: (name: string, lines = 200) =>
