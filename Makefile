@@ -3,7 +3,7 @@ BACKEND_PORT ?= 8000
 FRONTEND_PORT ?= 5173
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint clean
+.PHONY: help setup dev backend frontend test build lint clean types types-check check
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -34,6 +34,26 @@ dev: setup ## Run API + UI together, then open http://localhost:5173
 
 test: backend/.venv/.stamp ## Run backend tests
 	cd backend && .venv/bin/pytest -q
+
+# TypeScript types for the API, generated from the backend's response models. The generator
+# runs via npx in its own pinned environment (it needs TypeScript 5; the app uses 6).
+OPENAPI_TS = npx --yes -p typescript@5.9.3 -p openapi-typescript@7.13.0 openapi-typescript
+GENERATED = frontend/src/api/generated.ts
+
+types: backend/.venv/.stamp ## Regenerate frontend/src/api/generated.ts from the API
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+	(cd backend && .venv/bin/python -m app.openapi) > "$$tmp/openapi.json" && \
+	$(OPENAPI_TS) "$$tmp/openapi.json" -o $(GENERATED) >/dev/null && \
+	echo "Wrote $(GENERATED)"
+
+types-check: backend/.venv/.stamp ## Fail if generated.ts is out of date with the API
+	@tmp=$$(mktemp -d) && trap 'rm -rf "$$tmp"' EXIT && \
+	(cd backend && .venv/bin/python -m app.openapi) > "$$tmp/openapi.json" && \
+	$(OPENAPI_TS) "$$tmp/openapi.json" -o "$$tmp/generated.ts" >/dev/null && \
+	if diff -q "$$tmp/generated.ts" $(GENERATED) >/dev/null; then echo "generated.ts is up to date"; \
+	else echo "generated.ts is stale: run 'make types' and commit it"; diff -u $(GENERATED) "$$tmp/generated.ts" | head -40; exit 1; fi
+
+check: test types-check build lint ## Everything CI runs
 
 build: frontend/node_modules/.stamp ## Typecheck + production build of the UI
 	cd frontend && npm run build

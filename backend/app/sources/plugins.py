@@ -55,6 +55,7 @@ class PluginsSource:
             # hold header templates and env references.
             item = {k: p.get(k) for k in FIELDS}
             item["name"], _, item["marketplace"] = (p.get("id") or "").partition("@")
+            item["enabled"] = bool(p.get("enabled"))
             plugins.append(item)
         plugins.sort(key=lambda p: p["id"] or "")
         result = {"plugins": plugins, "error": None}

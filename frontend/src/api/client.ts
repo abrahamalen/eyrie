@@ -8,7 +8,10 @@ import type {
   McpStatus,
   NexusAgent,
   NexusFile,
-  Plugin,
+  PluginList,
+  Screen,
+  Trashed,
+  Meta,
   SessionsSnapshot,
   TasksSnapshot,
   UsageReport,
@@ -69,14 +72,15 @@ export const api = {
     write: (agent: string, name: string, content: string, etag: string) =>
       send<NexusFile>('PUT', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, { content }, { 'If-Match': etag }),
     remove: (agent: string, name: string, etag: string) =>
-      send<{ trashed_to: string }>('DELETE', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, undefined, { 'If-Match': etag }),
+      send<Trashed>('DELETE', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, undefined, { 'If-Match': etag }),
   },
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
-  plugins: source<{ plugins: Plugin[]; error: string | null }>('plugins'),
+  plugins: source<PluginList>('plugins'),
+  meta: () => get<Meta>('/api/v1/meta'),
   sessions: {
     list: source<SessionsSnapshot>('sessions'),
     screen: (name: string, lines = 200) =>
-      get<{ name: string; text: string }>(`/api/v1/sessions/${name}/screen?lines=${lines}`),
+      get<Screen>(`/api/v1/sessions/${name}/screen?lines=${lines}`),
     conversations: (limit = 15) => get<Conversation[]>(`/api/v1/sessions/conversations?limit=${limit}`),
   },
   audit: (limit = 200) => get<AuditEntry[]>(`/api/v1/audit?limit=${limit}`),

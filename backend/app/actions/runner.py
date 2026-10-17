@@ -49,11 +49,14 @@ class Runner:
     def run(self, tool: str, args: list[str], cwd: Path | None = None) -> RunResult:
         argv = [self.binary(tool), *args]
         env = {**os.environ, **self.settings.cli.env}
+        if cwd is None:
+            cwd = self.settings.paths.data_dir
+            cwd.mkdir(parents=True, exist_ok=True)
         started = time.perf_counter()
         with _lock:
             try:
                 p = subprocess.run(
-                    argv, cwd=cwd or self.settings.paths.data_dir, env=env, stdin=subprocess.DEVNULL,
+                    argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                     capture_output=True, text=True, timeout=self.settings.cli.timeout_s, shell=False,
                 )
                 code, out, err = p.returncode, p.stdout, p.stderr
