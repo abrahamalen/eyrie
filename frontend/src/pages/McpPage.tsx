@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { api } from '@/api/client'
 import { usePoll } from '@/usePoll'
 import { shortPath } from '@/format'
 import { AddMcpDialog } from '@/components/AddMcpDialog'
-import { RemoveMcpButton } from '@/components/RemoveMcpButton'
+import { RemoveMcpDialog } from '@/components/RemoveMcpDialog'
+import { Button } from '@/components/ui/button'
+import type { McpServer } from '@/api/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export function McpPage() {
   const { data, error, refresh } = usePoll(api.mcp, 10_000)
+  const [removing, setRemoving] = useState<McpServer | null>(null)
   const failure = (name: string) => data?.last_known_failures.find((f) => f.name === name)
   const pluginOnly = data?.last_known_failures.filter((f) => !data.configured.some((m) => m.name === f.name)) ?? []
 
@@ -67,7 +71,9 @@ export function McpPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <RemoveMcpButton server={m} onDone={refresh} />
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setRemoving(m)}>
+                          Remove
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
@@ -95,6 +101,14 @@ export function McpPage() {
           )}
         </CardContent>
       </Card>
+
+      <RemoveMcpDialog
+        server={removing}
+        onClose={() => {
+          setRemoving(null)
+          refresh()
+        }}
+      />
 
       <p className="text-xs text-muted-foreground">
         "Last known" comes from recent session transcripts, not a live check: checking would mean launching every

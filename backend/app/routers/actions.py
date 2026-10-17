@@ -3,8 +3,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ValidationError
 
-from app.actions.registry import ACTIONS, redact
+from app.actions.registry import ACTIONS, Context, redact
 from app.actions.runner import CliNotFound
+from app.sessions.dirs import is_allowed
 
 router = APIRouter(prefix="/api/v1", tags=["actions"])
 
@@ -28,14 +29,17 @@ def run_action(action_id: str, body: ActionRequest, request: Request):
         params = action.params.model_validate(body.params)
     except ValidationError as e:
         raise HTTPException(422, _errors(e))
-    planned = action.plan(params)
+    state = request.app.state
+    try:
+        planned = action.plan(params, Context(state.settings, state.runner))
+    except CliNotFound as e:
+        raise HTTPException(503, str(e))
     shown = redact(planned.tool, planned.args)
     if body.dry_run:
         return {"action": action_id, "argv": shown, "destructive": action.destructive, "dry_run": True}
     if action.destructive and not body.confirm:
         raise HTTPException(428, {"detail": "Destructive action; review the command and confirm", "argv": shown})
 
-    state = request.app.state
     blocked = _precheck(state, action_id, params)
     if blocked:
         raise HTTPException(409, blocked)
@@ -70,6 +74,14 @@ def _precheck(state, action_id: str, params) -> str | None:
     # records it as enabled anyway, so check first.
     if action_id.startswith("plugins.") and _installed_plugin(state, params.plugin) is None:
         return f"{params.plugin} isn't installed"
+    if action_id == "sessions.start":
+        if not is_allowed(state.settings, params.cwd):
+            return (f"{params.cwd} isn't an allowed directory. Use a project Claude Code or Codex already knows, "
+                    "or add a parent folder to sessions.roots in eyrie.toml.")
+        if state.registry["sessions"].tmux.exists(params.name):
+            return f"A session named {params.name} already exists"
+    if action_id == "sessions.stop" and not state.registry["sessions"].tmux.exists(params.name):
+        return f"No session named {params.name}"
     return None
 
 
@@ -81,6 +93,13 @@ def _verify(state, action_id: str, params) -> str | None:
         want = action_id == "plugins.enable"
         if p is not None and p["enabled"] != want:
             return f"The CLI reported success but {params.plugin} is still {'disabled' if want else 'enabled'}."
+        return None
+    if action_id.startswith("sessions."):
+        alive = state.registry["sessions"].tmux.exists(params.name)
+        if action_id == "sessions.start" and not alive:
+            return "tmux reported success but the session isn't running."
+        if action_id == "sessions.stop" and alive:
+            return "The session is still running."
         return None
     mcp = state.registry.get("mcp")
     if mcp is None or not action_id.startswith("mcp."):

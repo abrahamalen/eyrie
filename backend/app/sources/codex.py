@@ -29,19 +29,20 @@ class CodexSource:
             con = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
             cur = con.cursor()
             cur.execute("""
-                SELECT cwd, model, tokens_used, created_at, updated_at, reasoning_effort, title
+                SELECT id, cwd, model, tokens_used, created_at, updated_at, reasoning_effort, title
                 FROM threads
                 WHERE archived = 0
                 ORDER BY updated_at DESC
                 LIMIT 200
             """)
-            for cwd, model, tokens_used, created_at, updated_at, reasoning_effort, title in cur.fetchall():
+            for thread_id, cwd, model, tokens_used, created_at, updated_at, reasoning_effort, title in cur.fetchall():
                 tokens_used = tokens_used or 0
                 totals["tokens_used"] += tokens_used
                 m = model or "unknown"
                 by_model[m] = by_model.get(m, 0) + tokens_used
                 by_cwd[cwd] = by_cwd.get(cwd, 0) + tokens_used
                 rows.append({
+                    "id": thread_id,
                     "cwd": cwd,
                     "model": m,
                     "tokens_used": tokens_used,

@@ -48,17 +48,31 @@ class Paths(BaseModel):
 
 
 class Sources(BaseModel):
-    enabled: list[str] = ["claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+    enabled: list[str] = ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
 
 
 class Privacy(BaseModel):
     hide_mcp: list[str] = []
 
 
+class Sessions(BaseModel):
+    # Sessions may start in any directory under these roots, or in a directory Claude Code
+    # or Codex has already been used in.
+    roots: list[Path] = []
+    # Eyrie's own tmux server, kept apart from your personal tmux sessions.
+    socket: str = "eyrie"
+
+    @field_validator("roots")
+    @classmethod
+    def _expand(cls, v: list[Path]) -> list[Path]:
+        return [p.expanduser() for p in v]
+
+
 class Cli(BaseModel):
-    # Paths to the claude / codex binaries; default is whatever is on PATH.
+    # Paths to the claude / codex / tmux binaries; default is whatever is on PATH.
     claude_bin: str | None = None
     codex_bin: str | None = None
+    tmux_bin: str | None = None
     # Extra environment for CLI calls, e.g. CLAUDE_CONFIG_DIR / CODEX_HOME to point the
     # CLIs at a sandbox. Point paths.* at the same place so reads match writes.
     env: dict[str, str] = {}
@@ -72,6 +86,7 @@ class Settings(BaseSettings):
     sources: Sources = Sources()
     privacy: Privacy = Privacy()
     cli: Cli = Cli()
+    sessions: Sessions = Sessions()
     # $/MTok per model id; merged over the built-in table in app/usage/prices.py
     pricing: dict[str, ModelPrice] = {}
 

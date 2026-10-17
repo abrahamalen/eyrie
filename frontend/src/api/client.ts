@@ -3,10 +3,12 @@ import type {
   ActionResult,
   AuditEntry,
   ClaudeUsage,
+  Conversation,
   CodexUsage,
   McpStatus,
   NexusAgent,
   Plugin,
+  SessionsSnapshot,
   TasksSnapshot,
   UsageReport,
 } from './types'
@@ -62,6 +64,12 @@ export const api = {
   nexus: source<{ agents: NexusAgent[] }>('nexus'),
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
   plugins: source<{ plugins: Plugin[]; error: string | null }>('plugins'),
+  sessions: {
+    list: source<SessionsSnapshot>('sessions'),
+    screen: (name: string, lines = 200) =>
+      get<{ name: string; text: string }>(`/api/v1/sessions/${name}/screen?lines=${lines}`),
+    conversations: (limit = 15) => get<Conversation[]>(`/api/v1/sessions/conversations?limit=${limit}`),
+  },
   audit: (limit = 200) => get<AuditEntry[]>(`/api/v1/audit?limit=${limit}`),
   actions: {
     preview: (id: string, params: object) =>
