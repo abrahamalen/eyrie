@@ -120,7 +120,7 @@ Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes
 | Plugins | `claude plugin enable` / `disable --json` | `claude plugin list --json`, cached until the plugin state files change (~0.7 s per call) |
 | Plugin install / uninstall | Not yet: marketplace installs can declare a command a person must approve by sha256 (`--accept-command`), which needs its own two-step flow | |
 | Codex threads, sessions | Slice 5 (session manager) | |
-| Nexus memory | Slice 6 (direct file ops inside `agent-memory/Nexus` only) | |
+| Nexus memory | Slice 6: direct file ops, confined to `agent-memory/Nexus/<agent>/*.md` (see below) | Same folder |
 | Personal tasks | Slice 2 (in-place line edits) | |
 
 - **No health checks**: `claude mcp list` / `get` health-check servers, which launches every stdio server. So they're never used for reads.
@@ -137,6 +137,15 @@ Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes
 - **Verify**: after a run, Eyrie checks the change actually happened, because some CLI paths exit 0 without doing it.
   - `claude plugin enable` of a plugin that isn't installed reports success and records it as enabled. So plugin toggles are refused (`409`) unless the plugin is installed, and the enabled state is rechecked afterwards.
 - **Audit**: every run appends to `~/.eyrie/audit.jsonl`: action, masked argv, params with secret values masked, ok, exit code, duration, message. `GET /api/v1/audit` serves it, and the Activity page shows it.
+- **Nexus memory (slice 6)**: Eyrie owns no CLI for this, so it edits the files directly, inside tight limits.
+  - Agent and file names are restricted (`*.md` only, no hidden files).
+  - Every path is resolved and must stay directly inside an existing agent folder. Symlinked files or agent folders are refused, and no new agent folders can be created.
+  - Writes require `If-Match` with the content hash, and use an atomic write. A stale write is `409`, returned with the current file.
+  - Delete also requires `If-Match`, and moves the file to `<vault>/.trash/agent-memory/Nexus/<agent>/`, never unlinking it.
+  - 1 MB per file.
+  - Every create, write and delete is audit-logged.
+  - The editor re-checks the open file every 10 s, because agents write while they work. With no local edits it reloads quietly; with local edits it shows the conflict before Save, offering to load theirs or overwrite with yours.
+  - Reading a file reports which other files link to it, e.g. the agent's `MEMORY.md` index. The delete dialog uses this to warn about a dangling link.
 - **Sandbox**: `[cli] env` (e.g. `CLAUDE_CONFIG_DIR`, `CODEX_HOME`), together with matching `paths.*`, points the CLIs and reads at a scratch config. That's how this slice was tested end to end with the real CLIs.
 
 ### 4.3 Session manager

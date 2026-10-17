@@ -38,7 +38,9 @@ eyrie/
   them from Eyrie; it runs `claude mcp` / `codex mcp` and shows the exact command first.
 - **Plugins**: Claude Code plugins, enabled or disabled from Eyrie via `claude plugin`.
 - **Activity**: every change Eyrie makes, in `~/.eyrie/audit.jsonl` (secrets masked).
-- **Nexus memory**: which agents have memory in the vault and how much.
+- **Nexus memory**: browse, edit, create and delete Nexus agents' memory files in the
+  vault (`agent-memory/Nexus`). Edits never overwrite a change an agent made meanwhile,
+  and deleted files go to the vault's `.trash` folder.
 - **Tasks**: a plain markdown checklist in the vault at `Personal/Tasks.md`, editable
   from Obsidian too. The vault-root `Tasks.md` is never touched.
 

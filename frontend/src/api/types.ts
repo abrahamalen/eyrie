@@ -101,6 +101,16 @@ export interface NexusAgent {
   agent: string
   file_count: number
   last_used: string
+  files: { name: string; size: number; modified: string }[]
+}
+
+export interface NexusFile {
+  agent: string
+  name: string
+  content: string
+  etag: string
+  modified: string
+  linked_from: string[]
 }
 
 export interface Task {

@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.config import Settings, get_settings
 from app.actions.audit import AuditLog
 from app.actions.runner import Runner
-from app.routers import actions, auth, sessions, sources, tasks, usage
+from app.routers import actions, auth, nexus, sessions, sources, tasks, usage
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
 
@@ -26,6 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(usage.router)
     app.include_router(actions.router)
     app.include_router(sessions.router)
+    app.include_router(nexus.router)
 
     @app.get("/api/v1/health")
     def health():
