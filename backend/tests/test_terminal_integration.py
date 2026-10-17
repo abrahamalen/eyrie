@@ -1,5 +1,6 @@
 """Browser terminal against real tmux on a throwaway socket, with a stand-in program."""
 import json
+import shutil
 import subprocess
 import time
 
@@ -7,8 +8,7 @@ import pytest
 
 from tests.test_sessions_tmux_integration import real  # noqa: F401  (fixture)
 
-pytestmark = pytest.mark.skipif(subprocess.run(["which", "tmux"], capture_output=True).returncode != 0,
-                                reason="tmux not installed")
+pytestmark = pytest.mark.skipif(shutil.which("tmux") is None, reason="tmux not installed")
 
 
 def start(c, proj, name):
