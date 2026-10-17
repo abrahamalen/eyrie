@@ -307,6 +307,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Summary
+         * @description What needs you and what's going on: the home page and the widget both read this.
+         */
+        get: operations["summary_api_v1_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks": {
         parameters: {
             query?: never;
@@ -412,6 +432,27 @@ export interface components {
             message: string;
             /** Ok */
             ok: boolean;
+        };
+        /** AttentionItem */
+        AttentionItem: {
+            /** Detail */
+            detail: string;
+            /** Href */
+            href: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "cli_missing" | "session_exited_error" | "session_idle" | "mcp_failed" | "unpriced_model";
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "problem" | "attention";
+            /** Since */
+            since: string | null;
+            /** Title */
+            title: string;
         };
         /** AuditEntry */
         AuditEntry: {
@@ -564,6 +605,13 @@ export interface components {
             /** Started */
             started: string;
         };
+        /** DayCost */
+        DayCost: {
+            /** Cost */
+            cost: number;
+            /** Day */
+            day: string;
+        };
         /** DayModel */
         DayModel: {
             /** Cost */
@@ -583,8 +631,10 @@ export interface components {
         };
         /** Health */
         Health: {
-            /** Status */
-            status: string;
+            claude: components["schemas"]["ToolHealth"];
+            codex: components["schemas"]["ToolHealth"];
+            tmux: components["schemas"]["ToolHealth"];
+            usage_index: components["schemas"]["IndexStats"] | null;
         };
         /** IndexStats */
         IndexStats: {
@@ -730,6 +780,18 @@ export interface components {
             /** Updated */
             updated: string;
         };
+        /** RecentProject */
+        RecentProject: {
+            /** Last Used */
+            last_used: string;
+            /** Path */
+            path: string;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex";
+        };
         /** Screen */
         Screen: {
             /** Name */
@@ -784,6 +846,67 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** Spend */
+        Spend: {
+            /** Change Vs Prev 7 Pct */
+            change_vs_prev_7_pct: number | null;
+            /** Last 7 Days */
+            last_7_days: components["schemas"]["DayCost"][];
+            /** Today */
+            today: number;
+            /** Top Project Today */
+            top_project_today: string | null;
+            /** Yesterday */
+            yesterday: number;
+        };
+        /** Status */
+        Status: {
+            /** Status */
+            status: string;
+        };
+        /** Summary */
+        Summary: {
+            /** Attention */
+            attention: components["schemas"]["AttentionItem"][];
+            /** Generated At */
+            generated_at: string;
+            health: components["schemas"]["Health"];
+            /** Recent Projects */
+            recent_projects: components["schemas"]["RecentProject"][];
+            /** Sessions */
+            sessions: components["schemas"]["SummarySession"][];
+            spend: components["schemas"]["Spend"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "attention" | "problem";
+            tasks: components["schemas"]["SummaryTasks"];
+        };
+        /** SummarySession */
+        SummarySession: {
+            /** Alive */
+            alive: boolean;
+            /** Exit Status */
+            exit_status: number | null;
+            /** Idle Minutes */
+            idle_minutes: number | null;
+            /** Last Output */
+            last_output: string | null;
+            /** Name */
+            name: string;
+            /** Project */
+            project: string | null;
+            /** Tool */
+            tool: ("claude" | "codex") | null;
+        };
+        /** SummaryTasks */
+        SummaryTasks: {
+            /** Next */
+            next: components["schemas"]["Task"][];
+            /** Open Count */
+            open_count: number;
+        };
         /** Task */
         Task: {
             /** Done */
@@ -813,6 +936,15 @@ export interface components {
         Token: {
             /** Token */
             token: string;
+        };
+        /** ToolHealth */
+        ToolHealth: {
+            /** Found */
+            found: boolean;
+            /** Path */
+            path: string | null;
+            /** Version */
+            version: string | null;
         };
         /** Trashed */
         Trashed: {
@@ -1019,7 +1151,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Health"];
+                    "application/json": components["schemas"]["Status"];
                 };
             };
         };
@@ -1388,6 +1520,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsageReport"];
+                };
+            };
+        };
+    };
+    summary_api_v1_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Summary"];
                 };
             };
         };

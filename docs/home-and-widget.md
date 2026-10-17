@@ -57,7 +57,7 @@ health           { tmux, claude, codex, usage_index }   is each tool found and w
 
 **Cost** comes from the usage index (today and the last 7 days), never from `lastCost`. That fixes H2.
 
-**Snapshot cost**: the slowest input is the transcript scan, which takes about 6 ms warm. The summary is cheap enough to poll every 10 s from both views.
+**Cost of a poll** (measured on real data): about 60 ms warm. It was about 200 ms until the MCP source stopped re-reading its 15 newest transcripts on every call; it now caches each transcript's failures by modified time and size, so only the active transcript is re-read (this closes P5 from `architecture.md`). Tool versions are cached until the binary changes. Cheap enough to poll every 10 s from both views.
 
 ## 3. Visual direction and the new home page
 

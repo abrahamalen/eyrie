@@ -305,6 +305,73 @@ class AuditEntry(BaseModel):
     message: str
 
 
+class AttentionItem(BaseModel):
+    kind: Literal["cli_missing", "session_exited_error", "session_idle", "mcp_failed", "unpriced_model"]
+    severity: Literal["problem", "attention"]
+    title: str
+    detail: str
+    href: str
+    since: str | None
+
+
+class SummarySession(BaseModel):
+    name: str
+    tool: Literal["claude", "codex"] | None
+    project: str | None
+    alive: bool
+    exit_status: int | None
+    idle_minutes: int | None
+    last_output: str | None
+
+
+class DayCost(BaseModel):
+    day: str
+    cost: float
+
+
+class Spend(BaseModel):
+    today: float
+    yesterday: float
+    last_7_days: list[DayCost]
+    change_vs_prev_7_pct: float | None
+    top_project_today: str | None
+
+
+class SummaryTasks(BaseModel):
+    open_count: int
+    next: list[Task]
+
+
+class RecentProject(BaseModel):
+    path: str
+    last_used: str
+    tool: Literal["claude", "codex"]
+
+
+class ToolHealth(BaseModel):
+    found: bool
+    version: str | None
+    path: str | None
+
+
+class Health(BaseModel):
+    tmux: ToolHealth
+    claude: ToolHealth
+    codex: ToolHealth
+    usage_index: IndexStats | None
+
+
+class Summary(BaseModel):
+    state: Literal["ok", "attention", "problem"]
+    attention: list[AttentionItem]
+    sessions: list[SummarySession]
+    spend: Spend
+    tasks: SummaryTasks
+    recent_projects: list[RecentProject]
+    health: Health
+    generated_at: str
+
+
 class Meta(BaseModel):
     home: str
     version: str
@@ -314,7 +381,7 @@ class Token(BaseModel):
     token: str
 
 
-class Health(BaseModel):
+class Status(BaseModel):
     status: str
 
 

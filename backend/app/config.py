@@ -61,6 +61,8 @@ class Sessions(BaseModel):
     roots: list[Path] = []
     # Eyrie's own tmux server, kept apart from your personal tmux sessions.
     socket: str = "eyrie"
+    # A live session that has printed nothing for this long is flagged as probably waiting for you.
+    idle_minutes: int = 10
 
     @field_validator("roots")
     @classmethod
