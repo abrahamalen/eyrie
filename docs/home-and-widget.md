@@ -59,35 +59,56 @@ health           { tmux, claude, codex, usage_index }   is each tool found and w
 
 **Snapshot cost**: the slowest input is the transcript scan, which takes about 6 ms warm. The summary is cheap enough to poll every 10 s from both views.
 
-## 3. New home page
+## 3. Visual direction and the new home page
 
-Ordered by what you act on first. No hero (H1).
+*Revised after review: the home page should explain Eyrie, and the whole UI needs a stronger look. The reference is the Nexus site, <https://nexus-ai.aayushostwal.com> (source `aayushostwal/nexus`, `apps/nexus-web`).*
 
-```
-┌ Overview ───────────────────────────────────────────── Sat 17 Oct ┐
-│ NEEDS ATTENTION (2)                                                │
-│ ● eyrie-7f3a has been idle 14 min · Claude Code · ~/…/eyrie  [Open]│
-│ ● MCP context7 failed to connect · 2 h ago               [MCP page]│
-├──────────────────────────────┬─────────────────────────────────────┤
-│ SESSIONS (2 live)  [+ New]   │ SPEND                               │
-│ eyrie-7f3a  Claude · eyrie   │ $8.42 today     ▁▃▂▅▇▆█ last 7 days │
-│   running · 2 min ago [Open] │ +12% vs previous 7 days             │
-│ eyrie-2c91  Codex · dotfiles │ Top today: ~/personal/projects/eyrie│
-│   idle 14 min         [Open] │                           [Usage →] │
-│ Start in: eyrie · blog · …   │                                     │
-├──────────────────────────────┼─────────────────────────────────────┤
-│ TASKS (3 open)               │ TOOLS                               │
-│ ☐ Renew passport             │ tmux 3.6 ✓  claude 2.1 ✓  codex ✓   │
-│ ☐ Back up Postgres  [+ add]  │ 4 MCP servers · 3 plugins on        │
-└──────────────────────────────┴─────────────────────────────────────┘
-```
+### 3.1 Design language (app-wide)
 
-- **Needs attention** (H3, H4): each row names the thing and links to where you fix it. When the list is empty: "Nothing needs you right now".
-- **Sessions**: live sessions with Open, which goes to `/sessions?open=<name>`. Recent projects appear as chips that start a session in one click, through the same confirm-and-preview action as the Sessions page.
-- **Spend**: today, a 7-day sparkline, the change against the previous 7 days, and the top project today.
-- **Tasks**: the next three open tasks, which you can tick off inline, plus an inline add.
-- **Tools**: a one-line health check, replacing the equal-weight tiles (H6).
-- **Removed**: the hero (H1) and the fake terminal (H5).
+Eyrie manages Nexus agents' memory, so the two should read as siblings. Eyrie takes Nexus's design language, with its own accent so the two stay distinguishable.
+
+| Element | Nexus (reference) | Eyrie |
+|---|---|---|
+| Ground and ink | Warm paper `hsl(40 25% 97%)`, navy ink `hsl(222 30% 14%)`, warm hairlines `hsl(35 15% 85%)`. Dark: navy `hsl(222 28% 9%)` | Same |
+| Accent | Rust `hsl(18 84% 38%)`, used sparingly: eyebrow dot, one emphasised word, small labels | **Sky teal**, Eyrie's own (an eyrie sits high up), a token. The prototype can switch to rust for comparison |
+| Type | Geist, a tight bold display; one italic serif phrase in the hero | Geist and Geist Mono (already in the app), plus **Instrument Serif** italic for the one emphasised phrase, bundled locally so it works offline and on Ubuntu |
+| Labels | Mono uppercase, letter-spaced eyebrows ("01 / A COMPLETE WORKFLOW") | Same, numbered only where it's a real sequence |
+| Surfaces | White cards with hairline borders on paper, lots of whitespace, warm-tinted command boxes with Copy | Same. Command previews (which Eyrie already shows before every change) get the warm box |
+| Chrome | Top header: logo tile, a mono product subtitle, nav, ⌘K search, theme, GitHub | Header with logo tile `e.`, mono "AGENT CONTROL PLANE", a live status pill, theme. The left sidebar stays (ten pages), restyled with mono group labels |
+| Page headers | Eyebrow + tight title + one-line description | Every page gets the same, e.g. `SESSIONS`, "Sessions", one line on what it is |
+
+Data colours stay as they are. The chart palette is the validated categorical one, and status colours keep their meaning.
+
+### 3.2 Two pages: a public landing page and the in-app home
+
+"Explaining Eyrie" and "what's going on right now" are different jobs for different places.
+
+**Landing page**: public, at **<https://alenabraham.me/eyrie>**.
+
+- **Where it lives**: in the site repo (`alen-abraham.github.io`, Hugo + PaperMod, deployed from its `hugo` branch). It's a standalone static page under `static/eyrie/`, so it can use Eyrie's design language without fighting the blog theme, and it ships as its own PR in that repo.
+- **No live data**: a public page can't, and shouldn't, reach a local Eyrie. Eyrie's Origin check would refuse it anyway.
+- **Sections**, Nexus-style:
+  1. **Hero**:
+     - Eyebrow: `LOCAL · ON YOUR MACHINE ONLY`.
+     - Headline: "Every coding agent on your machine, *in one place.*"
+     - One paragraph on what Eyrie is.
+     - CTAs: **Install** and **See how it works ↓**.
+     - Mono footnote: `127.0.0.1 only · no accounts · open source`.
+     - Side card: **THE DEAL**. Eyrie reads your tools' own files, changes things only through their own CLIs, shows you the command first, and logs every change.
+  2. **Stat strip**: the Claude Code and Codex it manages, MCP scopes, pages, and `v0.1.0`.
+  3. **01 / What it does**: a card for each area: Sessions, Usage, MCP servers, Plugins, Nexus memory, Tasks, Activity. Each has one sentence, the real command it runs with Copy, and a screenshot.
+  4. **02 / How it works**: a timeline:
+     1. reads your tools' files;
+     2. changes go through their CLIs;
+     3. sessions run in Eyrie's own tmux;
+     4. everything is logged.
+  5. **03 / Safe by design**: localhost only, the token, no shell and no "run anything" endpoint, etag checks, the audit log, and anti-framing headers.
+  6. **04 / Install**: the macOS `.dmg` and Ubuntu `.deb` once packaging ships; until then, from source with `make install`. Plus the top-bar widget.
+
+**In-app home**: the Overview at `127.0.0.1:8787/`.
+
+- **Content**: the live "what's going on" page, in the new design language: needs attention, sessions (with start-in-a-recent-project), spend, tasks and tool health. It fixes H1–H6.
+- **Page header**: like every page, an eyebrow, a title and one line, plus a **What is Eyrie? ↗** link to the landing page instead of a hero.
 
 ## 4. The widget
 
@@ -200,15 +221,21 @@ The widget doesn't change Eyrie's model; it's one more local client.
 Each step is its own PR.
 
 1. **Design**: this document.
-2. **Prototype**: a clickable mock of the new home page, plus the widget popover in its macOS and Ubuntu variants.
+2. **Prototype**, in the new design language: the public landing page, the in-app home, one restyled inner page (Sessions), and the widget popover in its macOS and Ubuntu variants.
 3. **Code**:
-   1. `GET /api/v1/summary` and the new home page (fixes H1–H6)
-   2. Ubuntu support for running Eyrie as a service: a systemd user unit and a cross-platform `make install`
-   3. The widget in dev mode (`npm run tauri dev`) against an installed Eyrie: tray, popover, Rust proxy, autostart
-   4. Packaging: the PyInstaller sidecar, bundling, first-run service install, and a release CI building `.dmg` and `.deb`
+   1. **UI refresh** (§3.1): tokens, type (incl. bundled Instrument Serif), header and sidebar, page headers, cards, buttons, command boxes, applied to every page
+   2. `GET /api/v1/summary` and the new in-app home (§3.2, fixes H1–H6)
+   3. **Landing page** at alenabraham.me/eyrie: a PR in `alen-abraham.github.io` (`static/eyrie/`)
+   4. Ubuntu support for running Eyrie as a service: a systemd user unit and a cross-platform `make install`
+   5. The widget in dev mode (`npm run tauri dev`) against an installed Eyrie: tray, popover, Rust proxy, autostart
+   6. Packaging: the PyInstaller sidecar, bundling, first-run service install, and a release CI building `.dmg` and `.deb`
 
-## 9. Open questions
+## 9. Decisions on the open questions
 
-1. **macOS signing**: an unsigned, ad-hoc signed app shows a Gatekeeper warning the first time you open it (right-click → Open). Proper signing and notarization need an Apple Developer account ($99 a year). Is ad-hoc fine for personal use?
-2. **Ubuntu target**: 24.04 LTS with the default GNOME desktop? It ships the AppIndicator extension enabled. Other desktops vary.
-3. **Cost in the macOS menu bar**: show today's cost next to the icon, or icon only?
+Defaults taken when the design merged without answers; each is cheap to change.
+
+| Question | Default |
+|----------|---------|
+| macOS signing | **Ad-hoc**, for personal use. The first launch needs right-click → Open. Developer ID signing and notarization can be added later in release CI |
+| Ubuntu target | **24.04 LTS, default GNOME** (AppIndicator extension enabled by default) |
+| Cost in the macOS menu bar | **Shown** next to the icon (`$8.42`), with a widget setting to switch to icon only |
