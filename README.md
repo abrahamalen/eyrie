@@ -23,18 +23,19 @@ files and CLIs those tools already use. No accounts, no cloud.
 Needs Python 3.12, Node 22, tmux, and the `claude` / `codex` CLIs you want to manage.
 
 ```bash
-make install    # builds, then runs Eyrie in the background at login (macOS launchd)
-                # -> http://127.0.0.1:8787
+make install    # builds, then runs Eyrie in the background at login
+                # (launchd on macOS, a systemd user unit on Ubuntu) -> http://127.0.0.1:8787
 make status     # installed? answering?
 make logs       # follow ~/.eyrie/logs/eyrie.log
 make uninstall  # removes the agent; tmux sessions keep running
 ```
 
-Run `make install` from your own terminal: the agent keeps the `PATH` it was installed
-with, which is how it finds `claude`, `codex` and `tmux`. After pulling changes, run
-`make install` again to rebuild and restart. `make install DRY_RUN=1` prints the agent
-and the `launchctl` commands without changing anything. Not on macOS: `make serve` runs
-the same thing in the foreground.
+Services don't see your shell's `PATH`, so `make install` asks your login shell for it
+(from a clean environment) and records it; that's how the service finds `claude`, `codex`
+and `tmux`. After pulling changes, run `make install` again to rebuild and restart.
+`make install DRY_RUN=1` prints the service file and the commands without changing
+anything. On Ubuntu, `loginctl enable-linger` keeps Eyrie running while you're logged out.
+Elsewhere, `make serve` runs the same thing in the foreground.
 
 ## Develop
 

@@ -184,13 +184,13 @@ One installer per OS. It contains the widget, the Eyrie backend as a self-contai
 | Web UI | `frontend/dist`, bundled as a Tauri resource; the backend's `server.ui_dir` points at it |
 | macOS | `Eyrie.app` in a `.dmg`. The first launch installs the backend as LaunchAgent `local.eyrie`, pointing at the `eyrie-server` inside the app, using the same settings as `scripts/launchd.py` (`AbandonProcessGroup`, KeepAlive, 127.0.0.1:8787) |
 | Ubuntu | A `.deb` (fixed paths under `/usr/lib/eyrie`, which a service needs). The first launch installs a **systemd user unit** `eyrie.service` (`systemctl --user enable --now`) with `KillMode=process`, systemd's equivalent of `AbandonProcessGroup`, so tmux sessions survive restarts. AppImage is deferred: it moves on disk, which breaks a service path |
-| PATH for the service | Neither launchd nor systemd user units see your shell's PATH, so `claude`, `codex` and `tmux` wouldn't be found. At service install, Eyrie asks your login shell (`$SHELL -lic 'echo $PATH'`) and writes the result into the unit |
+| PATH for the service | Neither launchd nor systemd user units see your shell's PATH, so `claude`, `codex` and `tmux` wouldn't be found. At service install, Eyrie runs your login shell **from a clean environment** (`env -i HOME USER SHELL TERM $SHELL -lic …`, reading the value between markers so shell noise doesn't matter) and writes the result into the unit. A clean environment matters: a login shell otherwise inherits the caller's PATH, including session-specific entries |
 | Not bundled | `tmux`, `claude`, `codex`. These are your tools, and Eyrie manages them rather than shipping them. Missing ones show up as `cli_missing` attention items, with how to install |
 | Data | Unchanged: `~/.eyrie` (token, usage DB, audit log, tmux.conf) and your `eyrie.toml`. Install, upgrade and uninstall never delete it |
 | Upgrade | Install the new package; the widget restarts the service if `eyrie-server`'s version changed |
 | Uninstall | The widget's **Quit and remove service** (and the `.deb`'s `prerm`) unload the service. Sessions keep running |
 | CI | A release workflow (tag `v*`) with a matrix of `macos-14` and `ubuntu-24.04` builds the `.dmg` and `.deb` as artifacts. It's skipped on the `alenabraham-qure` fork, like `ci.yml` |
-| Dev install | `make install` stays for running from a checkout. It also gains Ubuntu support (a systemd user unit), so dev and packaged installs behave the same |
+| Dev install | **Built.** `make install` runs from a checkout on both platforms through `scripts/service.py`: a launchd agent on macOS, or a systemd user unit `eyrie.service` on Linux (`KillMode=process`, `Restart=on-failure`, logs appended to `~/.eyrie/logs/eyrie.log`). Both record your login shell's PATH from a clean environment, so it no longer matters where install runs from. Verified on Ubuntu 24.04 in a container: the full backend suite passes (Python 3.12.3, tmux 3.4) and `systemd-analyze verify` accepts the unit. Not yet exercised under a live `systemd --user` manager |
 
 ## 6. Repo layout
 
