@@ -6,7 +6,7 @@ from app.main import create_app
 
 def test_lists_sources_with_availability(client):
     by_id = {s["id"]: s for s in client.get("/api/v1/sources").json()}
-    assert list(by_id) == ["claude", "codex", "mcp", "nexus", "tasks", "usage"]
+    assert list(by_id) == ["claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
     assert by_id["claude"]["available"] is True
     assert by_id["codex"]["available"] is False
     assert "Codex state DB not found" in by_id["codex"]["reason"]

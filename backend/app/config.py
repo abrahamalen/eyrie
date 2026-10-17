@@ -48,11 +48,21 @@ class Paths(BaseModel):
 
 
 class Sources(BaseModel):
-    enabled: list[str] = ["claude", "codex", "mcp", "nexus", "tasks", "usage"]
+    enabled: list[str] = ["claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
 
 
 class Privacy(BaseModel):
     hide_mcp: list[str] = []
+
+
+class Cli(BaseModel):
+    # Paths to the claude / codex binaries; default is whatever is on PATH.
+    claude_bin: str | None = None
+    codex_bin: str | None = None
+    # Extra environment for CLI calls, e.g. CLAUDE_CONFIG_DIR / CODEX_HOME to point the
+    # CLIs at a sandbox. Point paths.* at the same place so reads match writes.
+    env: dict[str, str] = {}
+    timeout_s: float = 60
 
 
 class Settings(BaseSettings):
@@ -61,6 +71,7 @@ class Settings(BaseSettings):
     paths: Paths = Paths()
     sources: Sources = Sources()
     privacy: Privacy = Privacy()
+    cli: Cli = Cli()
     # $/MTok per model id; merged over the built-in table in app/usage/prices.py
     pricing: dict[str, ModelPrice] = {}
 

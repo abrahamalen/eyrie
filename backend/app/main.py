@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 
 from app.config import Settings, get_settings
-from app.routers import auth, sources, tasks, usage
+from app.actions.audit import AuditLog
+from app.actions.runner import Runner
+from app.routers import actions, auth, sources, tasks, usage
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
 
@@ -14,12 +16,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.registry = build_registry(settings)
     app.state.token = token
+    app.state.runner = Runner(settings)
+    app.state.audit = AuditLog(settings.paths.data_dir / "audit.jsonl")
     app.add_middleware(LocalOnlyMiddleware, token=token)
 
     app.include_router(auth.router)
     app.include_router(sources.router)
     app.include_router(tasks.router)
     app.include_router(usage.router)
+    app.include_router(actions.router)
 
     @app.get("/api/v1/health")
     def health():

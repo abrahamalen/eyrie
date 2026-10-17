@@ -20,7 +20,7 @@ class Source(Protocol):
 
 
 def build_registry(settings: Settings) -> dict[str, Source]:
-    from app.sources import claude, codex, mcp, nexus, tasks
+    from app.sources import claude, codex, mcp, nexus, plugins, tasks
     from app.usage.source import UsageSource
 
     known: dict[str, Source] = {
@@ -28,6 +28,7 @@ def build_registry(settings: Settings) -> dict[str, Source]:
         "codex": codex.CodexSource(settings),
         "mcp": mcp.McpSource(settings),
         "nexus": nexus.NexusSource(settings),
+        "plugins": plugins.PluginsSource(settings),
         "tasks": tasks.TasksSource(settings),
         "usage": UsageSource(settings),
     }
