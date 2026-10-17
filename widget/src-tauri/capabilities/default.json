@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The panel can only call Eyrie's own commands (no shell, filesystem or arbitrary HTTP).",
+  "windows": ["panel"],
+  "permissions": ["core:event:default"]
+}

@@ -10,6 +10,10 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  build: {
+    // Two pages: the app, and the top-bar widget's panel (loaded by the Tauri app in widget/).
+    rollupOptions: { input: { main: 'index.html', widget: 'widget.html' } },
+  },
   server: {
     proxy: {
       // ws: the browser terminal is a WebSocket under /api
