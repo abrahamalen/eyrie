@@ -5,7 +5,7 @@ FRONTEND_PORT ?= 5173
 INSTALL_PORT ?= 8787
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check
+.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -90,8 +90,13 @@ widget-check:
 widget: build widget-check ## Run the top-bar widget (debug build) against the installed Eyrie
 	cd widget && npm ci --silent && $(RUST_PATH) npx tauri build --debug --no-bundle && ./src-tauri/target/debug/eyrie-widget
 
-widget-dist: build widget-check ## Build the widget app + installer for this OS (.app/.dmg, .deb/.rpm/AppImage)
-	cd widget && npm ci --silent && $(RUST_PATH) CI=true npx tauri build
+server-dist: setup ## Build the packaged backend (build/dist/eyrie-server/, PyInstaller onedir)
+	backend/.venv/bin/pip install -q -r backend/requirements-build.txt
+	ONEFILE=0 backend/.venv/bin/pyinstaller -y --log-level WARN --distpath build/dist --workpath build/work packaging/eyrie-server.spec
+	build/dist/eyrie-server/eyrie-server --version
+
+widget-dist: build server-dist widget-check ## Build Eyrie for this OS: the app with its server + UI bundled (.app/.dmg, .deb/.rpm/AppImage)
+	cd widget && npm ci --silent && $(RUST_PATH) CI=true npx tauri build --config src-tauri/tauri.bundle.json
 
 clean: ## Remove venv, node_modules, dist, widget build output
-	rm -rf backend/.venv frontend/node_modules frontend/dist widget/node_modules widget/src-tauri/target
+	rm -rf backend/.venv frontend/node_modules frontend/dist widget/node_modules widget/src-tauri/target build

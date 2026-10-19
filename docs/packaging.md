@@ -131,8 +131,13 @@ Each build job:
 2. **Code (done):** `app/cli.py` plus `app/service.py`, with `scripts/service.py` folded in;
    `make install` keeps working. Packaged installs pass `--ui-dir`; the service runs
    `<program> serve --port N`.
-3. **Code:** the widget's sidecar, first-launch install, version check and "Quit and remove
-   service"; the `.dmg` and `.deb` built locally.
+3. **Code (done):** the widget ships `eyrie-server` (onedir) and the UI as resources, via
+   `src-tauri/tauri.bundle.json` so `make widget` dev builds don't need them. On launch it
+   installs the service when Eyrie doesn't answer or runs another version, opens `/setup` once
+   if unconfigured, checks GitHub releases daily, and adds "Quit and remove service".
+   `make widget-dist` = `make server-dist` + `tauri build`; the macOS `.dmg` is built and
+   checked locally (app 53 MB, dmg 23 MB). The `.deb`/`.rpm` builds move to the release job's
+   distro containers (step 5), where they're installed and smoke-tested.
 4. **Code:** `VERSION`, the `make version` target, and the consistency check.
 5. **Code:** `release.yml` with smoke tests; a dry run on a `v0.2.0-rc1` tag on the personal
    repo.
