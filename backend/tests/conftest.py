@@ -31,6 +31,16 @@ def _never_run_real_cli(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _isolated_config(monkeypatch, tmp_path):
+    """Never read (or let setup write) the real ~/.eyrie/eyrie.toml, and don't let whatever
+    this machine has on PATH decide which tools are enabled."""
+    import app.tools
+
+    monkeypatch.setenv("EYRIE_CONFIG", str(tmp_path / "eyrie-config" / "eyrie.toml"))
+    monkeypatch.setattr(app.tools, "installed", lambda settings, tool: bool(getattr(settings.cli, f"{tool}_bin", None)))
+
+
+@pytest.fixture(autouse=True)
 def _no_real_processes(monkeypatch):
     """Session detection reads `ps`; tests must not see the machine's real sessions."""
     from app.sessions import external
@@ -59,6 +69,8 @@ def fake_cli(monkeypatch):
     from app.actions import runner
     fake = FakeCli()
     monkeypatch.setattr(runner.Runner, "run", lambda self, tool, args, cwd=None: fake.run(self, tool, args, cwd))
+    import app.tools
+    monkeypatch.setattr(app.tools, "installed", lambda settings, tool: True)  # the fake CLIs are "on PATH"
     return fake
 
 
@@ -84,7 +96,7 @@ def settings(home):
         claude_json=home / ".claude.json",
         codex_home=home / ".codex",
         gemini_home=home / ".gemini",
-        vault=home / "vault",
+        tasks=home / "vault/Personal/Tasks.md",
         data_dir=home / ".eyrie",
     ))
 

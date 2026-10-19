@@ -12,6 +12,8 @@ import type {
   Screen,
   Trashed,
   Meta,
+  SetupBody,
+  SetupState,
   SessionsSnapshot,
   Summary,
   TasksSnapshot,
@@ -78,6 +80,10 @@ export const api = {
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
   plugins: source<PluginList>('plugins'),
   meta: () => get<Meta>('/api/v1/meta'),
+  setup: {
+    get: () => get<SetupState>('/api/v1/setup'),
+    write: (body: SetupBody, etag: string) => send<SetupState>('PUT', '/api/v1/setup', body, { 'If-Match': etag }),
+  },
   summary: () => get<Summary>('/api/v1/summary'),
   sessions: {
     list: source<SessionsSnapshot>('sessions'),

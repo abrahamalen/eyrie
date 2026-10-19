@@ -42,7 +42,7 @@ export function TasksPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow="You" title="Tasks" description={<>Stored as a plain checklist in your vault at Personal/Tasks.md, so you can edit it in Obsidian too. Eyrie only changes the task lines you touch.</>} />
+      <PageHeader eyebrow="You" title="Tasks" description={<>A plain markdown checklist (choose the file in Settings), so you can keep editing it anywhere, e.g. in Obsidian. Eyrie only changes the task lines you touch.</>} />
 
       {notice && (
         <div

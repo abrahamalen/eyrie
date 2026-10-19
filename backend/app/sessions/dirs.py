@@ -3,11 +3,11 @@ one of the tools has already been used in."""
 from pathlib import Path
 
 from app.config import Settings
-from app.tools import TOOLS
+from app.tools import enabled
 
 
 def _known(settings: Settings) -> set[Path]:
-    return {d for t in TOOLS.values() if t.sessions for d in t.sessions.known_dirs(settings)}
+    return {d for t in enabled(settings).values() if t.sessions for d in t.sessions.known_dirs(settings)}
 
 
 def allowed_dirs(settings: Settings) -> list[str]:

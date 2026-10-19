@@ -8,7 +8,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.sources.base import Availability, path_availability
-from app.tools import TOOLS
+from app.tools import enabled
 
 ARRAY_RE = re.compile(r'"failedMcpServers":\[(.*?)\]')
 ENTRY_RE = re.compile(r'\{"name":"([^"]+)","errorCode":"([^"]*)","error":"([^"]*)"\}')
@@ -41,7 +41,7 @@ class McpSource:
         return None
 
     def _all(self) -> list[dict]:
-        return [e for t in TOOLS.values() if t.mcp for e in t.mcp.servers(self.settings)]
+        return [e for t in enabled(self.settings).values() if t.mcp for e in t.mcp.servers(self.settings)]
 
     def _last_known_failures(self) -> list[dict]:
         proj_dir = self.settings.paths.claude_home / "projects"

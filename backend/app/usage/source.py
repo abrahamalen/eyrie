@@ -9,7 +9,7 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from app.config import Settings
 from app.sources.base import Availability
-from app.tools import TOOLS
+from app.tools import enabled
 from app.usage.index import UsageIndex
 from app.usage.prices import DEFAULT_PRICES, PRICES_UPDATED, ModelPrice
 
@@ -38,7 +38,8 @@ class UsageSource:
     title = "Usage"
 
     def __init__(self, settings: Settings) -> None:
-        readers = {t.id: t.usage for t in TOOLS.values() if t.usage}
+        # Resolved per scan, so a tool installed or enabled later starts being indexed.
+        readers = lambda: {t.id: t.usage for t in enabled(settings).values() if t.usage}  # noqa: E731
         self.index = UsageIndex(settings.paths.data_dir / "usage.db", readers, settings)
         self.prices = {**DEFAULT_PRICES, **settings.pricing}
 

@@ -16,7 +16,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from app.config import Settings
-from app.tools import TOOLS
+from app.tools import TOOLS, enabled
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -33,7 +33,7 @@ def _etime_seconds(v: str) -> int:
     return int(days) * 86400 + h * 3600 + m * 60 + s
 
 
-def parse_ps(output: str) -> list[dict]:
+def parse_ps(output: str, tools=None) -> list[dict]:
     """Rows of `ps -axo pid=,tty=,etime=,command=` → interactive sessions of the known tools."""
     found = []
     for line in output.splitlines():
@@ -47,7 +47,7 @@ def parse_ps(output: str) -> list[dict]:
         # Node-based CLIs (Gemini) show up as `node /path/to/gemini …`.
         if os.path.basename(args[0]) in RUNTIMES and len(args) > 1:
             args = args[1:]
-        tool = next((t for t in TOOLS.values() if t.sessions and os.path.basename(args[0]) == t.binary), None)
+        tool = next((t for t in (tools or TOOLS).values() if t.sessions and os.path.basename(args[0]) == t.binary), None)
         if tool is None or (len(args) > 1 and args[1] in tool.sessions.helpers):
             continue
         resume = None
@@ -105,7 +105,7 @@ class ExternalSessions:
 
     def list(self, exclude_pids: set[int] = frozenset()) -> list[dict]:
         now = datetime.now(timezone.utc)
-        procs = [p for p in parse_ps(_ps()) if p["pid"] not in exclude_pids]
+        procs = [p for p in parse_ps(_ps(), enabled(self.settings)) if p["pid"] not in exclude_pids]
         missing = [p["pid"] for p in procs if p["pid"] not in self._cwd_cache]
         self._cwd_cache.update(_cwds(missing))
         live = {p["pid"] for p in procs}

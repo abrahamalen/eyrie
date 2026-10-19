@@ -1,12 +1,17 @@
-# Copy to eyrie.toml (gitignored) and edit. Every key is optional; these are the defaults.
-# Env vars override this file, e.g. EYRIE_PATHS__VAULT=~/notes.
+# Eyrie's config. First-run setup (and the Settings page) writes ~/.eyrie/eyrie.toml for you;
+# this file documents every key. Every key is optional; these are the defaults.
+# Read from $EYRIE_CONFIG, else ~/.eyrie/eyrie.toml, else <repo>/eyrie.toml (gitignored, for dev).
+# Env vars override it, e.g. EYRIE_PATHS__TASKS=~/notes/todo.md.
+
+[tools]
+enabled = "auto"                      # every tool installed or used here; or e.g. ["claude", "gemini"]
 
 [paths]
 claude_home = "~/.claude"
 claude_json = "~/.claude.json"
 codex_home  = "~/.codex"
-vault       = "~/workspace/Obsidian Vault"
-tasks_file  = "Personal/Tasks.md"     # relative to vault
+gemini_home = "~/.gemini"
+# tasks = "~/notes/Tasks.md"          # a markdown checklist for the Tasks page; off until set
 # agent_memory = "~/.claude/agent-memory"  # Claude Code subagent memory; default: <claude_home>/agent-memory
 data_dir    = "~/.eyrie"              # install token and usage.db (usage history)
 
@@ -14,7 +19,7 @@ data_dir    = "~/.eyrie"              # install token and usage.db (usage histor
 enabled = ["sessions", "claude", "codex", "mcp", "plugins", "memory", "tasks", "usage"]
 
 [sessions]
-# Sessions may start in any directory under these, or in one Claude Code / Codex already knows.
+# Sessions may start in any directory under these, or in one your tools already know.
 roots = []                            # e.g. ["~/personal/projects"]
 socket = "eyrie"                      # Eyrie's private tmux server: tmux -L eyrie ls
 
@@ -28,6 +33,7 @@ hide_mcp = []                         # MCP server names to hide from the UI
 # claude_bin = "/opt/homebrew/bin/claude"   # default: found on PATH
 # tmux_bin   = "/opt/homebrew/bin/tmux"
 # codex_bin  = "/opt/homebrew/bin/codex"
+# gemini_bin = "/opt/homebrew/bin/gemini"
 timeout_s = 60
 # Extra env for CLI calls. To try changes against a scratch config, point the CLIs and
 # paths.* at the same place:

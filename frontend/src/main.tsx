@@ -5,7 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import { api } from '@/api/client'
 import { setHome } from '@/format'
-import { setTools } from '@/tools'
+import { setConfigured, setTools } from '@/tools'
 
 function ThemeInit() {
   useEffect(() => {
@@ -35,6 +35,7 @@ api
   .then((m) => {
     setHome(m.home)
     setTools(m.tools)
+    setConfigured(m.configured)
   })
   .catch(() => {})
   .finally(render)

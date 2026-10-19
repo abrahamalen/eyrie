@@ -57,6 +57,7 @@ def test_transcript_dir_matches_claude_naming(tmp_path):
 @pytest.fixture
 def machine(settings, monkeypatch, home):
     """A fake process table + cwds + transcripts."""
+    (home / ".codex").mkdir(exist_ok=True)  # Codex is used here, so it's enabled
     proj = "/Users/me/workspace/repos/qureai"
     tdir = transcript_dir(settings.paths.claude_home, proj)
     tdir.mkdir(parents=True)

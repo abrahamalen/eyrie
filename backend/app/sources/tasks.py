@@ -59,11 +59,15 @@ class TasksSource:
         self._lock = threading.Lock()
 
     def available(self) -> Availability:
+        if self.file is None:
+            return Availability(False, "No tasks file set; choose one in Settings")
         if self.file.parent.exists():
             return Availability(True)
         return Availability(False, f"Folder not found: {self.file.parent}")
 
     def snapshot(self) -> dict:
+        if self.file is None:
+            return {"etag": "absent", "tasks": []}
         content = self._read()
         lines = content.splitlines(keepends=True) if content else []
         return {"etag": _etag(content), "tasks": [t.__dict__ for t in _parse(lines)]}
