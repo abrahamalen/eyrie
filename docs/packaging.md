@@ -36,8 +36,27 @@ install).
     `Eyrie.app/Contents/MacOS/eyrie-server`, on Linux `/usr/lib/eyrie/eyrie-server`;
   - the UI is a Tauri resource, passed to the service as `EYRIE_SERVER__UI_DIR`;
   - config is `~/.eyrie/eyrie.toml` (already the default since #31).
-- **Start-up cost:** onefile unpacks to a temp dir on every start (about 1 s). That's fine for
-  a service that starts once per login. If it's a problem, `--onedir` is the fallback.
+- **Measured (prototype, 2026-10-20), PyInstaller 6.22.3, Python 3.12:**
+
+  | | macOS arm64 | Debian 12 arm64 (container) |
+  |---|---|---|
+  | onefile size | 14 MB | 15 MB |
+  | onedir size | 29 MB | 33 MB |
+  | onefile `--version` / ready to serve | 10.7 s first run, 6.6 s after | 0.17 s |
+  | onedir `--version` / ready to serve | 2.0 s first run, 0.97 s after | 0.07 s |
+  | glibc needed | n/a | 2.35+ (Ubuntu 22.04, Debian 12, Fedora 41 and newer) |
+
+  On macOS onefile unpacks itself on every start and the OS scans the fresh files, so it's
+  6–10 s. **Decision: onedir everywhere** (one layout to reason about). Tauri's `externalBin`
+  takes a single file, so the folder ships as a bundle **resource** and the widget starts
+  `<resources>/eyrie-server/eyrie-server` itself; the service points at the same path.
+  Built with `packaging/eyrie-server.spec` (hidden imports: uvicorn's and websockets' runtime
+  plug-ins). Smoke-tested: `/api/v1/health`, `/summary`, `/meta`, the UI at `/`, and the
+  terminal WebSocket handshake reaching the app.
+- **Found by the prototype:** `websockets` wasn't in `requirements.txt` (only installed by hand
+  in my venv), so a clean install had no WebSocket support and the browser terminal would
+  fail at runtime; tests didn't notice because the test client has its own. Now pinned, with
+  a test that it's installed.
 
 ## 3. First launch and upgrades
 
