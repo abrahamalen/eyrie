@@ -245,7 +245,7 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
       <tr><td>Usage</td><td><code>backend/app/usage/index.py</code></td><td><code>UsageIndex</code>: incremental transcript scan into <code>usage.db</code>, <code>recent_sessions()</code>, <code>stats()</code></td></tr>
       <tr><td>Usage</td><td><code>backend/app/usage/prices.py</code></td><td>$/MTok table (updated 2026-10-06), <code>normalize_model()</code></td></tr>
       <tr><td>Usage</td><td><code>backend/app/usage/source.py</code></td><td><code>report(days)</code>: per day, model, project; Codex per model; priced at query time</td></tr>
-      <tr><td>Ops</td><td><code>scripts/service.py</code></td><td>Install, uninstall, status of the launchd agent or systemd user unit; PATH capture</td></tr>
+      <tr><td>Ops</td><td><code>backend/app/service.py · cli.py</code></td><td><code>eyrie-server serve | service install|uninstall|status</code>: launchd agent or systemd user unit running <code>&lt;program&gt; serve</code>; PATH capture</td></tr>
       <tr><td>Ops</td><td><code>Makefile</code></td><td><code>dev</code> <code>serve</code> <code>install</code> <code>types</code> <code>types-check</code> <code>check</code> and friends</td></tr>
       <tr><td>Frontend</td><td><code>frontend/src/api/client.ts</code></td><td><code>get</code>/<code>send</code>, token bootstrap, <code>X-Eyrie-Token</code>, <code>StaleError</code> on 409 with <code>current</code></td></tr>
       <tr><td>Frontend</td><td><code>frontend/src/api/generated.ts · types.ts</code></td><td>Types generated from OpenAPI; <code>types.ts</code> only aliases them</td></tr>
@@ -324,7 +324,7 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
   <div class="scroll" tabindex="0"><table class="mid">
     <thead><tr><th>Control</th><th>What the code does</th><th>Where</th></tr></thead>
     <tbody>
-      <tr><td>Bind</td><td>uvicorn <code>--host 127.0.0.1</code> in every Makefile target and service file</td><td><code>Makefile</code>, <code>scripts/service.py</code></td></tr>
+      <tr><td>Bind</td><td><code>eyrie-server serve</code> always passes <code>host="127.0.0.1"</code> to uvicorn; the Makefile and the service only run <code>serve</code></td><td><code>app/cli.py</code></td></tr>
       <tr><td>Host</td><td>Must be <code>localhost</code>, <code>127.0.0.1</code> or <code>::1</code>, else 403. Blocks DNS rebinding</td><td><code>security.py</code></td></tr>
       <tr><td>Origin</td><td>If sent, its host must be loopback, else 403</td><td><code>security.py</code></td></tr>
       <tr><td>Sec-Fetch-Site</td><td><code>cross-site</code> is refused with 403</td><td><code>security.py</code></td></tr>
@@ -410,7 +410,7 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
       <tr><td><code>~/.eyrie/usage.db</code></td><td>Reports</td><td>Upserts</td></tr>
       <tr><td><code>~/.eyrie/tmux.conf</code></td><td>By tmux at server start</td><td>Rewritten if it differs: <code>remain-on-exit on</code>, 50k history, mouse</td></tr>
       <tr><td><code>~/.eyrie/logs/eyrie.log</code></td><td><code>make logs</code></td><td>Service stdout/stderr</td></tr>
-      <tr><td>LaunchAgent plist / systemd unit</td><td><code>make status</code></td><td><code>scripts/service.py install</code></td></tr>
+      <tr><td>LaunchAgent plist / systemd unit</td><td><code>make status</code></td><td><code>app.cli service install</code></td></tr>
     </tbody>
   </table></div>
 </section>
@@ -459,7 +459,7 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
     <tbody>
       <tr><td><code>make dev</code></td><td>API 127.0.0.1:8000, Vite 127.0.0.1:5173</td><td>uvicorn <code>--reload</code>; Vite proxies <code>/api</code> including WebSockets</td></tr>
       <tr><td><code>make serve</code></td><td>127.0.0.1:8787</td><td>Builds the UI, runs uvicorn in the foreground</td></tr>
-      <tr><td><code>make install</code></td><td>127.0.0.1:8787 (<code>INSTALL_PORT</code>)</td><td><code>scripts/service.py install</code>: needs <code>backend/.venv</code> and <code>frontend/dist</code>; waits up to 10 s for <code>/health</code></td></tr>
+      <tr><td><code>make install</code></td><td>127.0.0.1:8787 (<code>INSTALL_PORT</code>)</td><td><code>python -m app.cli service install</code>: needs <code>backend/.venv</code> and <code>frontend/dist</code>; waits up to 10 s for <code>/health</code></td></tr>
       <tr><td>Widget <span class="tag pr">PR #20</span></td><td>talks to <code>EYRIE_URL</code> or 127.0.0.1:8787</td><td><code>npm run tauri dev</code>; autostart plugin enables start-at-login once on first run</td></tr>
     </tbody>
   </table></div>

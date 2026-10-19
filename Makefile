@@ -65,16 +65,16 @@ lint: frontend/node_modules/.stamp ## Lint the UI
 
 serve: setup build ## Run the built app in the foreground on 127.0.0.1:$(INSTALL_PORT) (UI + API)
 	@echo "Eyrie -> http://127.0.0.1:$(INSTALL_PORT)"
-	cd backend && .venv/bin/uvicorn app.main:create_app --factory --host 127.0.0.1 --port $(INSTALL_PORT)
+	cd backend && .venv/bin/python -m app.cli serve --port $(INSTALL_PORT)
 
 install: setup build ## Run Eyrie in the background at login (launchd on macOS, systemd user unit on Linux)
-	python3 scripts/service.py install --port $(INSTALL_PORT) $(if $(DRY_RUN),--dry-run)
+	cd backend && .venv/bin/python -m app.cli service install --port $(INSTALL_PORT) $(if $(DRY_RUN),--dry-run)
 
 uninstall: ## Remove the background agent (leaves tmux sessions running)
-	python3 scripts/service.py uninstall $(if $(DRY_RUN),--dry-run)
+	cd backend && .venv/bin/python -m app.cli service uninstall $(if $(DRY_RUN),--dry-run)
 
 status: ## Is the background agent installed and answering?
-	@python3 scripts/service.py status
+	@cd backend && .venv/bin/python -m app.cli service status
 
 logs: ## Follow the background agent's log
 	tail -f ~/.eyrie/logs/eyrie.log
