@@ -36,7 +36,8 @@ The home page and the widget answer the same question: "what needs me, and what'
 ```
 state            "ok" | "attention" | "problem"   (drives the tray icon)
 attention[]      { kind, severity, title, detail, href, since }   most severe first
-sessions[]       live Eyrie sessions: name, tool, project, alive, idle_for, last_output
+sessions[]       Eyrie's sessions, then ones in your own terminals: name, tool, project, alive, idle_for,
+                 last_output, managed, tty, pid
 spend            today, yesterday, last_7_days[] (daily), change_vs_prev_7_pct, top_project_today
 tasks            open_count, next[3]
 recent_projects  [{ path, last_used, tool }]   for one-click "new session here"
@@ -54,6 +55,8 @@ health           { tmux, claude, codex, usage_index }   is each tool found and w
 | `unpriced_model` | Usage contains a model with no price, so cost reads low | attention |
 
 **Waiting for input.** A session that's idle (no output for 10 min, configurable) is the honest signal Eyrie has. Detecting Claude's "waiting for input" prompt would mean scraping its TUI, and that would break whenever the TUI changes. Not doing that.
+
+**Sessions in your own terminals.** Most sessions aren't started from Eyrie, so the summary also lists interactive `claude` / `codex` processes it finds with `ps` (those with a terminal; daemons, background helpers, `app-server` and MCP children are skipped). Eyrie's own tmux panes are excluded by pid. From each command line Eyrie keeps only the tool and a `--resume` target, never prompt text. The working directory comes from `lsof` (macOS) or `/proc` (Linux). Last activity is the transcript's mtime when the session was resumed by id, and otherwise the newest conversation in that directory (marked approximate). Codex activity is the newest thread for that directory. They're read-only in Eyrie: no attach, no stop, and no idle attention, since leaving a terminal session parked is normal.
 
 **Cost** comes from the usage index (today and the last 7 days), never from `lastCost`. That fixes H2.
 

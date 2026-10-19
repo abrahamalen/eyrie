@@ -71,7 +71,8 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
     for s in snap["sessions"]:
         idle = _minutes_since(s["last_output"], now) if s["alive"] else None
         sessions.append({"name": s["name"], "tool": s["tool"], "project": s["cwd"], "alive": s["alive"],
-                         "exit_status": s["exit_status"], "idle_minutes": idle, "last_output": s["last_output"]})
+                         "exit_status": s["exit_status"], "idle_minutes": idle, "last_output": s["last_output"],
+                         "managed": True, "tty": None, "pid": None})
         tool = "Codex" if s["tool"] == "codex" else "Claude Code"
         where = s["cwd"] or "unknown directory"
         if not s["alive"] and s["exit_status"] not in (None, 0):
@@ -83,6 +84,13 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
                               "title": f"{s['name']} has been idle {idle} min",
                               "detail": f"Probably waiting for you · {tool} · {where}",
                               "href": f"/sessions?open={s['name']}", "since": s["last_output"]})
+
+    # Sessions in your own terminals: listed so the count is honest, but never flagged as idle;
+    # parking a terminal session is normal, and Eyrie can't open it anyway.
+    for e in snap.get("external", []):
+        sessions.append({"name": f"{e['tool']} · {e['tty']}", "tool": e["tool"], "project": e["cwd"], "alive": True,
+                         "exit_status": None, "idle_minutes": e["idle_minutes"], "last_output": e["last_activity"],
+                         "managed": False, "tty": e["tty"], "pid": e["pid"]})
 
     # MCP: only servers you configured (hidden ones are already filtered by the source)
     mcp = registry.get("mcp")

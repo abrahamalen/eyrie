@@ -175,8 +175,22 @@ class Session(BaseModel):
     attach: str
 
 
+class ExternalSession(BaseModel):
+    """A Claude Code / Codex session running in one of your own terminals (not started by Eyrie)."""
+    pid: int
+    tool: Literal["claude", "codex"]
+    tty: str
+    cwd: str | None
+    resume: str | None
+    started: str
+    last_activity: str | None
+    idle_minutes: int | None
+    activity_exact: bool
+
+
 class SessionsSnapshot(BaseModel):
     sessions: list[Session]
+    external: list[ExternalSession]
     dirs: list[str]
     error: str | None
 
@@ -322,6 +336,10 @@ class SummarySession(BaseModel):
     exit_status: int | None
     idle_minutes: int | None
     last_output: str | None
+    # False for sessions in your own terminals: Eyrie can see them but not attach to them.
+    managed: bool
+    tty: str | None
+    pid: int | None
 
 
 class DayCost(BaseModel):
