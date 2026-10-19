@@ -143,18 +143,6 @@ def test_pricing_override_from_config(settings, projects):
     assert report(c)["totals"]["cost"] == pytest.approx(1.0)
 
 
-def test_codex_reported_per_model_not_per_day(client, home):
-    db = home / ".codex/state_5.sqlite"
-    db.parent.mkdir()
-    with sqlite3.connect(db) as con:
-        con.execute("CREATE TABLE threads (model TEXT, tokens_used INT, updated_at INT, archived INT)")
-        recent, old = int(NOW.timestamp()) - 3600, int((NOW - timedelta(days=90)).timestamp())
-        con.executemany("INSERT INTO threads VALUES (?,?,?,?)",
-                        [("gpt-x", 1000, recent, 0), ("gpt-x", 500, recent, 0), ("gpt-y", 9, old, 0), ("gpt-x", 7, recent, 1)])
-    cx = report(client)["codex"]
-    assert cx == {"available": True, "threads": 2, "tokens": 1500, "by_model": [{"model": "gpt-x", "threads": 2, "tokens": 1500}], "error": None}
-
-
 def test_days_param_validated(client):
     assert client.get("/api/v1/usage?days=0").status_code == 422
     assert client.get("/api/v1/usage?days=366").status_code == 422

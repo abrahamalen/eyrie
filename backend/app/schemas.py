@@ -230,6 +230,7 @@ class UsageDay(BaseModel):
 
 class UsageModel(BaseModel):
     model: str
+    tool: ToolId
     priced: bool
     cost: float
     input: int
@@ -247,25 +248,18 @@ class UsageProject(BaseModel):
     sessions: int
 
 
+class UsageTool(BaseModel):
+    tool: ToolId
+    cost: float
+    tokens: int
+    sessions: int
+
+
 class UsageTotals(BaseModel):
     cost: float
     tokens: int
     messages: int
     sessions: int
-
-
-class CodexModelUsage(BaseModel):
-    model: str
-    threads: int
-    tokens: int
-
-
-class CodexSummary(BaseModel):
-    available: bool
-    threads: int
-    tokens: int
-    by_model: list[CodexModelUsage]
-    error: str | None = None
 
 
 class IndexStats(BaseModel):
@@ -285,8 +279,8 @@ class UsageReport(BaseModel):
     days: list[UsageDay]
     by_model: list[UsageModel]
     by_project: list[UsageProject]
+    by_tool: list[UsageTool]
     totals: UsageTotals
-    codex: CodexSummary
     index: IndexStats
     pricing: Pricing
     note: str

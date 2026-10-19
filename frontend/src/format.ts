@@ -35,3 +35,10 @@ export function fmtAgo(iso: string | null | undefined): string {
   if (s < 86400) return `${Math.round(s / 3600)} h ago`
   return `${Math.round(s / 86400)} d ago`
 }
+
+// Display names for tool ids (the backend's ToolId); unknown ids show as themselves.
+const TOOL_TITLES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini CLI' }
+
+export function toolTitle(tool: string | null | undefined): string {
+  return tool ? (TOOL_TITLES[tool] ?? tool) : 'Unknown tool'
+}

@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react'
 import { api } from '@/api/client'
 import type { Session } from '@/api/types'
 import { usePoll } from '@/usePoll'
-import { fmtAgo, fmtNum, shortPath } from '@/format'
+import { fmtAgo, fmtNum, shortPath, toolTitle } from '@/format'
 import { CopyButton } from '@/components/CopyButton'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
 import { StopSessionDialog } from '@/components/StopSessionDialog'
@@ -89,7 +89,7 @@ export function SessionsPage() {
                     <TableCell>
                       <div className="font-mono text-xs">{s.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {s.tool === 'codex' ? 'Codex' : 'Claude Code'}
+                        {toolTitle(s.tool)}
                         {s.mode && s.mode !== 'new' ? ` · ${s.mode}` : ''}
                       </div>
                     </TableCell>
@@ -148,7 +148,7 @@ export function SessionsPage() {
                 {external.map((x) => (
                   <TableRow key={x.pid}>
                     <TableCell>
-                      <div>{x.tool === 'codex' ? 'Codex' : 'Claude Code'}</div>
+                      <div>{toolTitle(x.tool)}</div>
                       {x.resume && <div className="font-mono text-xs text-muted-foreground">resume {x.resume.slice(0, 12)}</div>}
                     </TableCell>
                     <TableCell className="max-w-xs truncate font-mono text-xs" title={x.cwd ?? undefined}>

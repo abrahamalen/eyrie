@@ -34,6 +34,23 @@ class SessionCaps(Protocol):
         """Directories this tool has been used in (where sessions may start)."""
 
 
+# A usage row as the index stores it, minus the tool column:
+# (key, ts, session_id, project, model, subagent, input, output, cache_read, cache_write_5m, cache_write_1h)
+UsageRow = tuple
+
+
+class UsageCaps(Protocol):
+    # Only lines containing one of these are parsed (a cheap filter before json.loads).
+    needles: tuple[bytes, ...]
+
+    def files(self, settings: "Settings") -> list[tuple[Path, bool]]:
+        """Transcript files to index, each with whether it's a subagent's."""
+
+    def parse(self, record: dict, subagent: bool, state: dict) -> UsageRow | None:
+        """One JSON line → a row, or None. `state` persists per file across scans, for formats
+        where a value (the model, the session) is set by an earlier line."""
+
+
 class McpCaps(Protocol):
     def servers(self, settings: "Settings") -> list[dict]:
         """Configured servers: {name, scope, type, target (masked), project}."""
@@ -57,5 +74,6 @@ class Tool:
     # Shown when the binary isn't found: what stops working.
     needs: str = ""
     sessions: SessionCaps | None = None
+    usage: UsageCaps | None = None
     mcp: McpCaps | None = None
     plugins: bool = False
