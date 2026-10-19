@@ -138,6 +138,7 @@ Built in slice 4. **Rule: never hand-edit another tool's config files.** Changes
   - `claude plugin enable` of a plugin that isn't installed reports success and records it as enabled. So plugin toggles are refused (`409`) unless the plugin is installed, and the enabled state is rechecked afterwards.
 - **Audit**: every run appends to `~/.eyrie/audit.jsonl`: action, masked argv, params with secret values masked, ok, exit code, duration, message. `GET /api/v1/audit` serves it, and the Activity page shows it.
 - **Nexus memory (slice 6)**: Eyrie owns no CLI for this, so it edits the files directly, inside tight limits.
+  - *Since 2026-10-19 this is the generic **Agent memory** page: Claude Code's own subagent memory folder, `~/.claude/agent-memory/<agent>/*.md` (`paths.agent_memory` to override), with deletes going to `~/.eyrie/trash`. Nexus is just one plugin that writes there. The limits below are unchanged.*
   - Agent and file names are restricted (`*.md` only, no hidden files).
   - Every path is resolved and must stay directly inside an existing agent folder. Symlinked files or agent folders are refused, and no new agent folders can be created.
   - Writes require `If-Match` with the content hash, and use an atomic write. A stale write is `409`, returned with the current file.

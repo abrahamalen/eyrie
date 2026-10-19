@@ -30,25 +30,26 @@ class Paths(BaseModel):
     vault: Path = Path("~/workspace/Obsidian Vault")
     # Relative to the vault. Personal tasks only; the vault-root Tasks.md holds work tasks.
     tasks_file: Path = Path("Personal/Tasks.md")
-    nexus_dir: Path = Path("agent-memory/Nexus")
+    # Claude Code subagents' persistent memory (<agent>/*.md). Default: <claude_home>/agent-memory.
+    agent_memory: Path | None = None
     data_dir: Path = Path("~/.eyrie")
 
     @field_validator("*")
     @classmethod
-    def _expand(cls, v: Path) -> Path:
-        return v.expanduser()
+    def _expand(cls, v: Path | None) -> Path | None:
+        return v.expanduser() if v is not None else None
 
     @property
     def tasks(self) -> Path:
         return self.vault / self.tasks_file
 
     @property
-    def nexus(self) -> Path:
-        return self.vault / self.nexus_dir
+    def memory(self) -> Path:
+        return self.agent_memory or self.claude_home / "agent-memory"
 
 
 class Sources(BaseModel):
-    enabled: list[str] = ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+    enabled: list[str] = ["sessions", "claude", "codex", "mcp", "plugins", "memory", "tasks", "usage"]
 
 
 class Privacy(BaseModel):

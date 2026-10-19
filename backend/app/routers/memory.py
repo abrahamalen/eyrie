@@ -4,30 +4,30 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from app.schemas import NexusFile, Trashed
-from app.sources.nexus import Conflict, NexusSource, NotFound
+from app.schemas import MemoryFile, Trashed
+from app.sources.memory import Conflict, MemorySource, NotFound
 
-router = APIRouter(prefix="/api/v1/nexus", tags=["nexus"])
+router = APIRouter(prefix="/api/v1/memory", tags=["memory"])
 
 
 class FileBody(BaseModel):
     content: str
 
 
-def _source(request: Request) -> NexusSource:
-    source = request.app.state.registry.get("nexus")
+def _source(request: Request) -> MemorySource:
+    source = request.app.state.registry.get("memory")
     if source is None:
-        raise HTTPException(404, "Nexus source is disabled")
+        raise HTTPException(404, "Agent memory source is disabled")
     if not source.available().available:
         raise HTTPException(409, source.available().reason)
     return source
 
 
 def _rel(agent: str, name: str) -> str:
-    return f"agent-memory/Nexus/{agent}/{name}"
+    return f"agent-memory/{agent}/{name}"
 
 
-@router.get("/{agent}/{name}", response_model=NexusFile)
+@router.get("/{agent}/{name}", response_model=MemoryFile)
 def read_file(agent: str, name: str, request: Request):
     source = _source(request)
     try:
@@ -38,7 +38,7 @@ def read_file(agent: str, name: str, request: Request):
         raise HTTPException(422, str(e))
 
 
-@router.put("/{agent}/{name}", response_model=NexusFile)
+@router.put("/{agent}/{name}", response_model=MemoryFile)
 def write_file(agent: str, name: str, body: FileBody, request: Request, if_match: str = Header()):
     """Create (If-Match: absent) or replace a memory file."""
     source = _source(request)
@@ -55,7 +55,7 @@ def write_file(agent: str, name: str, body: FileBody, request: Request, if_match
         raise HTTPException(404, f"No agent folder {agent}")
     except ValueError as e:
         raise HTTPException(422, str(e))
-    action = "nexus.create" if if_match == "absent" else "nexus.write"
+    action = "memory.create" if if_match == "absent" else "memory.write"
     request.app.state.audit.record(action, ["write", _rel(agent, name)], {"agent": agent, "name": name}, True, 0,
                                    (time.perf_counter() - started) * 1000, f"{len(body.content.encode())} bytes")
     return result
@@ -63,7 +63,7 @@ def write_file(agent: str, name: str, body: FileBody, request: Request, if_match
 
 @router.delete("/{agent}/{name}", response_model=Trashed)
 def delete_file(agent: str, name: str, request: Request, if_match: str = Header()):
-    """Moves the file to the vault's .trash folder (recoverable)."""
+    """Moves the file to ~/.eyrie/trash (recoverable)."""
     source = _source(request)
     started = time.perf_counter()
     try:
@@ -75,7 +75,7 @@ def delete_file(agent: str, name: str, request: Request, if_match: str = Header(
         raise HTTPException(404, f"No file {_rel(agent, name)}")
     except ValueError as e:
         raise HTTPException(422, str(e))
-    trashed = str(dest.relative_to(source.trash.parent))
-    request.app.state.audit.record("nexus.delete", ["move", _rel(agent, name), trashed], {"agent": agent, "name": name},
+    trashed = str(dest.relative_to(source.trash))
+    request.app.state.audit.record("memory.delete", ["move", _rel(agent, name), trashed], {"agent": agent, "name": name},
                                    True, 0, (time.perf_counter() - started) * 1000, f"Moved to {trashed}")
     return {"trashed_to": trashed}

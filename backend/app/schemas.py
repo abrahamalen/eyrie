@@ -112,26 +112,26 @@ class PluginList(BaseModel):
     error: str | None
 
 
-# --- Nexus --------------------------------------------------------------------------------
+# --- Agent memory --------------------------------------------------------------------------
 
-class NexusFileInfo(BaseModel):
+class MemoryFileInfo(BaseModel):
     name: str
     size: int
     modified: str
 
 
-class NexusAgent(BaseModel):
+class MemoryAgent(BaseModel):
     agent: str
     file_count: int
     last_used: str
-    files: list[NexusFileInfo]
+    files: list[MemoryFileInfo]
 
 
-class NexusAgents(BaseModel):
-    agents: list[NexusAgent]
+class MemoryAgents(BaseModel):
+    agents: list[MemoryAgent]
 
 
-class NexusFile(BaseModel):
+class MemoryFile(BaseModel):
     agent: str
     name: str
     content: str
@@ -408,7 +408,7 @@ SOURCE_MODELS: dict[str, type[BaseModel]] = {
     "codex": CodexUsage,
     "mcp": McpStatus,
     "plugins": PluginList,
-    "nexus": NexusAgents,
+    "memory": MemoryAgents,
     "tasks": TasksSnapshot,
     "sessions": SessionsSnapshot,
     "usage": UsageReport,

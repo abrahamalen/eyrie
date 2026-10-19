@@ -41,7 +41,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
     items: [
       { to: '/claude', label: 'Claude Code', icon: SquareTerminal },
       { to: '/codex', label: 'Codex', icon: Cloud },
-      { to: '/nexus', label: 'Nexus memory', icon: Bot },
+      { to: '/memory', label: 'Agent memory', icon: Bot },
     ],
   },
   {

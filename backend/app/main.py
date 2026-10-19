@@ -7,7 +7,7 @@ from app import __version__
 from app.config import Settings, get_settings
 from app.actions.audit import AuditLog
 from app.actions.runner import Runner
-from app.routers import actions, auth, nexus, sessions, sources, tasks, usage
+from app.routers import actions, auth, memory, sessions, sources, tasks, usage
 from app.schemas import Meta, Status, Summary
 from app.summary import Versions, build_summary
 from app.security import LocalOnlyMiddleware, load_or_create_token
@@ -20,7 +20,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     token = load_or_create_token(settings.paths.data_dir)
 
     app = FastAPI(title="Eyrie", version=__version__,
-                  description="Local control plane for Claude Code, Codex, MCP, and Nexus")
+                  description="Local control plane for Claude Code, Codex, MCP, and agent memory")
     app.state.settings = settings
     app.state.registry = build_registry(settings)
     app.state.token = token
@@ -34,7 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(usage.router)
     app.include_router(actions.router)
     app.include_router(sessions.router)
-    app.include_router(nexus.router)
+    app.include_router(memory.router)
 
     @app.get("/api/v1/health", response_model=Status)
     def health():

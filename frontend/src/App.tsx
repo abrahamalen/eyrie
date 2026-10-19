@@ -4,7 +4,7 @@ import { OverviewPage } from '@/pages/OverviewPage'
 import { ClaudePage } from '@/pages/ClaudePage'
 import { CodexPage } from '@/pages/CodexPage'
 import { McpPage } from '@/pages/McpPage'
-import { NexusPage } from '@/pages/NexusPage'
+import { MemoryPage } from '@/pages/MemoryPage'
 import { TasksPage } from '@/pages/TasksPage'
 import { UsagePage } from '@/pages/UsagePage'
 import { PluginsPage } from '@/pages/PluginsPage'
@@ -19,7 +19,7 @@ export default function App() {
         <Route path="claude" element={<ClaudePage />} />
         <Route path="codex" element={<CodexPage />} />
         <Route path="mcp" element={<McpPage />} />
-        <Route path="nexus" element={<NexusPage />} />
+        <Route path="memory" element={<MemoryPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="sessions" element={<SessionsPage />} />
         <Route path="usage" element={<UsagePage />} />

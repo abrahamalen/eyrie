@@ -1,7 +1,7 @@
 # Eyrie
 
 A local control plane for your AI coding tools. Eyrie runs on your laptop and lets you
-see and manage Claude Code, Codex, their MCP servers and plugins, Nexus agent memory and
+see and manage Claude Code, Codex, their MCP servers and plugins, agent memory and
 a personal task list from one place. Everything is read from, and written back to, the
 files and CLIs those tools already use. No accounts, no cloud.
 
@@ -14,7 +14,7 @@ files and CLIs those tools already use. No accounts, no cloud.
 | **Claude Code / Codex** | Per-project and per-thread activity. |
 | **MCP servers** | Claude Code (user, local, project scope) and Codex servers. Add and remove them; Eyrie runs `claude mcp` / `codex mcp` and shows you the exact command first. |
 | **Plugins** | Enable or disable Claude Code plugins (`claude plugin`). |
-| **Nexus memory** | Browse, edit, create and delete Nexus agents' memory files in the vault. Edits never overwrite an agent's change made in the meantime; deleted files go to the vault's `.trash`. |
+| **Agent memory** | Browse, edit, create and delete what your Claude Code subagents remember (`~/.claude/agent-memory/<agent>/*.md`, or `paths.agent_memory`). Edits never overwrite an agent's change made in the meantime; deleted files go to `~/.eyrie/trash`. |
 | **Tasks** | A personal checklist in the vault (`Personal/Tasks.md`), edited one line at a time so the rest of the file stays as you wrote it. |
 | **Activity** | Every change Eyrie has made, with secrets masked (`~/.eyrie/audit.jsonl`). |
 
