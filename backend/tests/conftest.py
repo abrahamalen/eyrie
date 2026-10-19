@@ -66,10 +66,9 @@ def fake_cli(monkeypatch):
 def home(tmp_path):
     vault = tmp_path / "vault"
     (vault / "Personal").mkdir(parents=True)
-    (vault / "agent-memory/Nexus/nexus-debugging").mkdir(parents=True)
-    (vault / "agent-memory/Nexus/nexus-debugging/notes.md").write_text("# notes\n")
     (vault / "Tasks.md").write_text("# Work tasks\n\n- [ ] work item\n")
-    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude/agent-memory/code-reviewer").mkdir(parents=True)
+    (tmp_path / ".claude/agent-memory/code-reviewer/notes.md").write_text("# notes\n")
     (tmp_path / ".claude.json").write_text(json.dumps({
         "projects": {"/p/eyrie": {"lastCost": 1.5, "lastTotalInputTokens": 10, "lastTotalOutputTokens": 20,
                                   "lastModelUsage": {"claude-opus-5-5": {"costUSD": 1.5, "inputTokens": 10, "outputTokens": 20}}}},

@@ -6,7 +6,7 @@ from app.main import create_app
 
 def test_lists_sources_with_availability(client):
     by_id = {s["id"]: s for s in client.get("/api/v1/sources").json()}
-    assert list(by_id) == ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+    assert list(by_id) == ["sessions", "claude", "codex", "mcp", "plugins", "memory", "tasks", "usage"]
     assert by_id["claude"]["available"] is True
     assert by_id["codex"]["available"] is False
     assert "Codex state DB not found" in by_id["codex"]["reason"]
@@ -30,9 +30,9 @@ def test_codex_missing_db_degrades(client):
     assert client.get("/api/v1/sources/codex").json()["available"] is False
 
 
-def test_nexus_snapshot(client):
-    agents = client.get("/api/v1/sources/nexus").json()["agents"]
-    assert agents[0]["agent"] == "nexus-debugging" and agents[0]["file_count"] == 1
+def test_memory_snapshot(client):
+    agents = client.get("/api/v1/sources/memory").json()["agents"]
+    assert agents[0]["agent"] == "code-reviewer" and agents[0]["file_count"] == 1
 
 
 def test_hide_mcp(settings):

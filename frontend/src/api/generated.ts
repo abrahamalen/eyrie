@@ -72,6 +72,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/memory/{agent}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read File */
+        get: operations["read_file_api_v1_memory__agent___name__get"];
+        /**
+         * Write File
+         * @description Create (If-Match: absent) or replace a memory file.
+         */
+        put: operations["write_file_api_v1_memory__agent___name__put"];
+        post?: never;
+        /**
+         * Delete File
+         * @description Moves the file to ~/.eyrie/trash (recoverable).
+         */
+        delete: operations["delete_file_api_v1_memory__agent___name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta": {
         parameters: {
             query?: never;
@@ -84,31 +109,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/nexus/{agent}/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read File */
-        get: operations["read_file_api_v1_nexus__agent___name__get"];
-        /**
-         * Write File
-         * @description Create (If-Match: absent) or replace a memory file.
-         */
-        put: operations["write_file_api_v1_nexus__agent___name__put"];
-        post?: never;
-        /**
-         * Delete File
-         * @description Moves the file to the vault's .trash folder (recoverable).
-         */
-        delete: operations["delete_file_api_v1_nexus__agent___name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -222,15 +222,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/sources/nexus": {
+    "/api/v1/sources/memory": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Source Nexus */
-        get: operations["source_nexus"];
+        /** Source Memory */
+        get: operations["source_memory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -720,36 +720,24 @@ export interface components {
             /** Last Known Failures */
             last_known_failures: components["schemas"]["McpFailure"][];
         };
-        /** Meta */
-        Meta: {
-            /** Home */
-            home: string;
-            /** Version */
-            version: string;
-        };
-        /** NewTask */
-        NewTask: {
-            /** Text */
-            text: string;
-        };
-        /** NexusAgent */
-        NexusAgent: {
+        /** MemoryAgent */
+        MemoryAgent: {
             /** Agent */
             agent: string;
             /** File Count */
             file_count: number;
             /** Files */
-            files: components["schemas"]["NexusFileInfo"][];
+            files: components["schemas"]["MemoryFileInfo"][];
             /** Last Used */
             last_used: string;
         };
-        /** NexusAgents */
-        NexusAgents: {
+        /** MemoryAgents */
+        MemoryAgents: {
             /** Agents */
-            agents: components["schemas"]["NexusAgent"][];
+            agents: components["schemas"]["MemoryAgent"][];
         };
-        /** NexusFile */
-        NexusFile: {
+        /** MemoryFile */
+        MemoryFile: {
             /** Agent */
             agent: string;
             /** Content */
@@ -763,14 +751,26 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** NexusFileInfo */
-        NexusFileInfo: {
+        /** MemoryFileInfo */
+        MemoryFileInfo: {
             /** Modified */
             modified: string;
             /** Name */
             name: string;
             /** Size */
             size: number;
+        };
+        /** Meta */
+        Meta: {
+            /** Home */
+            home: string;
+            /** Version */
+            version: string;
+        };
+        /** NewTask */
+        NewTask: {
+            /** Text */
+            text: string;
         };
         /** Plugin */
         Plugin: {
@@ -1191,27 +1191,7 @@ export interface operations {
             };
         };
     };
-    meta_api_v1_meta_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meta"];
-                };
-            };
-        };
-    };
-    read_file_api_v1_nexus__agent___name__get: {
+    read_file_api_v1_memory__agent___name__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1229,7 +1209,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NexusFile"];
+                    "application/json": components["schemas"]["MemoryFile"];
                 };
             };
             /** @description Validation Error */
@@ -1243,7 +1223,7 @@ export interface operations {
             };
         };
     };
-    write_file_api_v1_nexus__agent___name__put: {
+    write_file_api_v1_memory__agent___name__put: {
         parameters: {
             query?: never;
             header: {
@@ -1267,7 +1247,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NexusFile"];
+                    "application/json": components["schemas"]["MemoryFile"];
                 };
             };
             /** @description Validation Error */
@@ -1281,7 +1261,7 @@ export interface operations {
             };
         };
     };
-    delete_file_api_v1_nexus__agent___name__delete: {
+    delete_file_api_v1_memory__agent___name__delete: {
         parameters: {
             query?: never;
             header: {
@@ -1311,6 +1291,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meta_api_v1_meta_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
                 };
             };
         };
@@ -1459,7 +1459,7 @@ export interface operations {
             };
         };
     };
-    source_nexus: {
+    source_memory: {
         parameters: {
             query?: never;
             header?: never;
@@ -1474,7 +1474,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NexusAgents"];
+                    "application/json": components["schemas"]["MemoryAgents"];
                 };
             };
         };

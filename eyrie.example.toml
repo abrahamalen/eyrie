@@ -7,11 +7,11 @@ claude_json = "~/.claude.json"
 codex_home  = "~/.codex"
 vault       = "~/workspace/Obsidian Vault"
 tasks_file  = "Personal/Tasks.md"     # relative to vault
-nexus_dir   = "agent-memory/Nexus"    # relative to vault
+# agent_memory = "~/.claude/agent-memory"  # Claude Code subagent memory; default: <claude_home>/agent-memory
 data_dir    = "~/.eyrie"              # install token and usage.db (usage history)
 
 [sources]
-enabled = ["sessions", "claude", "codex", "mcp", "plugins", "nexus", "tasks", "usage"]
+enabled = ["sessions", "claude", "codex", "mcp", "plugins", "memory", "tasks", "usage"]
 
 [sessions]
 # Sessions may start in any directory under these, or in one Claude Code / Codex already knows.
