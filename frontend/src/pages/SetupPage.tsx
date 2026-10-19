@@ -4,7 +4,7 @@ import { Check, X } from 'lucide-react'
 import { api, StaleError } from '@/api/client'
 import type { SetupBody, SetupState } from '@/api/types'
 import { shortPath } from '@/format'
-import { setConfigured, setTools } from '@/tools'
+import { setMeta } from '@/tools'
 import { Logo } from '@/components/Logo'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -191,9 +191,7 @@ export function SetupPage({ firstRun }: { firstRun: boolean }) {
       const s = await api.setup.write(toBody(state, draft), state.config.etag)
       setState(s)
       setDraft(fromState(s))
-      const meta = await api.meta()
-      setTools(meta.tools)
-      setConfigured(meta.configured)
+      setMeta(await api.meta())
       if (firstRun) navigate('/', { replace: true })
       else setNotice({ tone: 'ok', text: `Saved to ${shortPath(s.config.path)}.` })
     } catch (e) {

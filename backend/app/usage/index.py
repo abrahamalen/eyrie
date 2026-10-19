@@ -165,10 +165,16 @@ class UsageIndex:
                 (str(path), st.st_ino, st.st_size, offset + end, tool, json.dumps(state) if state else None),
             )
 
-    def rows_since(self, since_iso: str) -> list[sqlite3.Row]:
+    def rows_since(self, since_iso: str, tools: list[str] | None = None) -> list[sqlite3.Row]:
+        """Rows from since_iso on, optionally only these tools' (history of a tool you've
+        turned off stays in the DB but out of reports)."""
+        q, args = "SELECT * FROM messages WHERE ts >= ?", [since_iso]
+        if tools is not None:
+            q += f" AND tool IN ({','.join('?' * len(tools))})"
+            args += tools
         with closing(self.connect()) as con:
             con.row_factory = sqlite3.Row
-            return con.execute("SELECT * FROM messages WHERE ts >= ? ORDER BY ts", (since_iso,)).fetchall()
+            return con.execute(q + " ORDER BY ts", args).fetchall()
 
     def stats(self) -> dict:
         with closing(self.connect()) as con:

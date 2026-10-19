@@ -143,6 +143,14 @@ For me, first run writes what's implicit today (vault tasks file, roots), so not
   - `cli_missing` fires only for tools you enabled.
 - **Session dialog:** offers enabled tools with `sessions`. Modes are limited to what that tool supports. Gemini resume is only offered in the conversation's own directory.
 
+**As built (2026-10-20):** `/api/v1/meta` returns `tools[]` (installed, used, enabled,
+capabilities) and `features` (tasks, agent_memory, mcp, plugins); the UI keeps them in a
+subscribable store, refreshed when Settings saves. The sidebar, the home page's tasks card,
+the setup card and the widget's "+ Task" follow them; `summary.tasks` is `null` without a
+tasks file. Sources stay registered (so a tool installed later works without a restart);
+what's hidden is decided per request. A disabled tool's history stays in usage.db but out
+of reports and recent projects.
+
 ## 7. Risks
 
 | Risk | Mitigation |

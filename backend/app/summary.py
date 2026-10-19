@@ -132,24 +132,24 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
                               "href": "/usage", "since": None})
 
     # Tasks
-    tasks = {"open_count": 0, "next": []}
+    # None when no tasks file is set: the views hide tasks rather than show an empty list.
+    tasks = None if settings.paths.tasks is None else {"open_count": 0, "next": []}
     t = registry.get("tasks")
-    if t and t.available().available:
+    if tasks is not None and t and t.available().available:
         open_tasks = [x for x in t.snapshot()["tasks"] if not x["done"]]
         tasks = {"open_count": len(open_tasks), "next": open_tasks[:3]}
 
-    # Recent projects you can start a session in, newest first
+    # Recent projects you can start a session in
+    # (from the usage index, which every enabled tool with sessions feeds), newest first.
     recent: dict[str, dict] = {}
     if usage:
-        for c in usage.index.recent_sessions(40):
-            if c["project"] and c["project"] not in recent:
-                recent[c["project"]] = {"path": c["project"], "last_used": c["last"], "tool": "claude"}
-    codex = registry.get("codex")
-    if codex:
-        for th in codex.snapshot()["threads"]:
-            used = datetime.fromtimestamp(th["updated_at"], tz=timezone.utc).isoformat()
-            if th["cwd"] not in recent or recent[th["cwd"]]["last_used"] < used:
-                recent[th["cwd"]] = {"path": th["cwd"], "last_used": used, "tool": "codex"}
+        for t in on.values():
+            if not t.sessions:
+                continue
+            for c in usage.index.recent_sessions(40, tool=t.id):
+                p = c["project"]
+                if p and (p not in recent or recent[p]["last_used"] < c["last"]):
+                    recent[p] = {"path": p, "last_used": c["last"], "tool": t.id}
     recent_projects = sorted((p for p in recent.values() if is_allowed(settings, p["path"])),
                              key=lambda p: p["last_used"], reverse=True)[:6]
 

@@ -183,7 +183,7 @@ export function WidgetPanel() {
 
       {task !== null && (
         <form className="flex gap-2 border-t px-4 py-2.5" onSubmit={(e) => { e.preventDefault(); addTask() }}>
-          <input autoFocus value={task} onChange={(e) => setTask(e.target.value)} placeholder="Add to Personal/Tasks.md"
+          <input autoFocus value={task} onChange={(e) => setTask(e.target.value)} placeholder="Add a task"
             className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1 text-[13px]" aria-label="New task" />
           <button className={btn} type="submit" disabled={!task.trim()}>Add</button>
         </form>
@@ -192,7 +192,7 @@ export function WidgetPanel() {
 
       <footer className="flex flex-wrap items-center gap-1.5 border-t px-4 py-2.5">
         <button className={btn} onClick={() => { setPicking((p) => !p); setPending(null) }}>{picking ? 'Cancel' : '+ Session in…'}</button>
-        <button className={btn} onClick={() => setTask((t) => (t === null ? '' : null))}>+ Task</button>
+        {s.tasks && <button className={btn} onClick={() => setTask((t) => (t === null ? '' : null))}>+ Task</button>}
         <button className={`${btn} ml-auto border-primary bg-primary text-primary-foreground hover:bg-primary/90`} onClick={() => bridge.open('/')}>
           Open Eyrie
         </button>

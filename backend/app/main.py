@@ -66,8 +66,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                           "mcp": {"scopes": list(m.scopes), "transports": list(m.transports), "headers": m.headers,
                                   "bearer_token_env_var": m.bearer_token_env_var} if m else None,
                           "plugins": t.plugins})
+        s = app.state.settings
+        features = {"tasks": s.paths.tasks is not None,
+                    "agent_memory": "claude" in on and s.paths.memory.is_dir(),
+                    "mcp": any(TOOLS[t].mcp for t in on), "plugins": any(TOOLS[t].plugins for t in on)}
         return {"home": str(Path.home()), "version": __version__, "configured": active_config().exists(),
-                "tools": tools}
+                "features": features, "tools": tools}
 
     # Last: a catch-all for the UI, so it never shadows an API route.
     mount_ui(app, settings.server.ui_dir)
