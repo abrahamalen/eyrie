@@ -128,8 +128,9 @@ Each build job:
 1. **Prototype:** build `eyrie-server` with PyInstaller locally on macOS and in an
    Ubuntu container. Check its size, start time, and that `serve` passes the API tests'
    smoke subset. Measure, then confirm onefile against onedir.
-2. **Code:** `app/cli.py` plus `app/service.py`, with `scripts/service.py` folded in;
-   `make install` keeps working.
+2. **Code (done):** `app/cli.py` plus `app/service.py`, with `scripts/service.py` folded in;
+   `make install` keeps working. Packaged installs pass `--ui-dir`; the service runs
+   `<program> serve --port N`.
 3. **Code:** the widget's sidecar, first-launch install, version check and "Quit and remove
    service"; the `.dmg` and `.deb` built locally.
 4. **Code:** `VERSION`, the `make version` target, and the consistency check.

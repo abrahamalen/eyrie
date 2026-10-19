@@ -242,7 +242,7 @@ A container can't drive host tmux or the host's `claude`/`codex` with their cred
   - Client-side routes fall back to `index.html`, and unknown `/api/*` paths are a JSON 404 for every method.
   - Fingerprinted `assets/` are cached as immutable.
   - Every response gets anti-framing headers (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) plus `nosniff` and `no-referrer`.
-- **`make install`**: a launchd agent `local.eyrie`, written by `scripts/service.py` (which also writes the systemd user unit on Linux) (stdlib only, rendered with `plistlib`, then checked with `plutil -lint`).
+- **`make install`**: a launchd agent `local.eyrie`, written by `app/service.py` via `python -m app.cli service install` (it also writes the systemd user unit on Linux; formerly `scripts/service.py`) ( rendered with `plistlib`, then checked with `plutil -lint`).
   - It records install-time `PATH`, because launchd's default can't find `claude`, `codex` or `tmux`.
   - `KeepAlive`, with throttled restarts.
   - **`AbandonProcessGroup`**, so restarting or unloading Eyrie never kills the tmux sessions it started.
