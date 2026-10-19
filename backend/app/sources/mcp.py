@@ -8,6 +8,7 @@ import tomllib
 from pathlib import Path
 
 from app.config import Settings
+from app.masking import mask_args, mask_url
 from app.sources.base import Availability, path_availability
 from app.sources.claude import safe_read_json
 
@@ -17,7 +18,8 @@ ENTRY_RE = re.compile(r'\{"name":"([^"]+)","errorCode":"([^"]*)","error":"([^"]*
 
 def _entry(name: str, cfg: dict, client: str, scope: str, project: str | None = None) -> dict:
     kind = cfg.get("type") or ("http" if cfg.get("url") else "stdio")
-    target = cfg.get("url") or " ".join([cfg.get("command", ""), *cfg.get("args", [])]).strip()
+    target = (mask_url(cfg["url"]) if cfg.get("url")
+              else " ".join(mask_args([cfg.get("command", ""), *cfg.get("args", [])])).strip())
     return {"name": name, "client": client, "scope": scope, "type": kind, "target": target, "project": project}
 
 

@@ -13,6 +13,8 @@ from typing import TYPE_CHECKING, Callable, Literal
 
 from pydantic import BaseModel, field_validator, model_validator
 
+from app.masking import mask_args
+
 if TYPE_CHECKING:
     from app.actions.runner import Runner
     from app.config import Settings
@@ -272,15 +274,16 @@ ACTIONS: dict[str, Action] = {a.id: a for a in [
 
 def redact(tool: str, args: list[str]) -> list[str]:
     """The argv as shown to people and written to the audit log: env and header values
-    are masked, their names kept."""
+    are masked (names kept), and so is anything else that looks like a secret."""
     out = [tool]
     prev = None
-    for a in args:
+    masked = mask_args(args)
+    for a, m in zip(args, masked):
         if prev in ENV_FLAGS:
             out.append(a.partition("=")[0] + "=***")
         elif prev in HEADER_FLAGS:
             out.append(a.partition(":")[0] + ": ***")
         else:
-            out.append(a)
+            out.append(m)
         prev = a
     return out

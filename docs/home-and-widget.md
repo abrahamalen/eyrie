@@ -134,7 +134,7 @@ A tray app: a menu-bar icon on macOS, an indicator in the Ubuntu top bar.
 - On macOS it's a template image, so it follows light and dark menu bars.
 - Optionally, the menu-bar title can show today's cost (`$8.42`). This is macOS only; the Ubuntu indicator has no title.
 
-### 4.2 Popover (about 360 × 520, anchored top right)
+### 4.2 Popover (368 × 560, anchored top right)
 
 ```
 ┌───────────────────────────────┐
@@ -163,7 +163,7 @@ These come from Tauri v2's tray behaviour.
 |---|---|---|
 | Left-click on icon | Toggles the popover, positioned under the icon | **Not supported**: AppIndicator only shows a menu. The menu's first item is **Show panel**, which opens the popover at the top-right of the primary screen |
 | Menu | Right-click | Click (the only interaction) |
-| Menu contents | Show panel, Open Eyrie, Quit | Show panel; the attention count; live sessions (each opens in Eyrie); Open Eyrie; Quit |
+| Menu contents | Same on both: Show panel; state and up to 5 attention items; up to 8 sessions (Eyrie's open their terminal, ones in your own terminals open Sessions); today's spend; Open Eyrie; Start at login; Show cost in menu bar (macOS); Quit | (same) |
 | Title text | Today's cost (optional) | n/a |
 
 The Ubuntu menu repeats the key facts, so you can glance at it without opening the panel.
@@ -174,9 +174,9 @@ The Ubuntu menu repeats the key facts, so you can glance at it without opening t
   - Its origin (`tauri://localhost` or `http://tauri.localhost`) would fail Eyrie's Origin check, which is on purpose.
   - It would also need the token in JavaScript.
 - Instead, **Rust commands proxy** to `http://127.0.0.1:<port>`:
-  - `summary()`
-  - `run_action(id, params, dry_run)`
-  - `open_in_browser(path)`
+  - `summary`, `refresh`, `action` (id, params, dry_run), `add_task`
+  - `open_eyrie` (a `/…` path in the browser), `start_eyrie` (kickstarts the service)
+  - `get_settings`, `set_show_cost`, `set_autostart`, `hide`, `quit`
 - They read `~/.eyrie/token` (mode 600, same user). The webview calls them with `invoke()`.
 - The Tauri capability allowlist exposes only those commands: no shell, no filesystem, no arbitrary HTTP from the webview.
 - If Eyrie isn't answering, the popover says so and offers **Start Eyrie**, which (re)loads the service.

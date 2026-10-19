@@ -149,3 +149,32 @@ def test_audit_newest_first(authed, fake_cli, monkeypatch):
     act(authed, "mcp.add", HTTP)
     act(authed, "mcp.remove", {"client": "codex", "name": "x"}, confirm=True)
     assert [e["action"] for e in authed.get("/api/v1/audit").json()] == ["mcp.remove", "mcp.add"]
+
+
+def test_tmux_calls_dont_wait_on_a_slow_claude_call(settings, monkeypatch):
+    import subprocess
+    import threading
+    import time
+    from app.actions import runner
+
+    release = threading.Event()
+
+    def fake_run(argv, **kw):
+        if argv[0].endswith("claude"):
+            release.wait(5)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    from tests.conftest import REAL_BINARY, REAL_RUN
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)  # nothing real runs
+    monkeypatch.setattr(runner.Runner, "run", REAL_RUN)
+    monkeypatch.setattr(runner.Runner, "binary", REAL_BINARY)
+    s = settings.model_copy(update={"cli": settings.cli.model_copy(update={"claude_bin": "/x/claude", "tmux_bin": "/x/tmux"})})
+    r = runner.Runner(s)
+    slow = threading.Thread(target=r.run, args=("claude", ["mcp", "add"]))
+    slow.start()
+    time.sleep(0.05)
+    started = time.perf_counter()
+    assert r.run("tmux", ["list-sessions"]).ok
+    assert time.perf_counter() - started < 1
+    release.set()
+    slow.join()

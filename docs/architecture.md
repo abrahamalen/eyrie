@@ -161,7 +161,7 @@ Slices 5a (start, stop, resume) and 5b (in-browser terminal) are built. Claude C
   - The UI generates the session name and conversation id before previewing, so the preview is exactly what runs.
 - **Where sessions may start**: a directory Claude Code or Codex already knows (`~/.claude.json` projects, Codex thread `cwd`s), or anything under `[sessions] roots`. Anything else is `409`.
 - **Rediscovery**: sessions outlive Eyrie. The list comes from tmux itself (`list-sessions -F` with the `@eyrie_*` tags), so a restart or crash loses nothing.
-- **Screen**: `GET /api/v1/sessions/{name}/screen` returns `capture-pane -p -J` as plain text; the UI refreshes it every 2 s (read-only).
+- **Screen**: `GET /api/v1/sessions/{name}/screen` returns `capture-pane -p -J` as plain text; it was the first read-only preview; the browser terminal replaced it, and no page calls it now.
 - **Attach from a terminal**: `tmux -L eyrie attach -t eyrie-<hex>`. The UI shows it with a copy button.
 - **Stop** (`sessions.stop`): `kill-session`, destructive, so it needs confirmation. Only `eyrie-*` names are accepted.
 - **Resume lists**: recent Claude Code conversations come from the usage index; recent Codex threads come from its SQLite DB.
@@ -169,7 +169,7 @@ Slices 5a (start, stop, resume) and 5b (in-browser terminal) are built. Claude C
   - Output and input are binary frames; resize is a JSON text frame.
   - Closing the socket sends SIGHUP to that tmux client only, so the session keeps running. Killing the session closes the socket.
   - The pty isn't the client's controlling terminal, so the kernel won't deliver SIGWINCH; Eyrie sends it after each resize.
-  - Auth: browsers can't set headers on a WebSocket, so the token is offered as subprotocol `eyrie.token.<token>`, and the server accepts `eyrie`. Host and Origin checks apply as for HTTP. A rejected handshake is closed with `4000+status` instead of an HTTP body, which isn't valid on a WebSocket.
+  - Auth: browsers can't set headers on a WebSocket, so the token is offered as subprotocol `eyrie.token.<token>`, and the server accepts `eyrie`. Host and Origin checks apply as for HTTP. A rejected handshake is closed with `4000+status` before it's accepted, so the browser just sees a failed handshake (the server answers HTTP 403); only the terminal-limit close (4429) comes after accept and reaches the page.
   - Watch-only mode uses tmux's `-r` and also drops input server-side.
   - At most 8 terminals at once. Each one is recorded in the audit log when it closes (connection only, never keystrokes).
   - xterm is loaded lazily, so it only downloads when a terminal opens.
@@ -218,7 +218,7 @@ roots = ["~/personal/projects"]     # where sessions may be started
 hide_mcp = []                       # server names hidden from the UI
 
 [server]
-port = 8000                         # always bound to 127.0.0.1
+ui_dir = "frontend/dist"            # the port isn't a setting: it's uvicorn's --port (BACKEND_PORT / INSTALL_PORT in the Makefile)
 ```
 
 ### 4.7 Security model
@@ -227,7 +227,7 @@ Control means Eyrie can run commands as you, so the threat to design against is 
 
 - **Bind address**: the backend binds to `127.0.0.1` only, never `0.0.0.0`.
 - **Auth token**: a random token is generated on first run (`~/.eyrie/token`, mode 600) and is required on every mutating request and on the terminal WebSocket. The portal gets it through a one-time local bootstrap.
-- **Host/Origin checks** block DNS rebinding and cross-site requests (only `localhost` / `127.0.0.1` are accepted).
+- **Host/Origin checks** block DNS rebinding and cross-site requests (only `localhost`, `127.0.0.1` and `::1` are accepted).
 - **Commands**: no arbitrary command endpoint. Only the declared actions in §4.2, with validated arguments.
 - **Paths**: file actions are confined to their roots (resolve, then check the prefix) so `../` can't escape them.
 - **Remote/phone access**: laptop only (decided). If it's wanted later, it goes through Tailscale plus the same token, never a port open to the internet.
@@ -241,7 +241,7 @@ A container can't drive host tmux or the host's `claude`/`codex` with their cred
   - Client-side routes fall back to `index.html`, and unknown `/api/*` paths are a JSON 404 for every method.
   - Fingerprinted `assets/` are cached as immutable.
   - Every response gets anti-framing headers (`X-Frame-Options: DENY`, `frame-ancestors 'none'`) plus `nosniff` and `no-referrer`.
-- **`make install`**: a launchd agent `local.eyrie`, written by `scripts/launchd.py` (stdlib only, rendered with `plistlib`, then checked with `plutil -lint`).
+- **`make install`**: a launchd agent `local.eyrie`, written by `scripts/service.py` (which also writes the systemd user unit on Linux) (stdlib only, rendered with `plistlib`, then checked with `plutil -lint`).
   - It records install-time `PATH`, because launchd's default can't find `claude`, `codex` or `tmux`.
   - `KeepAlive`, with throttled restarts.
   - **`AbandonProcessGroup`**, so restarting or unloading Eyrie never kills the tmux sessions it started.
