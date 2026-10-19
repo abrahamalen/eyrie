@@ -5,7 +5,7 @@ FRONTEND_PORT ?= 5173
 INSTALL_PORT ?= 8787
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist
+.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -81,11 +81,17 @@ logs: ## Follow the background agent's log
 
 # The top-bar widget (Tauri; needs Rust: https://rustup.rs). It talks to the installed Eyrie
 # on 127.0.0.1:$(INSTALL_PORT); set EYRIE_URL to point it elsewhere.
-widget: build ## Run the top-bar widget (debug build) against the installed Eyrie
-	cd widget && npm ci --silent && npx tauri build --debug --no-bundle && ./src-tauri/target/debug/eyrie-widget
+# rustup's default location is added here too, so a shell opened before Rust was installed works.
+RUST_PATH = PATH="$(HOME)/.cargo/bin:$$PATH"
 
-widget-dist: build ## Build the widget app + installer for this OS (.app/.dmg, .deb/.rpm/AppImage)
-	cd widget && npm ci --silent && CI=true npx tauri build
+widget-check:
+	@$(RUST_PATH) command -v cargo >/dev/null || { echo "Rust isn't installed: https://rustup.rs"; exit 1; }
+
+widget: build widget-check ## Run the top-bar widget (debug build) against the installed Eyrie
+	cd widget && npm ci --silent && $(RUST_PATH) npx tauri build --debug --no-bundle && ./src-tauri/target/debug/eyrie-widget
+
+widget-dist: build widget-check ## Build the widget app + installer for this OS (.app/.dmg, .deb/.rpm/AppImage)
+	cd widget && npm ci --silent && $(RUST_PATH) CI=true npx tauri build
 
 clean: ## Remove venv, node_modules, dist, widget build output
 	rm -rf backend/.venv frontend/node_modules frontend/dist widget/node_modules widget/src-tauri/target
