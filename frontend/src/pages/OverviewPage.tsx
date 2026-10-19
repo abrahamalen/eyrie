@@ -76,6 +76,7 @@ export function OverviewPage() {
   }
 
   const spend = data?.spend
+  const tasks = data?.tasks
   const change = spend?.change_vs_prev_7_pct
 
   return (
@@ -132,8 +133,8 @@ export function OverviewPage() {
           <div className="grid grid-cols-2 divide-border overflow-hidden rounded-xl bg-card ring-1 ring-border sm:grid-cols-4 sm:divide-x">
             {[
               [String(data.sessions.filter((s) => s.alive).length), 'Live sessions'],
-              [fmtUsd(spend?.today), 'Claude cost today'],
-              [String(data.tasks.open_count), 'Open tasks'],
+              [fmtUsd(spend?.today), 'Cost today'],
+              data.tasks ? [String(data.tasks.open_count), 'Open tasks'] : [String(data.health.usage_index?.messages ?? 0), 'Responses indexed'],
               [stateLine(data).startsWith('Nothing') ? 'All fine' : String(data.attention.length), 'Need you'],
             ].map(([v, k]) => (
               <div key={k} className="px-5 py-4">
@@ -232,39 +233,41 @@ export function OverviewPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex items-center">
-                <CardTitle>Tasks · Personal/Tasks.md</CardTitle>
-                <CardLink to="/tasks">All tasks</CardLink>
-              </CardHeader>
-              <CardContent className="flex flex-col">
-                {data.tasks.next.map((t) => (
-                  <label key={t.id} className="flex cursor-pointer items-center gap-3 border-b py-2.5">
-                    <Checkbox checked={false} onCheckedChange={() => tick(t.id)} />
-                    <span className="min-w-0 flex-1 truncate">{t.text}</span>
-                  </label>
-                ))}
-                {!data.tasks.next.length && <p className="border-b py-2.5 text-[13px] text-muted-foreground">No open tasks.</p>}
-                {data.tasks.open_count > data.tasks.next.length && (
-                  <p className="border-b py-2 text-[13px] text-muted-foreground">
-                    and {data.tasks.open_count - data.tasks.next.length} more
-                  </p>
-                )}
-                <form
-                  className="flex gap-2 pt-3"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    addTask()
-                  }}
-                >
-                  <Input id="home-new-task" aria-label="New task" placeholder="Add a task" value={newTask} onChange={(e) => setNewTask(e.target.value)} />
-                  <Button type="submit" variant="outline" disabled={!newTask.trim()}>
-                    Add
-                  </Button>
-                </form>
-                {taskNote && <p className="pt-2 text-[13px] text-muted-foreground">{taskNote}</p>}
-              </CardContent>
-            </Card>
+            {tasks && (
+              <Card>
+                <CardHeader className="flex items-center">
+                  <CardTitle>Tasks</CardTitle>
+                  <CardLink to="/tasks">All tasks</CardLink>
+                </CardHeader>
+                <CardContent className="flex flex-col">
+                  {tasks.next.map((t) => (
+                    <label key={t.id} className="flex cursor-pointer items-center gap-3 border-b py-2.5">
+                      <Checkbox checked={false} onCheckedChange={() => tick(t.id)} />
+                      <span className="min-w-0 flex-1 truncate">{t.text}</span>
+                    </label>
+                  ))}
+                  {!tasks.next.length && <p className="border-b py-2.5 text-[13px] text-muted-foreground">No open tasks.</p>}
+                  {tasks.open_count > tasks.next.length && (
+                    <p className="border-b py-2 text-[13px] text-muted-foreground">
+                      and {tasks.open_count - tasks.next.length} more
+                    </p>
+                  )}
+                  <form
+                    className="flex gap-2 pt-3"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      addTask()
+                    }}
+                  >
+                    <Input id="home-new-task" aria-label="New task" placeholder="Add a task" value={newTask} onChange={(e) => setNewTask(e.target.value)} />
+                    <Button type="submit" variant="outline" disabled={!newTask.trim()}>
+                      Add
+                    </Button>
+                  </form>
+                  {taskNote && <p className="pt-2 text-[13px] text-muted-foreground">{taskNote}</p>}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader className="flex items-center">

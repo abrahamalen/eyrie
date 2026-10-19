@@ -1,38 +1,52 @@
-// What each tool can do on this machine, from /api/v1/meta (loaded once at startup, like the
-// home directory). Pickers offer only tools that are installed and have the capability.
-import type { ToolInfo } from '@/api/types'
+// What this machine has, from /api/v1/meta: loaded at startup and again whenever Settings
+// saves. Pickers offer only installed tools with the capability; the sidebar shows only
+// pages for things that exist here. Components subscribe with useMeta().
+import { useSyncExternalStore } from 'react'
+import type { Meta, ToolInfo } from '@/api/types'
+
+type Features = Meta['features']
 
 let tools: ToolInfo[] = []
+let features: Features = { tasks: true, agent_memory: true, mcp: true, plugins: true }
 // Assume configured until /meta says otherwise, so a backend that's down never forces setup.
 let configured = true
+let version = 0
+const listeners = new Set<() => void>()
 
-export function setConfigured(c: boolean) {
-  configured = c
+export function setMeta(m: Meta) {
+  tools = m.tools
+  features = m.features
+  configured = m.configured
+  version++
+  listeners.forEach((l) => l())
+}
+
+/** Re-renders the caller when /meta is reloaded (e.g. after Settings saves). */
+export function useMeta(): { tools: ToolInfo[]; features: Features } {
+  useSyncExternalStore(
+    (cb) => {
+      listeners.add(cb)
+      return () => listeners.delete(cb)
+    },
+    () => version,
+  )
+  return { tools, features }
 }
 
 export function isConfigured(): boolean {
   return configured
 }
 
-export function setTools(t: ToolInfo[]) {
-  tools = t
-}
-
 export function toolInfo(id: string | null | undefined): ToolInfo | undefined {
   return tools.find((t) => t.id === id)
 }
 
-/** Installed tools that can run Eyrie sessions. */
+/** Installed, enabled tools that can run Eyrie sessions. */
 export function sessionTools(): ToolInfo[] {
-  return tools.filter((t) => t.installed && t.session_modes.length > 0)
+  return tools.filter((t) => t.enabled && t.installed && t.session_modes.length > 0)
 }
 
-/** Installed tools with MCP support. */
+/** Installed, enabled tools with MCP support. */
 export function mcpTools(): ToolInfo[] {
-  return tools.filter((t) => t.installed && t.mcp)
-}
-
-/** Tools worth showing in "your setup": installed, or used (their state folder exists). */
-export function setupTools(): ToolInfo[] {
-  return tools.filter((t) => t.installed || t.used)
+  return tools.filter((t) => t.enabled && t.installed && t.mcp)
 }

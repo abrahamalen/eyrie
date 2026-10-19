@@ -683,6 +683,20 @@ export interface components {
             /** Tty */
             tty: string;
         };
+        /**
+         * Features
+         * @description What this machine has, so pages for missing things aren't shown.
+         */
+        Features: {
+            /** Agent Memory */
+            agent_memory: boolean;
+            /** Mcp */
+            mcp: boolean;
+            /** Plugins */
+            plugins: boolean;
+            /** Tasks */
+            tasks: boolean;
+        };
         /** FileBody */
         FileBody: {
             /** Content */
@@ -813,6 +827,7 @@ export interface components {
         Meta: {
             /** Configured */
             configured: boolean;
+            features: components["schemas"]["Features"];
             /** Home */
             home: string;
             /** Tools */
@@ -999,7 +1014,7 @@ export interface components {
              * @enum {string}
              */
             state: "ok" | "attention" | "problem";
-            tasks: components["schemas"]["SummaryTasks"];
+            tasks: components["schemas"]["SummaryTasks"] | null;
         };
         /** SummarySession */
         SummarySession: {

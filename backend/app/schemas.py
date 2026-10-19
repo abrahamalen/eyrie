@@ -383,7 +383,7 @@ class Summary(BaseModel):
     attention: list[AttentionItem]
     sessions: list[SummarySession]
     spend: Spend
-    tasks: SummaryTasks
+    tasks: SummaryTasks | None  # None when no tasks file is set
     recent_projects: list[RecentProject]
     health: Health
     generated_at: str
@@ -411,9 +411,18 @@ class ToolInfo(BaseModel):
     plugins: bool
 
 
+class Features(BaseModel):
+    """What this machine has, so pages for missing things aren't shown."""
+    tasks: bool         # a tasks file is set
+    agent_memory: bool  # Claude Code is enabled and its agent-memory folder exists
+    mcp: bool           # an enabled tool has MCP support
+    plugins: bool       # an enabled tool has plugins
+
+
 class Meta(BaseModel):
     home: str
     version: str
+    features: Features
     # False until first-run setup has written a config file
     configured: bool
     tools: list[ToolInfo]

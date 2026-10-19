@@ -7,7 +7,7 @@ import pytest
 from app import tools as app_tools
 from app.actions import runner
 from app.actions.runner import CliNotFound, RunResult
-from tests.test_usage import assistant, write
+from tests.test_usage import assistant, iso, write
 
 NOW = datetime.now(timezone.utc)
 CONV = "0f3c9a52-8d1e-4b7a-9c2f-1a2b3c4d5e6f"
@@ -172,13 +172,11 @@ def test_recent_projects_allowed_and_newest_first(client, tools, home, tmp_path)
         assistant("a", ts=NOW - timedelta(hours=3), cwd=str(eyrie), session="s1"),
         assistant("b", ts=NOW - timedelta(hours=1), cwd=str(gone), session="s2"),
     ])
-    db = home / ".codex/state_5.sqlite"
-    db.parent.mkdir()
-    with sqlite3.connect(db) as con:
-        con.execute("CREATE TABLE threads (id TEXT, cwd TEXT, model TEXT, tokens_used INT, created_at INT, updated_at INT, "
-                    "reasoning_effort TEXT, title TEXT, archived INT)")
-        con.execute("INSERT INTO threads VALUES (?, ?, 'gpt', 1, 1, ?, 'low', 't', 0)",
-                    (CONV, str(eyrie), int((NOW - timedelta(minutes=5)).timestamp())))
+    rollout = home / ".codex/sessions/2026/10/20/rollout-x.jsonl"
+    write(rollout, [{"timestamp": iso(NOW), "type": "session_meta", "payload": {"id": CONV, "cwd": str(eyrie)}},
+                    {"timestamp": iso(NOW), "type": "turn_context", "payload": {"model": "gpt-5.4", "cwd": str(eyrie)}},
+                    {"timestamp": iso(NOW - timedelta(minutes=5)), "type": "token_usage_record",
+                     "payload": {"response_id": "r1", "usage": {"input_tokens": 1, "output_tokens": 1}}}])
     rp = summary(client)["recent_projects"]
     assert [(p["path"], p["tool"]) for p in rp] == [(str(eyrie), "codex")]  # newest use wins; "gone" isn't allowed
 

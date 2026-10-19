@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { matchPath, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
+import { useMeta } from '@/tools'
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +27,11 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 
-type Item = { to: string; label: string; icon: LucideIcon; end?: boolean }
+type Meta = ReturnType<typeof useMeta>
+// `show`: only when this machine has the thing (tools.enabled, a tasks file, ...).
+type Item = { to: string; label: string; icon: LucideIcon; end?: boolean; show?: (m: Meta) => boolean }
+
+const enabled = (id: string) => (m: Meta) => m.tools.some((t) => t.id === id && t.enabled)
 
 const GROUPS: { label: string; items: Item[] }[] = [
   {
@@ -40,22 +45,22 @@ const GROUPS: { label: string; items: Item[] }[] = [
   {
     label: 'Agents',
     items: [
-      { to: '/claude', label: 'Claude Code', icon: SquareTerminal },
-      { to: '/codex', label: 'Codex', icon: Cloud },
-      { to: '/memory', label: 'Agent memory', icon: Bot },
+      { to: '/claude', label: 'Claude Code', icon: SquareTerminal, show: enabled('claude') },
+      { to: '/codex', label: 'Codex', icon: Cloud, show: enabled('codex') },
+      { to: '/memory', label: 'Agent memory', icon: Bot, show: (m) => m.features.agent_memory },
     ],
   },
   {
     label: 'Tools',
     items: [
-      { to: '/mcp', label: 'MCP servers', icon: Plug },
-      { to: '/plugins', label: 'Plugins', icon: Puzzle },
+      { to: '/mcp', label: 'MCP servers', icon: Plug, show: (m) => m.features.mcp },
+      { to: '/plugins', label: 'Plugins', icon: Puzzle, show: (m) => m.features.plugins },
     ],
   },
   {
     label: 'You',
     items: [
-      { to: '/tasks', label: 'Tasks', icon: SquareCheck },
+      { to: '/tasks', label: 'Tasks', icon: SquareCheck, show: (m) => m.features.tasks },
       { to: '/activity', label: 'Activity', icon: History },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],
@@ -67,13 +72,16 @@ const ACTIVE = 'data-active:bg-card data-active:ring-1 data-active:ring-border d
 
 export function AppSidebar() {
   const { pathname } = useLocation()
+  const meta = useMeta()
+  const groups = GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !it.show || it.show(meta)) }))
+    .filter((g) => g.items.length)
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 pt-4 pb-2">
         <Logo tagline={false} />
       </SidebarHeader>
       <SidebarContent className="gap-1 px-1">
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <SidebarGroup key={g.label}>
             <SidebarGroupLabel className="eyebrow text-[10.5px]">{g.label}</SidebarGroupLabel>
             <SidebarGroupContent>

@@ -41,6 +41,7 @@ class UsageSource:
         # Resolved per scan, so a tool installed or enabled later starts being indexed.
         readers = lambda: {t.id: t.usage for t in enabled(settings).values() if t.usage}  # noqa: E731
         self.index = UsageIndex(settings.paths.data_dir / "usage.db", readers, settings)
+        self.settings = settings
         self.prices = {**DEFAULT_PRICES, **settings.pricing}
 
     def available(self) -> Availability:
@@ -68,7 +69,7 @@ class UsageSource:
         # A session belongs to the directory it started in, even if it later cd's elsewhere.
         session_project: dict[tuple[str, str], str] = {}
 
-        for r in self.index.rows_since(since):
+        for r in self.index.rows_since(since, list(enabled(self.settings))):
             day = _local_day(r["ts"])
             if day < start:
                 continue
