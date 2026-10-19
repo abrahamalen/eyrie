@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Summary } from '@/api/types'
+import type { SessionTool, Summary } from '@/api/types'
 import { fmtUsd, setHome, shortPath, toolTitle } from '@/format'
 import { Sparkline } from '@/components/Sparkline'
 import { bridge, type WidgetSettings } from './bridge'
@@ -20,7 +20,7 @@ function newName() {
 const btn = 'inline-flex items-center justify-center rounded-md border bg-card px-2.5 py-1 text-[12.5px] font-medium hover:bg-accent disabled:opacity-50'
 const ghost = 'inline-flex items-center rounded-md px-2 py-1 text-[12.5px] font-medium hover:bg-accent'
 
-type Pending = { path: string; tool: 'claude' | 'codex'; params: object; argv: string[] | null; error: string | null }
+type Pending = { path: string; tool: SessionTool; params: object; argv: string[] | null; error: string | null }
 
 export function WidgetPanel() {
   const [s, setS] = useState<Summary | null>(null)
@@ -52,7 +52,7 @@ export function WidgetPanel() {
     }
   }, [])
 
-  const preview = async (path: string, tool: 'claude' | 'codex') => {
+  const preview = async (path: string, tool: SessionTool) => {
     const params = {
       tool,
       cwd: path,

@@ -1,7 +1,7 @@
 # Eyrie
 
 A local control plane for your AI coding tools. Eyrie runs on your laptop and lets you
-see and manage Claude Code, Codex, their MCP servers and plugins, agent memory and
+see and manage Claude Code, Codex and Gemini CLI, their MCP servers and plugins, agent memory and
 a personal task list from one place. Everything is read from, and written back to, the
 files and CLIs those tools already use. No accounts, no cloud.
 
@@ -9,7 +9,7 @@ files and CLIs those tools already use. No accounts, no cloud.
 
 | Page | What it does |
 |------|--------------|
-| **Sessions** | Start, resume and stop Claude Code and Codex sessions. They run in Eyrie's own tmux server, so they keep going if Eyrie restarts. Type into them in the browser terminal, or attach from any terminal with the command Eyrie shows. |
+| **Sessions** | Start, resume and stop Claude Code, Codex and Gemini CLI sessions, and see the ones running in your own terminals. They run in Eyrie's own tmux server, so they keep going if Eyrie restarts. Type into them in the browser terminal, or attach from any terminal with the command Eyrie shows. |
 | **Usage** | Claude Code cost and tokens per day, model and project, built from session transcripts and kept in `~/.eyrie/usage.db` after Claude Code prunes them. Codex totals per model. |
 | **Claude Code / Codex** | Per-project and per-thread activity. |
 | **MCP servers** | Claude Code (user, local, project scope) and Codex servers. Add and remove them; Eyrie runs `claude mcp` / `codex mcp` and shows you the exact command first. |

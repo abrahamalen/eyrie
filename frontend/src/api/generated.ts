@@ -620,7 +620,7 @@ export interface components {
              * Tool
              * @enum {string}
              */
-            tool: "claude" | "codex";
+            tool: "claude" | "codex" | "gemini";
             /** Tty */
             tty: string;
         };
@@ -638,6 +638,7 @@ export interface components {
         Health: {
             claude: components["schemas"]["ToolHealth"];
             codex: components["schemas"]["ToolHealth"];
+            gemini: components["schemas"]["ToolHealth"];
             tmux: components["schemas"]["ToolHealth"];
             usage_index: components["schemas"]["IndexStats"] | null;
         };
@@ -670,13 +671,24 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** McpInfo */
+        McpInfo: {
+            /** Bearer Token Env Var */
+            bearer_token_env_var: boolean;
+            /** Headers */
+            headers: boolean;
+            /** Scopes */
+            scopes: ("user" | "local" | "project")[];
+            /** Transports */
+            transports: ("stdio" | "http" | "sse")[];
+        };
         /** McpServer */
         McpServer: {
             /**
              * Client
              * @enum {string}
              */
-            client: "claude" | "codex";
+            client: "claude" | "codex" | "gemini";
             /** Name */
             name: string;
             /** Project */
@@ -742,6 +754,8 @@ export interface components {
         Meta: {
             /** Home */
             home: string;
+            /** Tools */
+            tools: components["schemas"]["ToolInfo"][];
             /** Version */
             version: string;
         };
@@ -795,7 +809,7 @@ export interface components {
              * Tool
              * @enum {string}
              */
-            tool: "claude" | "codex";
+            tool: "claude" | "codex" | "gemini";
         };
         /** Screen */
         Screen: {
@@ -829,7 +843,7 @@ export interface components {
             /** Name */
             name: string;
             /** Tool */
-            tool: ("claude" | "codex") | null;
+            tool: ("claude" | "codex" | "gemini") | null;
         };
         /** SessionsSnapshot */
         SessionsSnapshot: {
@@ -909,7 +923,7 @@ export interface components {
             /** Project */
             project: string | null;
             /** Tool */
-            tool: ("claude" | "codex") | null;
+            tool: ("claude" | "codex" | "gemini") | null;
             /** Tty */
             tty: string | null;
         };
@@ -956,8 +970,36 @@ export interface components {
             found: boolean;
             /** Path */
             path: string | null;
+            /** Used */
+            used: boolean;
             /** Version */
             version: string | null;
+        };
+        /**
+         * ToolInfo
+         * @description What one tool can do here, so the UI offers only that.
+         */
+        ToolInfo: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "claude" | "codex" | "gemini";
+            /** Installed */
+            installed: boolean;
+            mcp: components["schemas"]["McpInfo"] | null;
+            /** Picks Conversation Id */
+            picks_conversation_id: boolean;
+            /** Plugins */
+            plugins: boolean;
+            /** Resume Requires Cwd */
+            resume_requires_cwd: boolean;
+            /** Session Modes */
+            session_modes: ("new" | "continue" | "resume")[];
+            /** Title */
+            title: string;
+            /** Used */
+            used: boolean;
         };
         /** Trashed */
         Trashed: {
@@ -997,7 +1039,7 @@ export interface components {
              * Tool
              * @enum {string}
              */
-            tool: "claude" | "codex";
+            tool: "claude" | "codex" | "gemini";
         };
         /** UsageProject */
         UsageProject: {
@@ -1048,7 +1090,7 @@ export interface components {
              * Tool
              * @enum {string}
              */
-            tool: "claude" | "codex";
+            tool: "claude" | "codex" | "gemini";
         };
         /** UsageTotals */
         UsageTotals: {

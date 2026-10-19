@@ -27,6 +27,8 @@ class Paths(BaseModel):
     claude_home: Path = Path("~/.claude")
     claude_json: Path = Path("~/.claude.json")
     codex_home: Path = Path("~/.codex")
+    # Gemini CLI's ~/.gemini; with GEMINI_CLI_HOME=<dir> it lives in <dir>/.gemini.
+    gemini_home: Path = Path("~/.gemini")
     vault: Path = Path("~/workspace/Obsidian Vault")
     # Relative to the vault. Personal tasks only; the vault-root Tasks.md holds work tasks.
     tasks_file: Path = Path("Personal/Tasks.md")
@@ -82,9 +84,10 @@ class Server(BaseModel):
 
 
 class Cli(BaseModel):
-    # Paths to the claude / codex / tmux binaries; default is whatever is on PATH.
+    # Paths to the claude / codex / gemini / tmux binaries; default is whatever is on PATH.
     claude_bin: str | None = None
     codex_bin: str | None = None
+    gemini_bin: str | None = None
     tmux_bin: str | None = None
     # Extra environment for CLI calls, e.g. CLAUDE_CONFIG_DIR / CODEX_HOME to point the
     # CLIs at a sandbox. Point paths.* at the same place so reads match writes.

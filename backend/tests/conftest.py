@@ -83,6 +83,7 @@ def settings(home):
         claude_home=home / ".claude",
         claude_json=home / ".claude.json",
         codex_home=home / ".codex",
+        gemini_home=home / ".gemini",
         vault=home / "vault",
         data_dir=home / ".eyrie",
     ))

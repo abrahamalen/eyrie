@@ -366,12 +366,14 @@ class ToolHealth(BaseModel):
     found: bool
     version: str | None
     path: str | None
+    used: bool  # the tool's state folder exists
 
 
 class Health(BaseModel):
     tmux: ToolHealth
     claude: ToolHealth
     codex: ToolHealth
+    gemini: ToolHealth
     usage_index: IndexStats | None
 
 
@@ -386,9 +388,31 @@ class Summary(BaseModel):
     generated_at: str
 
 
+class McpInfo(BaseModel):
+    scopes: list[Literal["user", "local", "project"]]
+    transports: list[Literal["stdio", "http", "sse"]]
+    headers: bool
+    bearer_token_env_var: bool
+
+
+class ToolInfo(BaseModel):
+    """What one tool can do here, so the UI offers only that."""
+    id: ToolId
+    title: str
+    installed: bool
+    used: bool
+    session_modes: list[Literal["new", "continue", "resume"]]
+    resume_requires_cwd: bool
+    # Eyrie picks a new conversation's id up front (so the preview matches what runs).
+    picks_conversation_id: bool
+    mcp: McpInfo | None
+    plugins: bool
+
+
 class Meta(BaseModel):
     home: str
     version: str
+    tools: list[ToolInfo]
 
 
 class Token(BaseModel):

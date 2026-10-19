@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@/api/client'
 import type { ActionResult, SessionTool } from '@/api/types'
 import { shortPath } from '@/format'
+import { sessionTools, toolInfo } from '@/tools'
 import { CommandPreview, ResultLine } from '@/components/CommandPreview'
 import { Button } from '@/components/ui/button'
 import {
@@ -67,7 +68,7 @@ export function StartSessionDialog({
     mode,
     name: ids.name,
     ...(resuming ? { resume_id: openFor?.resumeId } : {}),
-    ...(tool === 'claude' && mode === 'new' ? { conversation_id: ids.conversation } : {}),
+    ...(toolInfo(tool)?.picks_conversation_id && mode === 'new' ? { conversation_id: ids.conversation } : {}),
   }
   const key = JSON.stringify(params)
 
@@ -97,8 +98,9 @@ export function StartSessionDialog({
               <label className="flex flex-col gap-1.5 text-sm font-medium">
                 Tool
                 <select id="session-tool" className={selectClass} value={tool} onChange={(e) => setTool(e.target.value as SessionTool)}>
-                  <option value="claude">Claude Code</option>
-                  <option value="codex">Codex</option>
+                  {sessionTools().map((t) => (
+                    <option key={t.id} value={t.id}>{t.title}</option>
+                  ))}
                 </select>
               </label>
               <label className="flex flex-col gap-1.5 text-sm font-medium">
