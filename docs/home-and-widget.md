@@ -115,6 +115,14 @@ Data colours stay as they are. The chart palette is the validated categorical on
 
 ## 4. The widget
 
+**Built** (`widget/`, Tauri 2.12.1). What the build found:
+
+- **Mark**: the app's logo, "e." in Geist Bold, so the tray, app icon, favicon and sidebar all match. Earlier marks failed at 22 px: a nest read as a smiley face, then a peak with a bird read as macOS's photo glyph. State lives in the dot: `e.` fine, `e●` (big raised dot) needs you, `e!` problem. `widget/make_icons.py` draws the three tray states and the app icon; `npx tauri icon` derives the bundle sizes.
+- **Release**: `Eyrie.app` (ad-hoc signed, `LSUIElement` so there's no Dock icon at launch) and `Eyrie_0.1.0_aarch64.dmg`, 3.1 MB.
+- **DMG layout**: `bundle_dmg.sh` drives Finder with AppleScript to lay out the DMG window, which needs automation permission. Builds run it with `CI=true`, which skips that step.
+- **Linux**: builds and bundles in an Ubuntu 24.04 container as `Eyrie_0.1.0_arm64.deb` (3.7 MB). It depends on `libayatana-appindicator3-1`, `libwebkit2gtk-4.1-0` and `libgtk-3-0`. amd64 builds come from release CI.
+- **Testing**: the panel is a second Vite entry. A dev-only bridge fallback lets it be checked in a browser; production builds don't include it.
+
 A tray app: a menu-bar icon on macOS, an indicator in the Ubuntu top bar.
 
 ### 4.1 Icon

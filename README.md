@@ -37,6 +37,23 @@ and `tmux`. After pulling changes, run `make install` again to rebuild and resta
 anything. On Ubuntu, `loginctl enable-linger` keeps Eyrie running while you're logged out.
 Elsewhere, `make serve` runs the same thing in the foreground.
 
+## Top-bar widget
+
+A small menu-bar (macOS) / top-bar (Linux) app: an icon that changes when something needs
+you, today's cost next to it on macOS, and a panel with what needs you, live sessions and
+quick actions. It talks only to your installed Eyrie on 127.0.0.1. Needs Rust
+(<https://rustup.rs>).
+
+```bash
+make widget        # build and run it (debug) against the installed Eyrie
+make widget-dist   # build Eyrie.app + .dmg (macOS) or .deb/.rpm/AppImage (Linux)
+```
+
+On macOS click the icon for the panel and right-click it for the menu. On Linux the
+indicator opens a menu (AppIndicator has no click events) with "Show panel". It starts at
+login by default; turn that off in its menu. Not signed by a developer account yet, so on
+macOS open it the first time with right-click → Open.
+
 ## Develop
 
 ```bash
