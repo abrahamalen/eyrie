@@ -42,6 +42,8 @@ class FakeTmux:
             self.sessions[name] = {"tool": opts["@eyrie_tool"], "cwd": opts["@eyrie_cwd"], "mode": opts["@eyrie_mode"],
                                    "conv": opts["@eyrie_conv"], "argv": a}
             return RunResult(0, "", "", 5)
+        if a[0] == "list-panes":
+            return RunResult(0, "".join(f"{1000 + i}\n" for i, _ in enumerate(self.sessions)), "", 1)
         if a[0] == "kill-session":
             self.sessions.pop(a[a.index("-t") + 1], None)
             return RunResult(0, "", "", 1)

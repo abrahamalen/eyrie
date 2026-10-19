@@ -24,6 +24,8 @@ class FakeTools:
         self.calls.append((tool, list(args)))
         if args in (["-V"], ["--version"]):
             return RunResult(0, {"tmux": "tmux 3.6a", "claude": "2.1.302 (Claude Code)", "codex": "codex-cli 0.162.1"}[tool], "", 1)
+        if tool == "tmux" and "list-panes" in args:
+            return RunResult(0, "", "", 1)
         if tool == "tmux" and "list-sessions" in args:
             if not self.sessions:
                 return RunResult(1, "", "no server running", 1)

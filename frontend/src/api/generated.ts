@@ -619,6 +619,33 @@ export interface components {
             /** Tokens */
             tokens: number;
         };
+        /**
+         * ExternalSession
+         * @description A Claude Code / Codex session running in one of your own terminals (not started by Eyrie).
+         */
+        ExternalSession: {
+            /** Activity Exact */
+            activity_exact: boolean;
+            /** Cwd */
+            cwd: string | null;
+            /** Idle Minutes */
+            idle_minutes: number | null;
+            /** Last Activity */
+            last_activity: string | null;
+            /** Pid */
+            pid: number;
+            /** Resume */
+            resume: string | null;
+            /** Started */
+            started: string;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex";
+            /** Tty */
+            tty: string;
+        };
         /** FileBody */
         FileBody: {
             /** Content */
@@ -832,6 +859,8 @@ export interface components {
             dirs: string[];
             /** Error */
             error: string | null;
+            /** External */
+            external: components["schemas"]["ExternalSession"][];
             /** Sessions */
             sessions: components["schemas"]["Session"][];
         };
@@ -893,12 +922,18 @@ export interface components {
             idle_minutes: number | null;
             /** Last Output */
             last_output: string | null;
+            /** Managed */
+            managed: boolean;
             /** Name */
             name: string;
+            /** Pid */
+            pid: number | null;
             /** Project */
             project: string | null;
             /** Tool */
             tool: ("claude" | "codex") | null;
+            /** Tty */
+            tty: string | null;
         };
         /** SummaryTasks */
         SummaryTasks: {

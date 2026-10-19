@@ -28,6 +28,7 @@ export type UsageReport = S['UsageReport']
 export type Session = S['Session']
 export type SessionTool = NonNullable<Session['tool']>
 export type SessionsSnapshot = S['SessionsSnapshot']
+export type ExternalSession = S['ExternalSession']
 export type Conversation = S['Conversation']
 export type Screen = S['Screen']
 export type Meta = S['Meta']

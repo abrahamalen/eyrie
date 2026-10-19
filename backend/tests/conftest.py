@@ -30,6 +30,14 @@ def _never_run_real_cli(monkeypatch):
     monkeypatch.setattr(runner.Runner, "binary", lambda self, tool: f"/fake/bin/{tool}")
 
 
+@pytest.fixture(autouse=True)
+def _no_real_processes(monkeypatch):
+    """Session detection reads `ps`; tests must not see the machine's real sessions."""
+    from app.sessions import external
+    monkeypatch.setattr(external, "_ps", lambda: "")
+    monkeypatch.setattr(external, "_cwds", lambda pids: {})
+
+
 @dataclass
 class FakeCli:
     calls: list = field(default_factory=list)

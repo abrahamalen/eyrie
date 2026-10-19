@@ -46,6 +46,7 @@ export function SessionsPage() {
   const dirs = data?.dirs ?? []
   const allowed = (cwd: string | null) => !!cwd && dirs.includes(cwd)
   const sessions = data?.sessions ?? []
+  const external = data?.external ?? []
   const openSession = sessions.find((s) => s.name === open)
 
   return (
@@ -114,7 +115,7 @@ export function SessionsPage() {
                 {data && !sessions.length && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                      No sessions yet. Start one, or resume a conversation below.
+                      No Eyrie sessions yet. Start one, or resume a conversation below.
                     </TableCell>
                   </TableRow>
                 )}
@@ -123,6 +124,51 @@ export function SessionsPage() {
           )}
         </CardContent>
       </Card>
+
+      {!!external.length && (
+        <Card>
+          <CardHeader>
+            <CardTitle>In your terminals</CardTitle>
+            <CardDescription>
+              Claude Code and Codex you started yourself. Eyrie can see them but not attach; switch to that terminal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tool</TableHead>
+                  <TableHead>Directory</TableHead>
+                  <TableHead>Terminal</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Last activity</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {external.map((x) => (
+                  <TableRow key={x.pid}>
+                    <TableCell>
+                      <div>{x.tool === 'codex' ? 'Codex' : 'Claude Code'}</div>
+                      {x.resume && <div className="font-mono text-xs text-muted-foreground">resume {x.resume.slice(0, 12)}</div>}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate font-mono text-xs" title={x.cwd ?? undefined}>
+                      {x.cwd ? shortPath(x.cwd) : '—'}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{x.tty} · pid {x.pid}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmtAgo(x.started)}</TableCell>
+                    <TableCell
+                      className="text-muted-foreground"
+                      title={x.activity_exact ? undefined : 'Approximate: newest conversation in this directory'}
+                    >
+                      {x.last_activity ? `${x.activity_exact ? '' : '~'}${fmtAgo(x.last_activity)}` : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {openSession && (
         <Suspense fallback={<Skeleton className="h-[28rem]" />}>
