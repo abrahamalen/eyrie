@@ -9,8 +9,10 @@ from pathlib import Path
 from app.actions.runner import CliNotFound, Runner
 from app.config import Settings
 from app.sessions.dirs import is_allowed
+from app.tools import TOOLS
 
-TOOLS = {"tmux": ["-V"], "claude": ["--version"], "codex": ["--version"]}
+# tmux plus every known tool, and how to ask each for its version.
+PROBES = {"tmux": ["-V"], **{t.id: list(t.version_args) for t in TOOLS.values()}}
 VERSION_RE = re.compile(r"\d+(?:\.\d+)+[a-z]?")
 SEVERITY = {"problem": 0, "attention": 1}
 
@@ -37,7 +39,7 @@ class Versions:
             hit = self._cache.get(tool)
             if hit and hit[0] == key:
                 return hit[1]
-        r = self.runner.run(tool, TOOLS[tool])
+        r = self.runner.run(tool, PROBES[tool])
         m = VERSION_RE.search(r.stdout + r.stderr) if r.ok else None
         info = {"found": True, "version": m.group(0) if m else None, "path": str(path)}
         with self._lock:
@@ -55,9 +57,8 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
     now = datetime.now(timezone.utc)
     attention: list[dict] = []
 
-    health = {tool: versions.get(tool) for tool in TOOLS}
-    needs = {"tmux": "Sessions can't start or be opened", "claude": "Claude Code sessions and MCP/plugin changes can't run",
-             "codex": "Codex sessions and Codex MCP changes can't run"}
+    health = {tool: versions.get(tool) for tool in PROBES}
+    needs = {"tmux": "Sessions can't start or be opened", **{t.id: t.needs for t in TOOLS.values()}}
     for tool, info in health.items():
         if not info["found"]:
             attention.append({"kind": "cli_missing", "severity": "problem", "title": f"{tool} isn't installed",
@@ -73,7 +74,7 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
         sessions.append({"name": s["name"], "tool": s["tool"], "project": s["cwd"], "alive": s["alive"],
                          "exit_status": s["exit_status"], "idle_minutes": idle, "last_output": s["last_output"],
                          "managed": True, "tty": None, "pid": None})
-        tool = "Codex" if s["tool"] == "codex" else "Claude Code"
+        tool = TOOLS[s["tool"]].title if s["tool"] in TOOLS else (s["tool"] or "Unknown tool")
         where = s["cwd"] or "unknown directory"
         if not s["alive"] and s["exit_status"] not in (None, 0):
             attention.append({"kind": "session_exited_error", "severity": "problem",
@@ -101,7 +102,7 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
             c = configured.get(f["name"])
             if c is None:
                 continue
-            client = "Codex" if c["client"] == "codex" else "Claude Code"
+            client = TOOLS[c["client"]].title
             attention.append({"kind": "mcp_failed", "severity": "attention",
                               "title": f"MCP server {f['name']} failed to connect",
                               "detail": f"{client} · {c['scope']} scope · {f['detail']}", "href": "/mcp", "since": None})

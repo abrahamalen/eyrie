@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.tools import ToolId
+
 
 class SourceInfo(BaseModel):
     id: str
@@ -77,7 +79,7 @@ class CodexUsage(BaseModel):
 
 class McpServer(BaseModel):
     name: str
-    client: Literal["claude", "codex"]
+    client: ToolId
     scope: Literal["user", "local", "project"]
     type: str
     target: str
@@ -162,7 +164,7 @@ class TasksSnapshot(BaseModel):
 
 class Session(BaseModel):
     name: str
-    tool: Literal["claude", "codex"] | None
+    tool: ToolId | None
     cwd: str | None
     mode: str | None
     conversation_id: str | None
@@ -178,7 +180,7 @@ class Session(BaseModel):
 class ExternalSession(BaseModel):
     """A Claude Code / Codex session running in one of your own terminals (not started by Eyrie)."""
     pid: int
-    tool: Literal["claude", "codex"]
+    tool: ToolId
     tty: str
     cwd: str | None
     resume: str | None
@@ -330,7 +332,7 @@ class AttentionItem(BaseModel):
 
 class SummarySession(BaseModel):
     name: str
-    tool: Literal["claude", "codex"] | None
+    tool: ToolId | None
     project: str | None
     alive: bool
     exit_status: int | None
@@ -363,7 +365,7 @@ class SummaryTasks(BaseModel):
 class RecentProject(BaseModel):
     path: str
     last_used: str
-    tool: Literal["claude", "codex"]
+    tool: ToolId
 
 
 class ToolHealth(BaseModel):
