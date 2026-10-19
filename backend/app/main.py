@@ -9,9 +9,10 @@ from app.actions.audit import AuditLog
 from app.actions.runner import Runner
 from app.routers import actions, auth, memory, sessions, sources, tasks, usage
 from app.schemas import Meta, Status, Summary
-from app.summary import Versions, build_summary
+from app.summary import Versions, build_summary, tool_used
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
+from app.tools import TOOLS
 from app.ui import mount_ui
 
 
@@ -49,7 +50,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/api/v1/meta", response_model=Meta)
     def meta():
-        return {"home": str(Path.home()), "version": __version__}
+        tools = []
+        for t in TOOLS.values():
+            m = t.mcp
+            tools.append({"id": t.id, "title": t.title, "installed": versions.get(t.id)["found"],
+                          "used": tool_used(settings, t.id),
+                          "session_modes": list(t.sessions.modes) if t.sessions else [],
+                          "resume_requires_cwd": bool(t.sessions and t.sessions.resume_requires_cwd),
+                          "picks_conversation_id": bool(t.sessions and t.sessions.wants_conversation_id("new")),
+                          "mcp": {"scopes": list(m.scopes), "transports": list(m.transports), "headers": m.headers,
+                                  "bearer_token_env_var": m.bearer_token_env_var} if m else None,
+                          "plugins": t.plugins})
+        return {"home": str(Path.home()), "version": __version__, "tools": tools}
 
     # Last: a catch-all for the UI, so it never shadows an API route.
     mount_ui(app, settings.server.ui_dir)

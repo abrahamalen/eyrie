@@ -272,8 +272,10 @@ export function OverviewPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-[13.5px]">
-                  {(['tmux', 'claude', 'codex'] as const).map((tool) => {
+                  {(['tmux', 'claude', 'codex', 'gemini'] as const).map((tool) => {
                     const h = data.health[tool]
+                    // A tool you don't use (no state folder) and haven't installed isn't part of your setup.
+                    if (!h.found && !h.used) return null
                     return (
                       <span key={tool} className="inline-flex items-center gap-2" title={h.path ?? undefined}>
                         <Dot tone={h.found ? 'ok' : 'problem'} />

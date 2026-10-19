@@ -47,6 +47,11 @@ class Versions:
         return info
 
 
+def tool_used(settings: Settings, tool: str) -> bool:
+    t = TOOLS.get(tool)
+    return t is None or t.home is None or t.home(settings).exists()
+
+
 def _minutes_since(iso: str | None, now: datetime) -> int | None:
     if not iso:
         return None
@@ -57,10 +62,11 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
     now = datetime.now(timezone.utc)
     attention: list[dict] = []
 
-    health = {tool: versions.get(tool) for tool in PROBES}
+    health = {tool: {**versions.get(tool), "used": tool_used(settings, tool)} for tool in PROBES}
     needs = {"tmux": "Sessions can't start or be opened", **{t.id: t.needs for t in TOOLS.values()}}
     for tool, info in health.items():
-        if not info["found"]:
+        # A tool you don't use (no state folder) missing isn't a problem; tmux always matters.
+        if not info["found"] and info["used"]:
             attention.append({"kind": "cli_missing", "severity": "problem", "title": f"{tool} isn't installed",
                               "detail": f"{needs[tool]}. Install it, or set cli.{tool}_bin in eyrie.toml.",
                               "href": "/", "since": None})

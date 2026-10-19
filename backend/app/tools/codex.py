@@ -16,6 +16,7 @@ def _db(settings: Settings) -> Path:
 
 class Sessions:
     modes = ("new", "continue", "resume")
+    resume_requires_cwd = False
     helpers = frozenset({"app-server", "mcp", "mcp-server", "exec-server", "login", "logout", "--version", "-v",
                          "proto", "code-mode-host"})
 
@@ -95,6 +96,11 @@ class Usage:
 
 
 class Mcp:
+    scopes = ("user",)
+    transports = ("stdio", "http")
+    headers = False
+    bearer_token_env_var = True
+
     def servers(self, settings: Settings) -> list[dict]:
         path = settings.paths.codex_home / "config.toml"
         try:
@@ -102,14 +108,6 @@ class Mcp:
         except (FileNotFoundError, tomllib.TOMLDecodeError):
             return []
         return [entry(n, c, "codex", "user") for n, c in servers.items() if isinstance(c, dict)]
-
-    def validate(self, p) -> None:
-        if getattr(p, "transport", None) == "sse":
-            raise ValueError("Codex supports stdio and http servers only")
-        if p.scope != "user":
-            raise ValueError("Codex servers are global; use scope 'user'")
-        if getattr(p, "headers", None):
-            raise ValueError("Codex can't set headers; use bearer_token_env_var")
 
     def add(self, p):
         args = ["mcp", "add", p.name]
@@ -127,4 +125,5 @@ class Mcp:
 
 
 TOOL = Tool(id="codex", title="Codex", binary="codex", needs="Codex sessions and Codex MCP changes can't run",
+            home=lambda s: s.paths.codex_home,
             sessions=Sessions(), usage=Usage(), mcp=Mcp())

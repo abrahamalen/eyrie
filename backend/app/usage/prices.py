@@ -5,6 +5,10 @@ counts priced with these rates match the cost it reports to within a few percent
 OpenAI (Codex): the Standard tier, short-context column, from
 developers.openai.com/api/docs/pricing. Codex's context window (258,400) is under the 272K
 long-context threshold, so the long-context rates never apply.
+Gemini (Gemini CLI): paid tier Standard, from ai.google.dev/gemini-api/docs/pricing. Some are
+introductory and rise later (gemini-4-argon on 2026-12-01; the 3.6/3.8 flash models on
+2027-01-01): update these then, since history is priced at query time. The >200K-prompt tier
+of the pro models isn't modelled. Caching is implicit, so there's no write price.
 Override or add models under [pricing] in eyrie.toml.
 """
 import re
@@ -59,6 +63,23 @@ DEFAULT_PRICES |= {
     "gpt-5.6-terra": _openai(2, 0.20, 12, 2.5),
     "gpt-5.5": _openai(5, 0.50, 30),
     "gpt-5.4": _openai(2.5, 0.25, 15),
+}
+
+def _gemini(input: float, output: float, cached: float) -> ModelPrice:
+    return ModelPrice(input=input, output=output, cache_write_5m=input, cache_write_1h=input, cache_read=cached)
+
+
+DEFAULT_PRICES |= {
+    "gemini-4-argon": _gemini(2.00, 10.00, 0.10),
+    "gemini-3.8-flash": _gemini(0.75, 3.75, 0.075),
+    "gemini-3.6-flash": _gemini(0.75, 3.75, 0.075),
+    "gemini-3.5-flash-lite": _gemini(0.30, 2.50, 0.03),
+    "gemini-3.1-pro-preview": _gemini(2.00, 12.00, 0.20),
+    "gemini-3.1-flash-lite": _gemini(0.25, 1.50, 0.025),
+    "gemini-3-flash-preview": _gemini(0.50, 3.00, 0.05),
+    "gemini-2.5-pro": _gemini(1.25, 10.00, 0.125),
+    "gemini-2.5-flash": _gemini(0.30, 2.50, 0.03),
+    "gemini-2.5-flash-lite": _gemini(0.10, 0.40, 0.01),
 }
 
 _SUFFIX = re.compile(r"(\[[^\]]*\]|-\d{8})$")

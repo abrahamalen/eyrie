@@ -49,10 +49,17 @@ def _project_dir(scope: str, project_dir: str | None) -> Path | None:
     return p.resolve()
 
 
-def _mcp_tool(client: str):
-    mcp = TOOLS[client].mcp
+def _mcp_tool(client: str, scope: str, transport: str | None = None):
+    """The tool's MCP capability, checked against what it declares it supports."""
+    title, mcp = TOOLS[client].title, TOOLS[client].mcp
     if mcp is None:
-        raise ValueError(f"{TOOLS[client].title} has no MCP support")
+        raise ValueError(f"{title} has no MCP support")
+    if scope not in mcp.scopes:
+        if mcp.scopes == ("user",):
+            raise ValueError(f"{title} servers are global; use scope 'user'")
+        raise ValueError(f"{title} servers can't use scope '{scope}'; use {' or '.join(map(repr, mcp.scopes))}")
+    if transport is not None and transport not in mcp.transports:
+        raise ValueError(f"{title} supports {' and '.join(mcp.transports)} servers only")
     return mcp
 
 
@@ -92,7 +99,12 @@ class McpAdd(BaseModel):
         for k, v in self.headers.items():
             if not HEADER_NAME.match(k) or "\n" in v or "\r" in v:
                 raise ValueError(f"Bad header: {k}")
-        _mcp_tool(self.client).validate(self)
+        mcp = _mcp_tool(self.client, self.scope, self.transport)
+        title = TOOLS[self.client].title
+        if self.headers and not mcp.headers:
+            raise ValueError(f"{title} can't set headers; use bearer_token_env_var")
+        if self.bearer_token_env_var and not mcp.bearer_token_env_var:
+            raise ValueError(f"{title} can't read a bearer token from an env var; use headers")
         if self.bearer_token_env_var and not ENV_KEY.match(self.bearer_token_env_var):
             raise ValueError("Bad bearer_token_env_var")
         self.project_dir = str(_project_dir(self.scope, self.project_dir) or "") or None
@@ -112,7 +124,7 @@ class McpRemove(BaseModel):
 
     @model_validator(mode="after")
     def _check(self):
-        _mcp_tool(self.client).validate(self)
+        _mcp_tool(self.client, self.scope)
         self.project_dir = str(_project_dir(self.scope, self.project_dir) or "") or None
         return self
 
@@ -205,11 +217,11 @@ class Action:
 
 
 def _mcp_add(p: McpAdd, ctx: Context) -> Planned:
-    return Planned(p.client, *_mcp_tool(p.client).add(p))
+    return Planned(p.client, *TOOLS[p.client].mcp.add(p))
 
 
 def _mcp_remove(p: McpRemove, ctx: Context) -> Planned:
-    return Planned(p.client, *_mcp_tool(p.client).remove(p))
+    return Planned(p.client, *TOOLS[p.client].mcp.remove(p))
 
 
 def _plugin(verb: str):

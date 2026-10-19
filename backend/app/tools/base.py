@@ -18,6 +18,9 @@ Activity = tuple[datetime | None, bool]
 
 class SessionCaps(Protocol):
     modes: tuple[str, ...]  # of "new", "continue", "resume"
+    # Resuming only works from the directory the conversation was in (Gemini keys sessions by
+    # project), so the UI must fix the directory before offering conversations.
+    resume_requires_cwd: bool
     # A first argument that marks a helper process rather than an interactive session.
     helpers: frozenset[str]
 
@@ -52,11 +55,13 @@ class UsageCaps(Protocol):
 
 
 class McpCaps(Protocol):
+    scopes: tuple[str, ...]      # of "user", "local", "project"
+    transports: tuple[str, ...]  # of "stdio", "http", "sse"
+    headers: bool                # can set HTTP headers
+    bearer_token_env_var: bool   # can read a bearer token from an env var
+
     def servers(self, settings: "Settings") -> list[dict]:
         """Configured servers: {name, scope, type, target (masked), project}."""
-
-    def validate(self, p) -> None:
-        """Raise ValueError for options this tool's CLI doesn't support."""
 
     def add(self, p) -> tuple[list[str], Path | None]:
         """argv after the binary, and the cwd to run it in."""
@@ -73,6 +78,9 @@ class Tool:
     version_args: tuple[str, ...] = ("--version",)
     # Shown when the binary isn't found: what stops working.
     needs: str = ""
+    # The tool's own state folder: when it exists you use the tool, so a missing binary is a
+    # problem worth flagging; when it doesn't, the tool just isn't part of your setup.
+    home: Callable[["Settings"], Path] | None = None
     sessions: SessionCaps | None = None
     usage: UsageCaps | None = None
     mcp: McpCaps | None = None

@@ -20,6 +20,7 @@ from app.tools import TOOLS
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+RUNTIMES = {"node", "bun", "deno"}
 
 
 def _etime_seconds(v: str) -> int:
@@ -43,6 +44,9 @@ def parse_ps(output: str) -> list[dict]:
         if tty in ("?", "??", "-"):
             continue  # no terminal: a daemon or helper
         args = command.split()
+        # Node-based CLIs (Gemini) show up as `node /path/to/gemini …`.
+        if os.path.basename(args[0]) in RUNTIMES and len(args) > 1:
+            args = args[1:]
         tool = next((t for t in TOOLS.values() if t.sessions and os.path.basename(args[0]) == t.binary), None)
         if tool is None or (len(args) > 1 and args[1] in tool.sessions.helpers):
             continue

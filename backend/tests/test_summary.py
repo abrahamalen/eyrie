@@ -23,7 +23,8 @@ class FakeTools:
     def run(self, _self, tool, args, cwd=None):
         self.calls.append((tool, list(args)))
         if args in (["-V"], ["--version"]):
-            return RunResult(0, {"tmux": "tmux 3.6a", "claude": "2.1.302 (Claude Code)", "codex": "codex-cli 0.162.1"}[tool], "", 1)
+            return RunResult(0, {"tmux": "tmux 3.6a", "claude": "2.1.302 (Claude Code)", "codex": "codex-cli 0.162.1",
+                                 "gemini": "0.45.2"}[tool], "", 1)
         if tool == "tmux" and "list-panes" in args:
             return RunResult(0, "", "", 1)
         if tool == "tmux" and "list-sessions" in args:
@@ -65,16 +66,19 @@ def test_all_fine(client, tools):
     s = summary(client)
     assert s["state"] == "ok" and s["attention"] == []
     assert {k: v["version"] for k, v in s["health"].items() if k != "usage_index"} == {
-        "tmux": "3.6a", "claude": "2.1.302", "codex": "0.162.1"}
+        "tmux": "3.6a", "claude": "2.1.302", "codex": "0.162.1", "gemini": "0.45.2"}
 
 
-def test_missing_cli_is_a_problem_and_sorted_first(client, tools):
-    tools.missing = {"codex"}
+def test_missing_cli_is_a_problem_and_sorted_first(client, tools, home):
+    (home / ".codex").mkdir()  # you use Codex
+    tools.missing = {"codex", "gemini"}  # no ~/.gemini: not part of your setup
     tools.sessions = [("eyrie-idle1", "claude", "/p", 30, False, None)]
     s = summary(client)
     assert s["state"] == "problem"
     assert kinds(s)[0] == "cli_missing" and "codex isn't installed" in s["attention"][0]["title"]
-    assert s["health"]["codex"] == {"found": False, "version": None, "path": None}
+    assert [a for a in s["attention"] if "gemini" in a["title"]] == []
+    assert s["health"]["codex"] == {"found": False, "version": None, "path": None, "used": True}
+    assert s["health"]["gemini"]["used"] is False
 
 
 def test_session_states(client, tools):

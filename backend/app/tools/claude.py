@@ -19,6 +19,7 @@ def transcript_dir(claude_home: Path, cwd: str) -> Path:
 
 class Sessions:
     modes = ("new", "continue", "resume")
+    resume_requires_cwd = False
     helpers = frozenset({"daemon", "bg-pty-host", "bg-spare", "mcp", "mcp-server", "login", "logout", "plugin",
                          "--version", "-v", "doctor", "update", "install"})
 
@@ -83,6 +84,11 @@ class Usage:
 
 
 class Mcp:
+    scopes = ("user", "local", "project")
+    transports = ("stdio", "http", "sse")
+    headers = True
+    bearer_token_env_var = False
+
     def servers(self, settings: Settings) -> list[dict]:
         d = safe_read_json(settings.paths.claude_json) or {}
         out = [entry(n, c, "claude", "user") for n, c in (d.get("mcpServers") or {}).items()]
@@ -91,10 +97,6 @@ class Mcp:
             shared = safe_read_json(Path(project) / ".mcp.json") or {}
             out += [entry(n, c, "claude", "project", project) for n, c in (shared.get("mcpServers") or {}).items()]
         return out
-
-    def validate(self, p) -> None:
-        if getattr(p, "bearer_token_env_var", None):
-            raise ValueError("bearer_token_env_var is Codex-only; use headers for Claude Code")
 
     def add(self, p):
         cwd = Path(p.project_dir) if p.project_dir else None
@@ -113,5 +115,5 @@ class Mcp:
 
 
 TOOL = Tool(id="claude", title="Claude Code", binary="claude",
-            needs="Claude Code sessions and MCP/plugin changes can't run",
+            needs="Claude Code sessions and MCP/plugin changes can't run", home=lambda s: s.paths.claude_home,
             sessions=Sessions(), usage=Usage(), mcp=Mcp(), plugins=True)

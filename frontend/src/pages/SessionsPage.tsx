@@ -5,6 +5,7 @@ import { api } from '@/api/client'
 import type { Session } from '@/api/types'
 import { usePoll } from '@/usePoll'
 import { fmtAgo, fmtNum, shortPath, toolTitle } from '@/format'
+import { sessionTools } from '@/tools'
 import { CopyButton } from '@/components/CopyButton'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
 import { StopSessionDialog } from '@/components/StopSessionDialog'
@@ -57,7 +58,7 @@ export function SessionsPage() {
         description={<>Claude Code and Codex running in Eyrie's own tmux server. They keep running if Eyrie restarts.</>}
         actions={
           <>
-        <Button onClick={() => setStart({ tool: 'claude' })} disabled={!data || !!data.error}>
+        <Button onClick={() => setStart({ tool: sessionTools()[0]?.id ?? 'claude' })} disabled={!data || !!data.error || !sessionTools().length}>
           <Plus className="size-4" /> New session
         </Button>
           </>
