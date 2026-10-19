@@ -133,9 +133,13 @@ export function WidgetPanel() {
         {s.sessions.map((x) => {
           const idle = s.attention.some((a) => a.kind === 'session_idle' && a.href === `/sessions?open=${x.name}`)
           return (
-            <Row key={x.name} dot={!x.alive ? (x.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} mono title={x.name}
-              sub={`${x.tool === 'codex' ? 'Codex' : 'Claude Code'} · ${shortPath(x.project ?? '').split('/').pop() || '~'} · ${!x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : 'running'}`}>
-              <button className={ghost} onClick={() => bridge.open(`/sessions?open=${x.name}`)}>Open</button>
+            <Row key={x.pid ?? x.name} dot={!x.alive ? (x.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} mono title={x.name}
+              sub={`${x.tool === 'codex' ? 'Codex' : 'Claude Code'} · ${shortPath(x.project ?? '').split('/').pop() || '~'} · ${!x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${x.idle_minutes} min ago` : 'running'}`}>
+              {x.managed ? (
+                <button className={ghost} onClick={() => bridge.open(`/sessions?open=${x.name}`)}>Open</button>
+              ) : (
+                <span className="font-mono text-[11.5px] text-muted-foreground" title="Running in one of your terminals">{x.tty}</span>
+              )}
             </Row>
           )
         })}

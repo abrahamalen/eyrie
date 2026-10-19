@@ -287,9 +287,14 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, summary: Option<&Value>) -> tauri:
             let sessions: Vec<&Value> = s["sessions"].as_array().into_iter().flatten().collect();
             if !sessions.is_empty() {
                 items.push(Box::new(PredefinedMenuItem::separator(app)?));
-                for sess in sessions.iter().take(6) {
+                for (i, sess) in sessions.iter().take(8).enumerate() {
                     let name = sess["name"].as_str().unwrap_or("");
-                    let label = if !sess["alive"].as_bool().unwrap_or(false) {
+                    let managed = sess["managed"].as_bool().unwrap_or(true);
+                    let label = if !managed {
+                        // Started in one of your terminals: Eyrie can't attach, so say where it is.
+                        let project = sess["project"].as_str().and_then(|p| p.rsplit('/').next()).unwrap_or("~");
+                        format!("{name}  ·  {project}")
+                    } else if !sess["alive"].as_bool().unwrap_or(false) {
                         format!("{name}  ·  exited")
                     } else {
                         match sess["idle_minutes"].as_i64() {
@@ -297,7 +302,8 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, summary: Option<&Value>) -> tauri:
                             _ => format!("{name}  ·  running"),
                         }
                     };
-                    items.push(Box::new(MenuItem::with_id(app, format!("ses:{name}"), label, true, None::<&str>)?));
+                    let id = if managed { format!("ses:{name}") } else { format!("ext:{i}") };
+                    items.push(Box::new(MenuItem::with_id(app, id, label, true, None::<&str>)?));
                 }
             }
             let today = money(&s["spend"]["today"]);
@@ -444,6 +450,8 @@ fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
             let last = app.state::<AppState>().last.lock().unwrap().clone();
             if let Some(name) = other.strip_prefix("ses:") {
                 open(&format!("/sessions?open={name}"));
+            } else if other.starts_with("ext:") {
+                open("/sessions");
             } else if let (Some(i), Some(s)) = (other.strip_prefix("att:"), last) {
                 let href = i.parse::<usize>().ok().and_then(|i| s["attention"][i]["href"].as_str().map(String::from));
                 open(&href.unwrap_or_else(|| "/".into()));
