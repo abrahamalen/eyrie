@@ -77,6 +77,11 @@ class Tmux:
         out.sort(key=lambda s: s["created"] or "", reverse=True)
         return out
 
+    def pane_pids(self) -> set[int]:
+        """PIDs of the programs running in Eyrie's sessions (tmux execs them directly)."""
+        r = self._run("list-panes", "-a", "-F", "#{pane_pid}")
+        return {int(x) for x in r.stdout.split() if x.isdigit()} if r.ok else set()
+
     def exists(self, name: str) -> bool:
         return any(s["name"] == name for s in self.list())
 
