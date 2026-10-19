@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eyrie LLD</title>
+<meta name="description" content="Low-level design of Eyrie, a local portal and control plane for Claude Code and Codex.">
+<style>
+:root {
+  --paper: hsl(40 25% 97%);
+  --ink: hsl(222 30% 14%);
+  --muted: hsl(220 12% 40%);
+  --line: hsl(35 15% 85%);
+  --card: hsl(0 0% 100%);
+  --tint: hsl(35 22% 91%);
+  --brand: hsl(192 82% 30%);
+  --brand-soft: hsl(192 60% 94%);
+  --warn: hsl(32 85% 38%);
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: hsl(222 28% 9%);
+    --ink: hsl(40 20% 94%);
+    --muted: hsl(220 12% 70%);
+    --line: hsl(222 17% 25%);
+    --card: hsl(222 23% 12%);
+    --tint: hsl(222 20% 16%);
+    --brand: hsl(190 75% 60%);
+    --brand-soft: hsl(192 40% 16%);
+    --warn: hsl(36 90% 62%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: hsl(222 28% 9%);
+  --ink: hsl(40 20% 94%);
+  --muted: hsl(220 12% 70%);
+  --line: hsl(222 17% 25%);
+  --card: hsl(222 23% 12%);
+  --tint: hsl(222 20% 16%);
+  --brand: hsl(190 75% 60%);
+  --brand-soft: hsl(192 40% 16%);
+  --warn: hsl(36 90% 62%);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 15px/1.6 var(--sans);
+}
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px 64px; }
+header.top {
+  display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--paper); z-index: 2;
+}
+.logo {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--ink); color: var(--paper);
+  display: grid; place-items: center; font: 700 17px/1 var(--serif); flex: none;
+}
+.logo b { color: var(--brand); }
+.product { font: 600 15px/1.2 var(--sans); }
+.product small { display: block; font: 500 10px/1.4 var(--mono); letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+.spacer { flex: 1; }
+button.theme {
+  font: 500 12px var(--sans); color: var(--ink); background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+button.theme:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.eyebrow {
+  font: 600 11px/1.4 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: center; gap: 8px; margin: 0 0 6px;
+}
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--brand); flex: none; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.2; letter-spacing: -.01em; }
+h1 { font-size: clamp(30px, 6vw, 44px); margin: 8px 0 12px; }
+h1 em { color: var(--brand); }
+h2 { font-size: 26px; margin: 0 0 10px; }
+h3 { font-size: 18px; margin: 28px 0 8px; }
+.lede { font-size: 17px; color: var(--muted); max-width: 70ch; margin: 0; }
+section { padding: 40px 0 8px; border-bottom: 1px solid var(--line); }
+section:last-of-type { border-bottom: 0; }
+p, li { max-width: 78ch; }
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+code, kbd {
+  font: 0.86em/1.4 var(--mono); background: var(--tint); border-radius: 4px; padding: 1px 5px;
+  overflow-wrap: anywhere;
+}
+a { color: var(--brand); }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; padding: 0; list-style: none; }
+.toc li { margin: 0; }
+.toc a {
+  display: inline-block; text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 12px; font-size: 13px;
+}
+.toc a:hover { border-color: var(--brand); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 24px 0 0; }
+.fact { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.fact .k { font: 600 10px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.fact .v { font: 600 15px/1.4 var(--sans); margin-top: 2px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.card h4 { margin: 0 0 6px; font: 600 14px/1.3 var(--sans); }
+.card p, .card ul { margin: 0; font-size: 14px; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 12px; background: var(--card); margin: 12px 0; }
+.scroll:focus-visible { outline: 2px solid var(--brand); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font: 600 10.5px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); background: var(--tint); white-space: nowrap; }
+td code { white-space: nowrap; overflow-wrap: normal; }
+td.wrap code { white-space: normal; overflow-wrap: anywhere; }
+table.wide { min-width: 760px; }
+table.mid { min-width: 620px; }
+.figure { margin: 12px 0 4px; }
+.figure .scroll { padding: 8px; }
+.figure svg { display: block; max-width: none; margin: 0 auto; }
+.caption { font-size: 13px; color: var(--muted); margin: 4px 2px 0; }
+.tag {
+  display: inline-block; font: 600 10px/1.6 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  border-radius: 999px; padding: 0 8px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; vertical-align: 1px;
+}
+.tag.planned { color: var(--warn); border-color: currentColor; }
+.tag.pr { color: var(--brand); border-color: currentColor; }
+.tag.built { color: var(--ink); }
+pre {
+  font: 12.5px/1.5 var(--mono); background: var(--tint); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0;
+}
+pre code { background: none; padding: 0; overflow-wrap: normal; }
+footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
+
+/* inline SVG diagrams */
+.d-box { fill: var(--card); stroke: var(--line); stroke-width: 1.2; }
+.d-box.brand { stroke: var(--brand); stroke-width: 1.6; }
+.d-box.dashed { stroke-dasharray: 5 4; stroke: var(--brand); }
+.d-group { fill: var(--tint); stroke: none; opacity: .7; }
+.d-note { fill: var(--brand-soft); stroke: var(--brand); stroke-width: .8; stroke-opacity: .5; }
+.d-t { fill: var(--ink); font: 12.5px var(--sans); }
+.d-h { font-weight: 600; }
+.d-s { fill: var(--muted); font: 11.5px var(--sans); }
+.d-lbl { fill: var(--ink); font: 11.5px var(--sans); paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+.d-nl { font-size: 11.5px; }
+.d-eyebrow { fill: var(--muted); font: 600 9.5px var(--mono); letter-spacing: .12em; }
+.d-msg { stroke: var(--muted); stroke-width: 1.3; fill: none; }
+.d-ret { stroke-dasharray: 5 4; }
+.d-brand { stroke: var(--brand); }
+.d-mk { fill: var(--muted); }
+.d-mkb { fill: var(--brand); }
+.d-life { stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.d-sep { stroke: var(--line); stroke-width: 1; }
+
+@media (max-width: 600px) {
+  body { font-size: 14.5px; }
+  h2 { font-size: 22px; }
+  section { padding-top: 28px; }
+  .product small { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="logo" aria-hidden="true">e<b>.</b></div>
+  <div class="product">Eyrie <small>Agent control plane · LLD</small></div>
+  <div class="spacer"></div>
+  <button class="theme" type="button" id="theme" aria-label="Toggle light or dark theme">Theme</button>
+</header>
+
+<section style="border-bottom:0;padding-bottom:0">
+  <p class="eyebrow">Low-level design · main @ 4d1aecb</p>
+  <h1>Eyrie, <em>module by module.</em></h1>
+  <p class="lede">A local portal and control plane for Claude Code and Codex. One FastAPI process on loopback reads the tools' own files, changes things only through their CLIs or a private tmux server, and logs every change. This page describes what the code on <code>main</code> does; the widget is described from PR #20; anything not built is tagged <span class="tag planned">planned</span>.</p>
+  <div class="facts">
+    <div class="fact"><div class="k">Backend</div><div class="v">FastAPI, Python 3.12</div></div>
+    <div class="fact"><div class="k">Frontend</div><div class="v">React + Vite + shadcn/ui</div></div>
+    <div class="fact"><div class="k">Sessions</div><div class="v">tmux <code>-L eyrie</code></div></div>
+    <div class="fact"><div class="k">Bind</div><div class="v">127.0.0.1:8787</div></div>
+    <div class="fact"><div class="k">State</div><div class="v"><code>~/.eyrie</code></div></div>
+  </div>
+  <ul class="toc">
+    <li><a href="#context">1 · Context</a></li>
+    <li><a href="#components">2 · Components</a></li>
+    <li><a href="#flows">3 · Flows</a></li>
+    <li><a href="#security">4 · Security</a></li>
+    <li><a href="#data">5 · Data</a></li>
+    <li><a href="#api">6 · API</a></li>
+    <li><a href="#deploy">7 · Deployment</a></li>
+    <li><a href="#limits">8 · Limits &amp; next</a></li>
+  </ul>
+</section>
+
+<!-- ============================================================ 1 -->
+<section id="context">
+  <p class="eyebrow">01 / System context</p>
+  <h2>What talks to what</h2>
+  <p>Everything runs as you, on one machine. The backend is the only thing that touches tool state; both clients go through its API.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="System context: clients, the Eyrie backend, tmux, local state and the service manager" width="1000" height="616" viewBox="0 0 1000 616" xmlns="http://www.w3.org/2000/svg"><title>System context: clients, the Eyrie backend, tmux, local state and the service manager</title><defs><marker id="ctx-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="ctx-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><rect x="330" y="14" width="330" height="58" rx="10" class="d-box "/><text x="342" y="36" class="d-t d-h" text-anchor="start">launchd agent / systemd user unit</text><text x="342" y="53" class="d-s" text-anchor="start">local.eyrie · eyrie.service · restarts on exit</text><path d="M495,72 L495,108" class="d-msg" marker-end="url(#ctx-a)"/><text x="505" y="95" class="d-lbl" text-anchor="start">runs uvicorn</text><rect x="16" y="90" width="250" height="290" rx="14" class="d-group"/><text x="30" y="108" class="d-eyebrow" text-anchor="start">CLIENTS</text><rect x="30" y="118" width="222" height="96" rx="10" class="d-box "/><text x="42" y="140" class="d-t d-h" text-anchor="start">Browser UI</text><text x="42" y="157" class="d-s" text-anchor="start">React SPA + xterm.js</text><text x="42" y="172" class="d-s" text-anchor="start">served by the backend</text><text x="42" y="187" class="d-s" text-anchor="start">dev: Vite :5173 proxies /api</text><rect x="30" y="232" width="222" height="132" rx="10" class="d-box dashed"/><text x="42" y="249" class="d-eyebrow" text-anchor="start">IN PR #20</text><text x="42" y="264" class="d-t d-h" text-anchor="start">Tray widget (Tauri v2)</text><text x="42" y="281" class="d-s" text-anchor="start">Rust polls /summary every 10 s</text><text x="42" y="296" class="d-s" text-anchor="start">panel calls Rust via invoke()</text><text x="42" y="311" class="d-s" text-anchor="start">token stays in Rust</text><text x="42" y="326" class="d-s" text-anchor="start">loopback URLs only</text><path d="M252,160 L328,160" class="d-msg" marker-end="url(#ctx-a)" marker-start="url(#ctx-a)"/><text x="290" y="152" class="d-lbl" text-anchor="middle">HTTP + WS</text><path d="M252,296 L328,296" class="d-msg" marker-end="url(#ctx-a)" marker-start="url(#ctx-a)"/><text x="290" y="288" class="d-lbl" text-anchor="middle">HTTP</text><rect x="330" y="110" width="330" height="322" rx="10" class="d-box brand"/><text x="342" y="127" class="d-eyebrow" text-anchor="start">127.0.0.1 ONLY</text><text x="342" y="142" class="d-t d-h" text-anchor="start">FastAPI backend</text><text x="342" y="159" class="d-s" text-anchor="start">LocalOnlyMiddleware (Host, Origin, token)</text><text x="342" y="174" class="d-s" text-anchor="start">/api/v1 routers + /summary</text><text x="342" y="189" class="d-s" text-anchor="start">source registry: read path</text><text x="342" y="204" class="d-s" text-anchor="start">action layer + Runner: argv only</text><text x="342" y="219" class="d-s" text-anchor="start">session manager: tmux, pty bridge</text><text x="342" y="234" class="d-s" text-anchor="start">usage indexer: SQLite</text><text x="342" y="249" class="d-s" text-anchor="start">audit log: JSONL</text><text x="342" y="264" class="d-s" text-anchor="start">built UI at / (app/ui.py)</text><text x="342" y="279" class="d-s" text-anchor="start"></text><text x="342" y="294" class="d-s" text-anchor="start">127.0.0.1:8787 (installed)</text><text x="342" y="309" class="d-s" text-anchor="start">127.0.0.1:8000 (make dev)</text><rect x="720" y="90" width="264" height="350" rx="14" class="d-group"/><text x="734" y="108" class="d-eyebrow" text-anchor="start">LOCAL STATE</text><rect x="734" y="118" width="236" height="66" rx="10" class="d-box "/><text x="746" y="140" class="d-t d-h" text-anchor="start">~/.claude, ~/.claude.json</text><text x="746" y="157" class="d-s" text-anchor="start">projects/*/*.jsonl transcripts</text><text x="746" y="172" class="d-s" text-anchor="start">settings, MCP, plugin state</text><rect x="734" y="194" width="236" height="52" rx="10" class="d-box "/><text x="746" y="216" class="d-t d-h" text-anchor="start">~/.codex</text><text x="746" y="233" class="d-s" text-anchor="start">state_5.sqlite (ro) · config.toml</text><rect x="734" y="256" width="236" height="66" rx="10" class="d-box "/><text x="746" y="278" class="d-t d-h" text-anchor="start">Obsidian vault</text><text x="746" y="295" class="d-s" text-anchor="start">Personal/Tasks.md</text><text x="746" y="310" class="d-s" text-anchor="start">agent-memory/Nexus/&lt;agent&gt;/*.md</text><rect x="734" y="332" width="236" height="96" rx="10" class="d-box "/><text x="746" y="354" class="d-t d-h" text-anchor="start">~/.eyrie</text><text x="746" y="371" class="d-s" text-anchor="start">token (0600) · audit.jsonl</text><text x="746" y="386" class="d-s" text-anchor="start">usage.db · tmux.conf</text><text x="746" y="401" class="d-s" text-anchor="start">logs/eyrie.log</text><path d="M660,151 L732,151" class="d-msg" marker-end="url(#ctx-a)"/><text x="696" y="145" class="d-lbl" text-anchor="middle">R</text><path d="M660,220 L732,220" class="d-msg" marker-end="url(#ctx-a)"/><text x="696" y="214" class="d-lbl" text-anchor="middle">R</text><path d="M660,289 L732,289" class="d-msg" marker-end="url(#ctx-a)"/><text x="696" y="283" class="d-lbl" text-anchor="middle">R/W</text><path d="M660,380 L732,380" class="d-msg" marker-end="url(#ctx-a)"/><text x="696" y="374" class="d-lbl" text-anchor="middle">R/W</text><rect x="734" y="488" width="236" height="84" rx="10" class="d-box "/><text x="746" y="510" class="d-t d-h" text-anchor="start">claude / codex CLIs</text><text x="746" y="527" class="d-s" text-anchor="start">mcp add · mcp remove</text><text x="746" y="542" class="d-s" text-anchor="start">plugin enable · disable</text><text x="746" y="557" class="d-s" text-anchor="start">write their own config files</text><path d="M660,420 L700,420 L700,530 L732,530" class="d-msg" marker-end="url(#ctx-a)"/><text x="706" y="470" class="d-lbl" text-anchor="start">argv</text><rect x="330" y="502" width="330" height="96" rx="10" class="d-box "/><text x="342" y="519" class="d-eyebrow" text-anchor="start">SESSIONS EYRIE OWNS</text><text x="342" y="534" class="d-t d-h" text-anchor="start">Private tmux server</text><text x="342" y="551" class="d-s" text-anchor="start">tmux -L eyrie -f ~/.eyrie/tmux.conf</text><text x="342" y="566" class="d-s" text-anchor="start">eyrie-&lt;hex&gt; sessions, @eyrie_* tags</text><text x="342" y="581" class="d-s" text-anchor="start">claude / codex run in the panes</text><path d="M495,432 L495,500" class="d-msg" marker-end="url(#ctx-a)"/><text x="505" y="455" class="d-lbl" text-anchor="start">new-session · kill-session</text><text x="505" y="469" class="d-lbl" text-anchor="start">list-sessions · attach in a pty</text><rect x="30" y="502" width="222" height="96" rx="10" class="d-box "/><text x="42" y="524" class="d-t d-h" text-anchor="start">Your own terminals</text><text x="42" y="541" class="d-s" text-anchor="start">claude / codex you started</text><text x="42" y="556" class="d-s" text-anchor="start">listed read-only</text><text x="42" y="571" class="d-s" text-anchor="start">(external sessions)</text><path d="M330,410 L141,410 L141,500" class="d-msg d-ret" marker-end="url(#ctx-a)"/><text x="150" y="440" class="d-lbl" text-anchor="start">ps · lsof or /proc</text><text x="150" y="454" class="d-lbl" text-anchor="start">read-only</text></svg></div>
+  <p class="caption">R = read only. R/W = Eyrie writes there. Dashed widget box: in PR #20, not on main. Claude Code and Codex write their own transcripts and DBs; Eyrie only reads them.</p></div>
+  <div class="grid2">
+    <div class="card"><h4>Read path</h4><p>The source registry (<code>sources/base.py</code>) holds one object per enabled source. Each has <code>available()</code> and <code>snapshot()</code> and reads the tools' files on request, with caches keyed on file stat where a read is expensive.</p></div>
+    <div class="card"><h4>Write path</h4><p>Six declared actions build argv lists for <code>claude</code>, <code>codex</code> or <code>tmux</code>. Two file writers (tasks, Nexus) edit vault files directly with etags. There is no generic command endpoint.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="components">
+  <p class="eyebrow">02 / Components and modules</p>
+  <h2>Modules</h2>
+  <p><code>create_app()</code> in <code>main.py</code> wires one <code>Settings</code>, the token, the registry, a <code>Runner</code> and an <code>AuditLog</code> onto <code>app.state</code>, adds the middleware, the routers, then the UI catch-all last.</p>
+  <div class="scroll" tabindex="0"><table class="wide">
+    <thead><tr><th>Area</th><th>File</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>App</td><td><code>backend/app/main.py</code></td><td><code>create_app()</code>: state, middleware, routers, <code>/health</code> <code>/summary</code> <code>/meta</code>, UI mounted last</td></tr>
+      <tr><td>App</td><td><code>backend/app/config.py</code></td><td><code>Settings</code> (pydantic-settings): <code>eyrie.toml</code> or <code>$EYRIE_CONFIG</code>, <code>EYRIE_*</code> env with <code>__</code> nesting</td></tr>
+      <tr><td>App</td><td><code>backend/app/security.py</code></td><td><code>LocalOnlyMiddleware</code>, token create/load, security headers</td></tr>
+      <tr><td>App</td><td><code>backend/app/schemas.py</code></td><td>Response models (the API contract) and <code>SOURCE_MODELS</code></td></tr>
+      <tr><td>App</td><td><code>backend/app/openapi.py</code></td><td>Dumps OpenAPI against throwaway paths, for <code>make types</code></td></tr>
+      <tr><td>App</td><td><code>backend/app/ui.py</code></td><td>Serves <code>frontend/dist</code>: SPA fallback, JSON 404 for <code>/api/*</code>, immutable <code>assets/</code></td></tr>
+      <tr><td>App</td><td><code>backend/app/fsutil.py</code></td><td><code>etag()</code> (sha256[:16] or <code>absent</code>), <code>atomic_write()</code>, <code>read_text()</code></td></tr>
+      <tr><td>App</td><td><code>backend/app/summary.py</code></td><td><code>build_summary()</code> for home and widget; <code>Versions</code> cache</td></tr>
+      <tr><td>Actions</td><td><code>backend/app/actions/registry.py</code></td><td>The six actions: param models, validation, argv planning, <code>destructive</code>, <code>redact()</code></td></tr>
+      <tr><td>Actions</td><td><code>backend/app/actions/runner.py</code></td><td><code>Runner</code>: binary lookup, <code>subprocess.run</code> argv-only, global lock, timeout, 4 KB output tails</td></tr>
+      <tr><td>Actions</td><td><code>backend/app/actions/audit.py</code></td><td><code>AuditLog</code>: append and read <code>audit.jsonl</code></td></tr>
+      <tr><td>Routers</td><td><code>backend/app/routers/actions.py</code></td><td><code>POST /actions/{id}</code>: validate, dry-run, 428 confirm, precheck, run, verify, invalidate cache, audit; <code>GET /audit</code></td></tr>
+      <tr><td>Routers</td><td><code>backend/app/routers/sessions.py</code></td><td>Conversations, screen capture, terminal WebSocket</td></tr>
+      <tr><td>Routers</td><td><code>backend/app/routers/sources.py</code></td><td>Source list and one typed route per source</td></tr>
+      <tr><td>Routers</td><td><code>backend/app/routers/tasks.py · nexus.py · usage.py · auth.py</code></td><td>Task CRUD and Nexus file ops with <code>If-Match</code>; usage report; token bootstrap</td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/base.py</code></td><td><code>Source</code> protocol, <code>build_registry()</code> filtered by <code>sources.enabled</code></td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/claude.py</code></td><td><code>~/.claude.json</code>: per-project last-session cost and tokens, enabled plugins, user MCP</td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/codex.py</code></td><td><code>state_5.sqlite</code> threads (read-only URI, newest 200 non-archived)</td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/mcp.py</code></td><td>MCP servers: Claude user, local and project scopes, Codex <code>config.toml</code>; last-known failures from the 15 newest transcripts, cached by (mtime, size)</td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/plugins.py</code></td><td><code>claude plugin list --json</code>, cached until the plugin state files change or an action invalidates it</td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/tasks.py</code></td><td>Checklist parse, single-line edits, etag check</td></tr>
+      <tr><td>Sources</td><td><code>backend/app/sources/nexus.py</code></td><td>Agent memory: list, read with <code>linked_from</code>, etag write, delete to trash, confinement</td></tr>
+      <tr><td>Sessions</td><td><code>backend/app/sessions/tmux.py</code></td><td>Private server args, <code>tmux.conf</code>, <code>list()</code> (rediscovery via <code>@eyrie_*</code>), <code>pane_pids()</code>, <code>capture()</code></td></tr>
+      <tr><td>Sessions</td><td><code>backend/app/sessions/terminal.py</code></td><td>pty bridge between a WebSocket and <code>tmux attach-session</code>; max 8</td></tr>
+      <tr><td>Sessions</td><td><code>backend/app/sessions/external.py</code></td><td>Sessions in your own terminals: <code>ps</code>, <code>lsof</code> or <code>/proc</code>, transcript mtime</td></tr>
+      <tr><td>Sessions</td><td><code>backend/app/sessions/dirs.py</code></td><td>Where sessions may start: <code>sessions.roots</code> and their children, plus known Claude and Codex dirs</td></tr>
+      <tr><td>Sessions</td><td><code>backend/app/sessions/source.py</code></td><td><code>SessionsSource</code>: Eyrie sessions + external + allowed dirs</td></tr>
+      <tr><td>Usage</td><td><code>backend/app/usage/index.py</code></td><td><code>UsageIndex</code>: incremental transcript scan into <code>usage.db</code>, <code>recent_sessions()</code>, <code>stats()</code></td></tr>
+      <tr><td>Usage</td><td><code>backend/app/usage/prices.py</code></td><td>$/MTok table (updated 2026-10-06), <code>normalize_model()</code></td></tr>
+      <tr><td>Usage</td><td><code>backend/app/usage/source.py</code></td><td><code>report(days)</code>: per day, model, project; Codex per model; priced at query time</td></tr>
+      <tr><td>Ops</td><td><code>scripts/service.py</code></td><td>Install, uninstall, status of the launchd agent or systemd user unit; PATH capture</td></tr>
+      <tr><td>Ops</td><td><code>Makefile</code></td><td><code>dev</code> <code>serve</code> <code>install</code> <code>types</code> <code>types-check</code> <code>check</code> and friends</td></tr>
+      <tr><td>Frontend</td><td><code>frontend/src/api/client.ts</code></td><td><code>get</code>/<code>send</code>, token bootstrap, <code>X-Eyrie-Token</code>, <code>StaleError</code> on 409 with <code>current</code></td></tr>
+      <tr><td>Frontend</td><td><code>frontend/src/api/generated.ts · types.ts</code></td><td>Types generated from OpenAPI; <code>types.ts</code> only aliases them</td></tr>
+      <tr><td>Frontend</td><td><code>frontend/src/usePoll.ts</code></td><td>Poll hook used by every page</td></tr>
+      <tr><td>Frontend</td><td><code>frontend/src/pages/*</code></td><td>Overview (summary, 10 s), Sessions (4 s), Claude, Codex, Usage (30 s), MCP, Plugins, Nexus, Tasks, Activity</td></tr>
+      <tr><td>Frontend</td><td><code>frontend/src/components/*</code></td><td><code>StartSessionDialog</code>, <code>StopSessionDialog</code>, <code>SessionTerminal</code> (xterm, lazy-loaded), <code>CommandPreview</code>, MCP add/remove dialogs, charts</td></tr>
+      <tr><td>Widget</td><td><code>widget/src-tauri/src/lib.rs</code></td><td><span class="tag pr">PR #20</span> Tray, 10 s summary poll, menu, panel placement, proxy commands, service kickstart</td></tr>
+      <tr><td>Widget</td><td><code>frontend/widget.html · src/widget/*</code></td><td><span class="tag pr">PR #20</span> Panel UI; <code>bridge.ts</code> uses <code>invoke()</code> only</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="flows">
+  <p class="eyebrow">03 / Key flows</p>
+  <h2>Sequences</h2>
+  <p>Solid arrows are calls; dashed arrows are replies. Diagrams scroll sideways on narrow screens.</p>
+
+  <h3 id="flow-start">3.1 Starting a session</h3>
+  <p>The UI generates the session name and the Claude conversation id before the preview, so the previewed argv is exactly what runs. <code>sessions.start</code> isn't destructive, so no confirm; <code>sessions.stop</code> is, and gets a 428 until <code>confirm: true</code>.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="Starting a session" width="980" height="774" viewBox="0 0 980 774" xmlns="http://www.w3.org/2000/svg"><title>Starting a session</title><defs><marker id="s1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="s1-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><line x1="95" y1="56" x2="95" y2="764" class="d-life"/><rect x="26" y="10" width="138" height="44" rx="8" class="d-box"/><text x="95" y="29" class="d-t d-h" text-anchor="middle">You</text><line x1="253" y1="56" x2="253" y2="764" class="d-life"/><rect x="184" y="10" width="138" height="44" rx="8" class="d-box"/><text x="253" y="29" class="d-t d-h" text-anchor="middle">Browser UI</text><text x="253" y="45" class="d-s" text-anchor="middle">StartSessionDialog</text><line x1="411" y1="56" x2="411" y2="764" class="d-life"/><rect x="342" y="10" width="138" height="44" rx="8" class="d-box"/><text x="411" y="29" class="d-t d-h" text-anchor="middle">API</text><text x="411" y="45" class="d-s" text-anchor="middle">routers/actions.py</text><line x1="569" y1="56" x2="569" y2="764" class="d-life"/><rect x="500" y="10" width="138" height="44" rx="8" class="d-box"/><text x="569" y="29" class="d-t d-h" text-anchor="middle">Runner</text><text x="569" y="45" class="d-s" text-anchor="middle">actions/runner.py</text><line x1="727" y1="56" x2="727" y2="764" class="d-life"/><rect x="658" y="10" width="138" height="44" rx="8" class="d-box"/><text x="727" y="29" class="d-t d-h" text-anchor="middle">tmux</text><text x="727" y="45" class="d-s" text-anchor="middle">-L eyrie</text><line x1="885" y1="56" x2="885" y2="764" class="d-life"/><rect x="816" y="10" width="138" height="44" rx="8" class="d-box"/><text x="885" y="29" class="d-t d-h" text-anchor="middle">Audit</text><text x="885" y="45" class="d-s" text-anchor="middle">audit.jsonl</text><line x1="95" y1="96" x2="247" y2="96" class="d-msg" marker-end="url(#s1-a)"/><text x="174" y="90" class="d-lbl" text-anchor="middle">pick tool, directory, mode</text><path d="M253,120 h18 v30 h-12" class="d-msg" marker-end="url(#s1-a)"/><text x="279" y="132" class="d-lbl" text-anchor="start">name = eyrie-&lt;hex&gt;</text><text x="279" y="146" class="d-lbl" text-anchor="start">conversation_id = uuid (Claude, new)</text><line x1="253" y1="194" x2="405" y2="194" class="d-msg" marker-end="url(#s1-a)"/><text x="332" y="174" class="d-lbl" text-anchor="middle">POST /actions/sessions.start</text><text x="332" y="188" class="d-lbl" text-anchor="middle">{params, dry_run: true}</text><path d="M411,218 h18 v30 h-12" class="d-msg" marker-end="url(#s1-a)"/><text x="437" y="230" class="d-lbl" text-anchor="start">SessionStart.model_validate</text><text x="437" y="244" class="d-lbl" text-anchor="start">plan argv (no run)</text><line x1="411" y1="278" x2="259" y2="278" class="d-msg d-ret" marker-end="url(#s1-a)"/><text x="332" y="272" class="d-lbl" text-anchor="middle">ActionPreview {argv, destructive: false}</text><rect x="24" y="300" width="300" height="38" rx="6" class="d-note"/><text x="34" y="317" class="d-t d-nl" text-anchor="start">CommandPreview shows the</text><text x="34" y="331" class="d-t d-nl" text-anchor="start">exact argv that will run</text><line x1="95" y1="364" x2="247" y2="364" class="d-msg" marker-end="url(#s1-a)"/><text x="174" y="358" class="d-lbl" text-anchor="middle">Start</text><line x1="253" y1="396" x2="405" y2="396" class="d-msg" marker-end="url(#s1-a)"/><text x="332" y="390" class="d-lbl" text-anchor="middle">POST same params, X-Eyrie-Token</text><path d="M411,420 h18 v30 h-12" class="d-msg" marker-end="url(#s1-a)"/><text x="437" y="432" class="d-lbl" text-anchor="start">precheck: cwd allowed (dirs.py),</text><text x="437" y="446" class="d-lbl" text-anchor="start">name not taken, else 409</text><line x1="411" y1="480" x2="563" y2="480" class="d-msg" marker-end="url(#s1-a)"/><text x="490" y="474" class="d-lbl" text-anchor="middle">run(tmux, args)</text><line x1="569" y1="526" x2="721" y2="526" class="d-msg" marker-end="url(#s1-a)"/><text x="648" y="506" class="d-lbl" text-anchor="middle">new-session -d -s name -x 200 -y 50</text><text x="648" y="520" class="d-lbl" text-anchor="middle">-c cwd &lt;bin&gt; &lt;args…&gt; ; set-option @eyrie_*</text><line x1="727" y1="558" x2="575" y2="558" class="d-msg d-ret" marker-end="url(#s1-a)"/><text x="648" y="552" class="d-lbl" text-anchor="middle">exit code</text><line x1="569" y1="590" x2="417" y2="590" class="d-msg d-ret" marker-end="url(#s1-a)"/><text x="490" y="584" class="d-lbl" text-anchor="middle">RunResult</text><line x1="411" y1="622" x2="721" y2="622" class="d-msg" marker-end="url(#s1-a)"/><text x="569" y="616" class="d-lbl" text-anchor="middle">verify (via Runner): list-sessions has name?</text><line x1="411" y1="654" x2="879" y2="654" class="d-msg" marker-end="url(#s1-a)"/><text x="648" y="648" class="d-lbl" text-anchor="middle">record(action, argv, params, ok, …)</text><line x1="411" y1="686" x2="259" y2="686" class="d-msg d-ret" marker-end="url(#s1-a)"/><text x="332" y="680" class="d-lbl" text-anchor="middle">ActionResult {ok, exit_code, message}</text><rect x="182" y="708" width="616" height="38" rx="6" class="d-note"/><text x="192" y="725" class="d-t d-nl" text-anchor="start">The program is always 2+ argv items, so tmux execs it without sh -c.</text><text x="192" y="739" class="d-t d-nl" text-anchor="start">Claude: --session-id | --continue | --resume &lt;id&gt;.  Codex: --cd &lt;dir&gt; [resume --last | resume &lt;id&gt;].</text></svg></div></div>
+
+  <h3 id="flow-term">3.2 Browser terminal</h3>
+  <p>Browsers can't set headers on a WebSocket, so the token rides as a subprotocol. The pty isn't the tmux client's controlling terminal, so Eyrie sends <code>SIGWINCH</code> itself after each resize.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="Browser terminal" width="980" height="964" viewBox="0 0 980 964" xmlns="http://www.w3.org/2000/svg"><title>Browser terminal</title><defs><marker id="s2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="s2-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><line x1="95" y1="56" x2="95" y2="954" class="d-life"/><rect x="26" y="10" width="138" height="44" rx="8" class="d-box"/><text x="95" y="29" class="d-t d-h" text-anchor="middle">xterm.js</text><text x="95" y="45" class="d-s" text-anchor="middle">SessionTerminal</text><line x1="253" y1="56" x2="253" y2="954" class="d-life"/><rect x="184" y="10" width="138" height="44" rx="8" class="d-box"/><text x="253" y="29" class="d-t d-h" text-anchor="middle">Middleware</text><text x="253" y="45" class="d-s" text-anchor="middle">security.py</text><line x1="411" y1="56" x2="411" y2="954" class="d-life"/><rect x="342" y="10" width="138" height="44" rx="8" class="d-box"/><text x="411" y="29" class="d-t d-h" text-anchor="middle">Router</text><text x="411" y="45" class="d-s" text-anchor="middle">routers/sessions.py</text><line x1="569" y1="56" x2="569" y2="954" class="d-life"/><rect x="500" y="10" width="138" height="44" rx="8" class="d-box"/><text x="569" y="29" class="d-t d-h" text-anchor="middle">bridge()</text><text x="569" y="45" class="d-s" text-anchor="middle">sessions/terminal.py</text><line x1="727" y1="56" x2="727" y2="954" class="d-life"/><rect x="658" y="10" width="138" height="44" rx="8" class="d-box"/><text x="727" y="29" class="d-t d-h" text-anchor="middle">tmux client</text><text x="727" y="45" class="d-s" text-anchor="middle">attach-session</text><line x1="885" y1="56" x2="885" y2="954" class="d-life"/><rect x="816" y="10" width="138" height="44" rx="8" class="d-box"/><text x="885" y="29" class="d-t d-h" text-anchor="middle">tmux server</text><text x="885" y="45" class="d-s" text-anchor="middle">-L eyrie</text><line x1="95" y1="96" x2="247" y2="96" class="d-msg" marker-end="url(#s2-a)"/><text x="174" y="90" class="d-lbl" text-anchor="middle">GET /auth/token (once, cached)</text><line x1="253" y1="128" x2="101" y2="128" class="d-msg d-ret" marker-end="url(#s2-a)"/><text x="174" y="122" class="d-lbl" text-anchor="middle">{token}</text><line x1="95" y1="174" x2="247" y2="174" class="d-msg" marker-end="url(#s2-a)"/><text x="174" y="154" class="d-lbl" text-anchor="middle">WS /sessions/{name}/term[?readonly=true]</text><text x="174" y="168" class="d-lbl" text-anchor="middle">protocols: eyrie, eyrie.token.&lt;t&gt;</text><path d="M253,198 h18 v30 h-12" class="d-msg" marker-end="url(#s2-a)"/><text x="279" y="210" class="d-lbl" text-anchor="start">Host, Origin, Sec-Fetch-Site,</text><text x="279" y="224" class="d-lbl" text-anchor="start">token from subprotocol</text><rect x="24" y="248" width="300" height="38" rx="6" class="d-note"/><text x="34" y="265" class="d-t d-nl" text-anchor="start">Fail: websocket.close(4000+status)</text><text x="34" y="279" class="d-t d-nl" text-anchor="start">before accept → handshake 403</text><line x1="253" y1="312" x2="405" y2="312" class="d-msg" marker-end="url(#s2-a)"/><text x="332" y="306" class="d-lbl" text-anchor="middle">pass</text><path d="M411,336 h18 v30 h-12" class="d-msg" marker-end="url(#s2-a)"/><text x="437" y="348" class="d-lbl" text-anchor="start">name matches eyrie-*, session exists</text><text x="437" y="362" class="d-lbl" text-anchor="start">(else close 4404), tmux found (else 4503)</text><line x1="411" y1="396" x2="101" y2="396" class="d-msg d-ret" marker-end="url(#s2-a)"/><text x="253" y="390" class="d-lbl" text-anchor="middle">accept(subprotocol=&quot;eyrie&quot;)</text><line x1="411" y1="428" x2="563" y2="428" class="d-msg" marker-end="url(#s2-a)"/><text x="490" y="422" class="d-lbl" text-anchor="middle">bridge(ws, name, readonly)</text><path d="M569,452 h18 v30 h-12" class="d-msg" marker-end="url(#s2-a)"/><text x="595" y="464" class="d-lbl" text-anchor="start">8 terminals open → close 4429</text><text x="595" y="478" class="d-lbl" text-anchor="start">openpty(), size 120×32</text><line x1="569" y1="526" x2="721" y2="526" class="d-msg" marker-end="url(#s2-a)"/><text x="648" y="506" class="d-lbl" text-anchor="middle">Popen tmux -L eyrie attach-session -t name [-r]</text><text x="648" y="520" class="d-lbl" text-anchor="middle">new session, TERM=xterm-256color, TMUX unset</text><line x1="727" y1="558" x2="879" y2="558" class="d-msg" marker-end="url(#s2-a)"/><text x="806" y="552" class="d-lbl" text-anchor="middle">attach</text><line x1="16" y1="594" x2="964" y2="594" class="d-sep"/><text x="20" y="588" class="d-eyebrow" text-anchor="start">LOOP UNTIL EITHER SIDE CLOSES</text><line x1="569" y1="620" x2="101" y2="620" class="d-msg d-ret" marker-end="url(#s2-a)"/><text x="332" y="614" class="d-lbl" text-anchor="middle">pty output → binary frames</text><line x1="95" y1="666" x2="563" y2="666" class="d-msg" marker-end="url(#s2-a)"/><text x="332" y="646" class="d-lbl" text-anchor="middle">keystrokes → binary frames</text><text x="332" y="660" class="d-lbl" text-anchor="middle">(dropped server-side if readonly)</text><line x1="95" y1="698" x2="563" y2="698" class="d-msg" marker-end="url(#s2-a)"/><text x="332" y="692" class="d-lbl" text-anchor="middle">text {&quot;type&quot;:&quot;resize&quot;,cols,rows}</text><line x1="569" y1="730" x2="721" y2="730" class="d-msg" marker-end="url(#s2-a)"/><text x="648" y="724" class="d-lbl" text-anchor="middle">TIOCSWINSZ (clamped) + SIGWINCH</text><line x1="16" y1="766" x2="964" y2="766" class="d-sep"/><text x="20" y="760" class="d-eyebrow" text-anchor="start">CLOSE</text><line x1="95" y1="792" x2="563" y2="792" class="d-msg" marker-end="url(#s2-a)"/><text x="332" y="786" class="d-lbl" text-anchor="middle">socket closes</text><line x1="569" y1="824" x2="721" y2="824" class="d-msg" marker-end="url(#s2-a)"/><text x="648" y="818" class="d-lbl" text-anchor="middle">SIGHUP to the client&#x27;s process group</text><rect x="656" y="846" width="300" height="38" rx="6" class="d-note"/><text x="666" y="863" class="d-t d-nl" text-anchor="start">only this client exits;</text><text x="666" y="877" class="d-t d-nl" text-anchor="start">the session keeps running</text><path d="M411,902 h18 v30 h-12" class="d-msg" marker-end="url(#s2-a)"/><text x="437" y="914" class="d-lbl" text-anchor="start">audit sessions.attach</text><text x="437" y="928" class="d-lbl" text-anchor="start">(the connection, never keystrokes)</text></svg></div>
+  <p class="caption">Close codes: 4000+status (4401, 4403) from the middleware and 4404 / 4503 from the router are sent before accept, so the browser sees a failed handshake (the server answers HTTP 403). 4429 is sent after accept.</p></div>
+
+  <h3 id="flow-summary">3.3 Summary poll: home page and widget</h3>
+  <p>One endpoint answers "what needs me?" for both views, so they can't disagree. Measured at about 60 ms warm (docs/home-and-widget.md §2).</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="Summary poll" width="980" height="710" viewBox="0 0 980 710" xmlns="http://www.w3.org/2000/svg"><title>Summary poll</title><defs><marker id="s3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="s3-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><line x1="95" y1="56" x2="95" y2="700" class="d-life"/><rect x="26" y="10" width="138" height="44" rx="8" class="d-box"/><text x="95" y="29" class="d-t d-h" text-anchor="middle">Home page</text><text x="95" y="45" class="d-s" text-anchor="middle">usePoll 10 s</text><line x1="253" y1="56" x2="253" y2="700" class="d-life"/><rect x="184" y="10" width="138" height="44" rx="8" class="d-box"/><text x="253" y="29" class="d-t d-h" text-anchor="middle">Widget (Rust)</text><text x="253" y="45" class="d-s" text-anchor="middle">PR #20, 10 s</text><line x1="411" y1="56" x2="411" y2="700" class="d-life"/><rect x="342" y="10" width="138" height="44" rx="8" class="d-box"/><text x="411" y="29" class="d-t d-h" text-anchor="middle">GET /summary</text><text x="411" y="45" class="d-s" text-anchor="middle">summary.py</text><line x1="569" y1="56" x2="569" y2="700" class="d-life"/><rect x="500" y="10" width="138" height="44" rx="8" class="d-box"/><text x="569" y="29" class="d-t d-h" text-anchor="middle">Versions</text><text x="569" y="45" class="d-s" text-anchor="middle">cache</text><line x1="727" y1="56" x2="727" y2="700" class="d-life"/><rect x="658" y="10" width="138" height="44" rx="8" class="d-box"/><text x="727" y="29" class="d-t d-h" text-anchor="middle">Sources</text><text x="727" y="45" class="d-s" text-anchor="middle">registry</text><line x1="885" y1="56" x2="885" y2="700" class="d-life"/><rect x="816" y="10" width="138" height="44" rx="8" class="d-box"/><text x="885" y="29" class="d-t d-h" text-anchor="middle">System</text><text x="885" y="45" class="d-s" text-anchor="middle">tmux · ps · files</text><line x1="95" y1="96" x2="405" y2="96" class="d-msg" marker-end="url(#s3-a)"/><text x="253" y="90" class="d-lbl" text-anchor="middle">GET /api/v1/summary</text><line x1="253" y1="128" x2="405" y2="128" class="d-msg" marker-end="url(#s3-a)"/><text x="332" y="122" class="d-lbl" text-anchor="middle">GET /api/v1/summary (no token: GET)</text><line x1="411" y1="160" x2="563" y2="160" class="d-msg" marker-end="url(#s3-a)"/><text x="490" y="154" class="d-lbl" text-anchor="middle">tmux -V, claude/codex --version</text><path d="M569,184 h18 v30 h-12" class="d-msg" marker-end="url(#s3-a)"/><text x="595" y="196" class="d-lbl" text-anchor="start">cached until the binary&#x27;s</text><text x="595" y="210" class="d-lbl" text-anchor="start">path, mtime or size changes</text><line x1="411" y1="244" x2="721" y2="244" class="d-msg" marker-end="url(#s3-a)"/><text x="569" y="238" class="d-lbl" text-anchor="middle">sessions.snapshot()</text><line x1="727" y1="290" x2="879" y2="290" class="d-msg" marker-end="url(#s3-a)"/><text x="806" y="270" class="d-lbl" text-anchor="middle">tmux list-sessions, list-panes,</text><text x="806" y="284" class="d-lbl" text-anchor="middle">ps, lsof or /proc</text><line x1="411" y1="322" x2="721" y2="322" class="d-msg" marker-end="url(#s3-a)"/><text x="569" y="316" class="d-lbl" text-anchor="middle">mcp.snapshot()</text><path d="M727,346 h18 v30 h-12" class="d-msg" marker-end="url(#s3-a)"/><text x="719" y="358" class="d-lbl" text-anchor="end">15 newest transcripts,</text><text x="719" y="372" class="d-lbl" text-anchor="end">re-read only on (mtime, size) change</text><line x1="411" y1="406" x2="721" y2="406" class="d-msg" marker-end="url(#s3-a)"/><text x="569" y="400" class="d-lbl" text-anchor="middle">usage.report(14), report(1)</text><path d="M727,430 h18 v18 h-12" class="d-msg" marker-end="url(#s3-a)"/><text x="719" y="442" class="d-lbl" text-anchor="end">index.scan(), throttled to 10 s</text><line x1="411" y1="478" x2="721" y2="478" class="d-msg" marker-end="url(#s3-a)"/><text x="569" y="472" class="d-lbl" text-anchor="middle">tasks, codex threads, recent sessions</text><path d="M411,502 h18 v44 h-12" class="d-msg" marker-end="url(#s3-a)"/><text x="437" y="514" class="d-lbl" text-anchor="start">attention[] sorted problem → attention</text><text x="437" y="528" class="d-lbl" text-anchor="start">state = problem | attention | ok</text><text x="437" y="542" class="d-lbl" text-anchor="start">recent_projects filtered by is_allowed</text><line x1="411" y1="576" x2="101" y2="576" class="d-msg d-ret" marker-end="url(#s3-a)"/><text x="253" y="570" class="d-lbl" text-anchor="middle">Summary</text><line x1="411" y1="608" x2="259" y2="608" class="d-msg d-ret" marker-end="url(#s3-a)"/><text x="332" y="602" class="d-lbl" text-anchor="middle">Summary</text><rect x="182" y="630" width="142" height="52" rx="6" class="d-note"/><text x="192" y="647" class="d-t d-nl" text-anchor="start">tray icon + tooltip,</text><text x="192" y="661" class="d-t d-nl" text-anchor="start">macOS title $today,</text><text x="192" y="675" class="d-t d-nl" text-anchor="start">menu, emit &quot;summary&quot;</text></svg></div></div>
+  <div class="scroll" tabindex="0"><table class="mid">
+    <thead><tr><th>Attention kind</th><th>Severity</th><th>When (summary.py)</th></tr></thead>
+    <tbody>
+      <tr><td><code>cli_missing</code></td><td>problem</td><td><code>tmux</code>, <code>claude</code> or <code>codex</code> not found (config path or PATH)</td></tr>
+      <tr><td><code>session_exited_error</code></td><td>problem</td><td>An Eyrie session's pane is dead with a non-zero exit status</td></tr>
+      <tr><td><code>mcp_failed</code></td><td>attention</td><td>A configured, not hidden, MCP server appears in the last-known failures</td></tr>
+      <tr><td><code>session_idle</code></td><td>attention</td><td>A live Eyrie session has had no output for <code>sessions.idle_minutes</code> (10). External sessions are never flagged</td></tr>
+      <tr><td><code>unpriced_model</code></td><td>attention</td><td>A model in the last 14 days has no price, so it counts as $0</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="flow-usage">3.4 Building the usage index</h3>
+  <p>Claude Code prunes old transcripts, so <code>usage.db</code> is the system of record, not a cache. Scans run inline on request, throttled to once per 10 s; there is no background worker.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="Building the usage index" width="980" height="664" viewBox="0 0 980 664" xmlns="http://www.w3.org/2000/svg"><title>Building the usage index</title><defs><marker id="s4-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="s4-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><line x1="95" y1="56" x2="95" y2="654" class="d-life"/><rect x="26" y="10" width="138" height="44" rx="8" class="d-box"/><text x="95" y="29" class="d-t d-h" text-anchor="middle">Caller</text><text x="95" y="45" class="d-s" text-anchor="middle">/usage, /summary</text><line x1="253" y1="56" x2="253" y2="654" class="d-life"/><rect x="184" y="10" width="138" height="44" rx="8" class="d-box"/><text x="253" y="29" class="d-t d-h" text-anchor="middle">UsageSource</text><text x="253" y="45" class="d-s" text-anchor="middle">usage/source.py</text><line x1="411" y1="56" x2="411" y2="654" class="d-life"/><rect x="342" y="10" width="138" height="44" rx="8" class="d-box"/><text x="411" y="29" class="d-t d-h" text-anchor="middle">UsageIndex</text><text x="411" y="45" class="d-s" text-anchor="middle">usage/index.py</text><line x1="569" y1="56" x2="569" y2="654" class="d-life"/><rect x="500" y="10" width="138" height="44" rx="8" class="d-box"/><text x="569" y="29" class="d-t d-h" text-anchor="middle">Transcripts</text><text x="569" y="45" class="d-s" text-anchor="middle">~/.claude/projects</text><line x1="727" y1="56" x2="727" y2="654" class="d-life"/><rect x="658" y="10" width="138" height="44" rx="8" class="d-box"/><text x="727" y="29" class="d-t d-h" text-anchor="middle">usage.db</text><text x="727" y="45" class="d-s" text-anchor="middle">~/.eyrie</text><line x1="885" y1="56" x2="885" y2="654" class="d-life"/><rect x="816" y="10" width="138" height="44" rx="8" class="d-box"/><text x="885" y="29" class="d-t d-h" text-anchor="middle">Codex DB</text><text x="885" y="45" class="d-s" text-anchor="middle">state_5.sqlite</text><line x1="95" y1="96" x2="247" y2="96" class="d-msg" marker-end="url(#s4-a)"/><text x="174" y="90" class="d-lbl" text-anchor="middle">report(days)</text><line x1="253" y1="128" x2="405" y2="128" class="d-msg" marker-end="url(#s4-a)"/><text x="332" y="122" class="d-lbl" text-anchor="middle">scan()</text><path d="M411,152 h18 v30 h-12" class="d-msg" marker-end="url(#s4-a)"/><text x="437" y="164" class="d-lbl" text-anchor="start">lock; return if &lt; 10 s</text><text x="437" y="178" class="d-lbl" text-anchor="start">since the last scan</text><line x1="411" y1="212" x2="721" y2="212" class="d-msg" marker-end="url(#s4-a)"/><text x="569" y="206" class="d-lbl" text-anchor="middle">SELECT path, inode, size, offset FROM files</text><line x1="411" y1="244" x2="563" y2="244" class="d-msg" marker-end="url(#s4-a)"/><text x="490" y="238" class="d-lbl" text-anchor="middle">glob */*.jsonl + */*/subagents/*.jsonl, stat</text><path d="M411,268 h18 v44 h-12" class="d-msg" marker-end="url(#s4-a)"/><text x="437" y="280" class="d-lbl" text-anchor="start">same inode and size ≥ offset → resume</text><text x="437" y="294" class="d-lbl" text-anchor="start">replaced or truncated → reread from 0</text><text x="437" y="308" class="d-lbl" text-anchor="start">offset = size → skip</text><line x1="411" y1="342" x2="563" y2="342" class="d-msg" marker-end="url(#s4-a)"/><text x="490" y="336" class="d-lbl" text-anchor="middle">read [offset, size), keep complete lines</text><path d="M411,366 h18 v44 h-12" class="d-msg" marker-end="url(#s4-a)"/><text x="437" y="378" class="d-lbl" text-anchor="start">assistant lines with usage</text><text x="437" y="392" class="d-lbl" text-anchor="start">key = message.id | requestId</text><text x="437" y="406" class="d-lbl" text-anchor="start">normalise model id</text><line x1="411" y1="454" x2="721" y2="454" class="d-msg" marker-end="url(#s4-a)"/><text x="569" y="434" class="d-lbl" text-anchor="middle">UPSERT messages: max() per counter</text><text x="569" y="448" class="d-lbl" text-anchor="middle">+ files.offset, one transaction per file</text><line x1="253" y1="486" x2="721" y2="486" class="d-msg" marker-end="url(#s4-a)"/><text x="490" y="480" class="d-lbl" text-anchor="middle">rows_since(start of range, local time)</text><path d="M253,510 h18 v58 h-12" class="d-msg" marker-end="url(#s4-a)"/><text x="279" y="522" class="d-lbl" text-anchor="start">price at query time:</text><text x="279" y="536" class="d-lbl" text-anchor="start">DEFAULT_PRICES ∪ [pricing]</text><text x="279" y="550" class="d-lbl" text-anchor="start">unknown model → $0, listed unpriced</text><text x="279" y="564" class="d-lbl" text-anchor="start">session → project it started in</text><line x1="253" y1="598" x2="879" y2="598" class="d-msg" marker-end="url(#s4-a)"/><text x="569" y="592" class="d-lbl" text-anchor="middle">threads per model (read-only)</text><line x1="253" y1="630" x2="101" y2="630" class="d-msg d-ret" marker-end="url(#s4-a)"/><text x="174" y="624" class="d-lbl" text-anchor="middle">UsageReport</text></svg></div>
+  <p class="caption">One API response is written as several transcript lines that repeat its usage, so summing lines overcounts. Keying on <code>(message.id, requestId)</code> and keeping the max of each counter fixes that and makes rereads idempotent. Codex has only a lifetime <code>tokens_used</code> per thread, so it's reported per model, never per day.</p></div>
+
+  <h3 id="flow-external">3.5 External session detection</h3>
+  <p>Sessions you started in your own terminals are listed alongside Eyrie's. Only the tool name and a resume target are taken from each command line, because the arguments can hold a prompt.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="External session detection" width="980" height="542" viewBox="0 0 980 542" xmlns="http://www.w3.org/2000/svg"><title>External session detection</title><defs><marker id="s5-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="s5-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><line x1="95" y1="56" x2="95" y2="532" class="d-life"/><rect x="26" y="10" width="138" height="44" rx="8" class="d-box"/><text x="95" y="29" class="d-t d-h" text-anchor="middle">SessionsSource</text><text x="95" y="45" class="d-s" text-anchor="middle">sessions/source.py</text><line x1="253" y1="56" x2="253" y2="532" class="d-life"/><rect x="184" y="10" width="138" height="44" rx="8" class="d-box"/><text x="253" y="29" class="d-t d-h" text-anchor="middle">Tmux</text><text x="253" y="45" class="d-s" text-anchor="middle">sessions/tmux.py</text><line x1="411" y1="56" x2="411" y2="532" class="d-life"/><rect x="342" y="10" width="138" height="44" rx="8" class="d-box"/><text x="411" y="29" class="d-t d-h" text-anchor="middle">ExternalSessions</text><text x="411" y="45" class="d-s" text-anchor="middle">sessions/external.py</text><line x1="569" y1="56" x2="569" y2="532" class="d-life"/><rect x="500" y="10" width="138" height="44" rx="8" class="d-box"/><text x="569" y="29" class="d-t d-h" text-anchor="middle">ps</text><line x1="727" y1="56" x2="727" y2="532" class="d-life"/><rect x="658" y="10" width="138" height="44" rx="8" class="d-box"/><text x="727" y="29" class="d-t d-h" text-anchor="middle">lsof | /proc</text><text x="727" y="45" class="d-s" text-anchor="middle">cwd per pid</text><line x1="885" y1="56" x2="885" y2="532" class="d-life"/><rect x="816" y="10" width="138" height="44" rx="8" class="d-box"/><text x="885" y="29" class="d-t d-h" text-anchor="middle">Tool state</text><text x="885" y="45" class="d-s" text-anchor="middle">transcripts, Codex DB</text><line x1="95" y1="96" x2="247" y2="96" class="d-msg" marker-end="url(#s5-a)"/><text x="174" y="90" class="d-lbl" text-anchor="middle">list-panes -a -F #{pane_pid}</text><line x1="253" y1="128" x2="101" y2="128" class="d-msg d-ret" marker-end="url(#s5-a)"/><text x="174" y="122" class="d-lbl" text-anchor="middle">pids of Eyrie&#x27;s own panes</text><line x1="95" y1="160" x2="405" y2="160" class="d-msg" marker-end="url(#s5-a)"/><text x="253" y="154" class="d-lbl" text-anchor="middle">list(exclude_pids)</text><line x1="411" y1="192" x2="563" y2="192" class="d-msg" marker-end="url(#s5-a)"/><text x="490" y="186" class="d-lbl" text-anchor="middle">ps -axo pid=,tty=,etime=,command=</text><path d="M411,216 h18 v44 h-12" class="d-msg" marker-end="url(#s5-a)"/><text x="437" y="228" class="d-lbl" text-anchor="start">keep claude/codex with a tty</text><text x="437" y="242" class="d-lbl" text-anchor="start">skip helpers (daemon, mcp, app-server…)</text><text x="437" y="256" class="d-lbl" text-anchor="start">keep tool + --resume target, never args</text><line x1="411" y1="304" x2="721" y2="304" class="d-msg" marker-end="url(#s5-a)"/><text x="569" y="284" class="d-lbl" text-anchor="middle">macOS: lsof -a -d cwd -p … -Fpn</text><text x="569" y="298" class="d-lbl" text-anchor="middle">Linux: readlink /proc/&lt;pid&gt;/cwd</text><path d="M411,328 h18 v18 h-12" class="d-msg" marker-end="url(#s5-a)"/><text x="437" y="340" class="d-lbl" text-anchor="start">cache cwd by pid, drop dead pids</text><line x1="411" y1="390" x2="879" y2="390" class="d-msg" marker-end="url(#s5-a)"/><text x="648" y="370" class="d-lbl" text-anchor="middle">Claude: projects/&lt;cwd slug&gt;/&lt;resume&gt;.jsonl</text><text x="648" y="384" class="d-lbl" text-anchor="middle">mtime (exact), else newest *.jsonl (approx)</text><line x1="411" y1="422" x2="879" y2="422" class="d-msg" marker-end="url(#s5-a)"/><text x="648" y="416" class="d-lbl" text-anchor="middle">Codex: max(updated_at) per cwd</text><line x1="411" y1="454" x2="101" y2="454" class="d-msg d-ret" marker-end="url(#s5-a)"/><text x="253" y="448" class="d-lbl" text-anchor="middle">external[] by last activity</text><rect x="24" y="476" width="458" height="38" rx="6" class="d-note"/><text x="34" y="493" class="d-t d-nl" text-anchor="start">Read-only in Eyrie: no attach, no stop,</text><text x="34" y="507" class="d-t d-nl" text-anchor="start">never flagged idle in the summary</text></svg></div></div>
+
+  <h3 id="flow-etag">3.6 Editing tasks or Nexus with etags</h3>
+  <p>Obsidian and the agents edit the same files, so every write carries the etag the client read. The etag is a content hash, so mtime granularity can't fool it.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="Editing tasks or Nexus with etags" width="980" height="626" viewBox="0 0 980 626" xmlns="http://www.w3.org/2000/svg"><title>Editing tasks or Nexus with etags</title><defs><marker id="s6-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="s6-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><line x1="95" y1="56" x2="95" y2="616" class="d-life"/><rect x="26" y="10" width="138" height="44" rx="8" class="d-box"/><text x="95" y="29" class="d-t d-h" text-anchor="middle">Browser UI</text><text x="95" y="45" class="d-s" text-anchor="middle">Tasks / Nexus page</text><line x1="253" y1="56" x2="253" y2="616" class="d-life"/><rect x="184" y="10" width="138" height="44" rx="8" class="d-box"/><text x="253" y="29" class="d-t d-h" text-anchor="middle">Router</text><text x="253" y="45" class="d-s" text-anchor="middle">tasks.py · nexus.py</text><line x1="411" y1="56" x2="411" y2="616" class="d-life"/><rect x="342" y="10" width="138" height="44" rx="8" class="d-box"/><text x="411" y="29" class="d-t d-h" text-anchor="middle">Source</text><text x="411" y="45" class="d-s" text-anchor="middle">sources/*.py</text><line x1="569" y1="56" x2="569" y2="616" class="d-life"/><rect x="500" y="10" width="138" height="44" rx="8" class="d-box"/><text x="569" y="29" class="d-t d-h" text-anchor="middle">Vault file</text><text x="569" y="45" class="d-s" text-anchor="middle">Tasks.md · Nexus/*.md</text><line x1="727" y1="56" x2="727" y2="616" class="d-life"/><rect x="658" y="10" width="138" height="44" rx="8" class="d-box"/><text x="727" y="29" class="d-t d-h" text-anchor="middle">Obsidian / agent</text><text x="727" y="45" class="d-s" text-anchor="middle">other writers</text><line x1="885" y1="56" x2="885" y2="616" class="d-life"/><rect x="816" y="10" width="138" height="44" rx="8" class="d-box"/><text x="885" y="29" class="d-t d-h" text-anchor="middle">Audit</text><text x="885" y="45" class="d-s" text-anchor="middle">Nexus only</text><line x1="95" y1="96" x2="247" y2="96" class="d-msg" marker-end="url(#s6-a)"/><text x="174" y="90" class="d-lbl" text-anchor="middle">GET /tasks  |  GET /nexus/{agent}/{name}</text><line x1="253" y1="128" x2="405" y2="128" class="d-msg" marker-end="url(#s6-a)"/><text x="332" y="122" class="d-lbl" text-anchor="middle">snapshot() | read()</text><line x1="411" y1="160" x2="563" y2="160" class="d-msg" marker-end="url(#s6-a)"/><text x="490" y="154" class="d-lbl" text-anchor="middle">read</text><line x1="253" y1="192" x2="101" y2="192" class="d-msg d-ret" marker-end="url(#s6-a)"/><text x="174" y="186" class="d-lbl" text-anchor="middle">content + etag = sha256[:16] (&quot;absent&quot; if no file)</text><line x1="727" y1="224" x2="575" y2="224" class="d-msg" marker-end="url(#s6-a)"/><text x="648" y="218" class="d-lbl" text-anchor="middle">may edit the file meanwhile</text><line x1="95" y1="270" x2="247" y2="270" class="d-msg" marker-end="url(#s6-a)"/><text x="174" y="250" class="d-lbl" text-anchor="middle">PATCH /tasks/{id} | PUT /nexus/…</text><text x="174" y="264" class="d-lbl" text-anchor="middle">If-Match: etag, X-Eyrie-Token</text><line x1="253" y1="302" x2="405" y2="302" class="d-msg" marker-end="url(#s6-a)"/><text x="332" y="296" class="d-lbl" text-anchor="middle">update(…) | write(…)</text><path d="M411,326 h18 v18 h-12" class="d-msg" marker-end="url(#s6-a)"/><text x="437" y="338" class="d-lbl" text-anchor="start">lock; re-read; etag(current) == If-Match?</text><line x1="253" y1="374" x2="101" y2="374" class="d-msg d-ret" marker-end="url(#s6-a)"/><text x="174" y="368" class="d-lbl" text-anchor="middle">mismatch → 409 {detail, current}</text><line x1="411" y1="420" x2="563" y2="420" class="d-msg" marker-end="url(#s6-a)"/><text x="490" y="400" class="d-lbl" text-anchor="middle">match → edit one line (tasks) or whole file</text><text x="490" y="414" class="d-lbl" text-anchor="middle">atomic write: temp + rename, mode kept</text><line x1="253" y1="452" x2="879" y2="452" class="d-msg" marker-end="url(#s6-a)"/><text x="569" y="446" class="d-lbl" text-anchor="middle">nexus.create | nexus.write | nexus.delete</text><line x1="253" y1="484" x2="101" y2="484" class="d-msg d-ret" marker-end="url(#s6-a)"/><text x="174" y="478" class="d-lbl" text-anchor="middle">new snapshot / file with the new etag</text><rect x="24" y="506" width="458" height="38" rx="6" class="d-note"/><text x="34" y="523" class="d-t d-nl" text-anchor="start">Nexus editor re-reads the open file every 10 s:</text><text x="34" y="537" class="d-t d-nl" text-anchor="start">no local edits → reload; local edits → show conflict</text><rect x="340" y="560" width="300" height="38" rx="6" class="d-note"/><text x="350" y="577" class="d-t d-nl" text-anchor="start">Delete (Nexus) needs If-Match too and</text><text x="350" y="591" class="d-t d-nl" text-anchor="start">moves the file to &lt;vault&gt;/.trash/…</text></svg></div></div>
+  <div class="grid2">
+    <div class="card"><h4>Tasks (<code>sources/tasks.py</code>)</h4><ul>
+      <li>Default file: <code>&lt;vault&gt;/Personal/Tasks.md</code>, created with a header on first add.</li>
+      <li>Task id: <code>sha1(text)[:10]</code>, plus <code>-n</code> for duplicates. The checkbox isn't hashed, so toggling keeps the id.</li>
+      <li>Only the target line changes. New tasks go after the last task. CRLF is preserved.</li>
+      <li>Unknown id: 404 with <code>current</code>.</li>
+    </ul></div>
+    <div class="card"><h4>Nexus (<code>sources/nexus.py</code>)</h4><ul>
+      <li>Files: <code>agent-memory/Nexus/&lt;agent&gt;/*.md</code>; no new agent folders.</li>
+      <li>Create uses <code>If-Match: absent</code>. 1 MB per file.</li>
+      <li>Read returns <code>linked_from</code>: other files in the folder that mention this one.</li>
+      <li>Delete moves to <code>&lt;vault&gt;/.trash/agent-memory/Nexus/&lt;agent&gt;/</code>, timestamped on a name clash.</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="security">
+  <p class="eyebrow">04 / Security model</p>
+  <h2>Only this machine's own pages</h2>
+  <p>Eyrie can run commands as you. The threat is another web page, a DNS-rebinding page, or a LAN device driving it.</p>
+  <div class="figure"><div class="scroll" tabindex="0"><svg role="img" aria-label="Request pipeline: middleware checks, then the action layer" width="1000" height="250" viewBox="0 0 1000 250" xmlns="http://www.w3.org/2000/svg"><title>Request pipeline: middleware checks, then the action layer</title><defs><marker id="sec-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mk"/></marker><marker id="sec-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-mkb"/></marker></defs><text x="16" y="22" class="d-eyebrow" text-anchor="start">EVERY HTTP REQUEST AND WEBSOCKET (LocalOnlyMiddleware)</text><rect x="16" y="34" width="176" height="82" rx="10" class="d-box "/><text x="28" y="56" class="d-t d-h" text-anchor="start">Host</text><text x="28" y="73" class="d-s" text-anchor="start">loopback name?</text><text x="28" y="88" class="d-s" text-anchor="start">else 403</text><rect x="212" y="34" width="176" height="82" rx="10" class="d-box "/><text x="224" y="56" class="d-t d-h" text-anchor="start">Origin</text><text x="224" y="73" class="d-s" text-anchor="start">absent or loopback?</text><text x="224" y="88" class="d-s" text-anchor="start">else 403</text><path d="M192,75 L210,75" class="d-msg" marker-end="url(#sec-a)"/><rect x="408" y="34" width="176" height="82" rx="10" class="d-box "/><text x="420" y="56" class="d-t d-h" text-anchor="start">Sec-Fetch-Site</text><text x="420" y="73" class="d-s" text-anchor="start">not cross-site?</text><text x="420" y="88" class="d-s" text-anchor="start">else 403</text><path d="M388,75 L406,75" class="d-msg" marker-end="url(#sec-a)"/><rect x="604" y="34" width="176" height="82" rx="10" class="d-box "/><text x="616" y="56" class="d-t d-h" text-anchor="start">Token</text><text x="616" y="73" class="d-s" text-anchor="start">writes + every WS</text><text x="616" y="88" class="d-s" text-anchor="start">header or subprotocol</text><text x="616" y="103" class="d-s" text-anchor="start">else 401</text><path d="M584,75 L602,75" class="d-msg" marker-end="url(#sec-a)"/><rect x="800" y="34" width="176" height="82" rx="10" class="d-box brand"/><text x="812" y="56" class="d-t d-h" text-anchor="start">Router</text><text x="812" y="73" class="d-s" text-anchor="start">+ security headers</text><text x="812" y="88" class="d-s" text-anchor="start">on HTTP responses</text><path d="M780,75 L798,75" class="d-msg" marker-end="url(#sec-a)"/><text x="16" y="148" class="d-eyebrow" text-anchor="start">POST /api/v1/actions/{id} (routers/actions.py)</text><rect x="16" y="160" width="96" height="78" rx="10" class="d-box "/><text x="28" y="182" class="d-t d-h" text-anchor="start">Validate</text><text x="28" y="199" class="d-s" text-anchor="start">pydantic</text><text x="28" y="214" class="d-s" text-anchor="start">422</text><rect x="124" y="160" width="96" height="78" rx="10" class="d-box "/><text x="136" y="182" class="d-t d-h" text-anchor="start">Plan</text><text x="136" y="199" class="d-s" text-anchor="start">argv list</text><text x="136" y="214" class="d-s" text-anchor="start">503 no CLI</text><path d="M112,199 L122,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="232" y="160" width="96" height="78" rx="10" class="d-box "/><text x="244" y="182" class="d-t d-h" text-anchor="start">Redact</text><text x="244" y="199" class="d-s" text-anchor="start">mask env,</text><text x="244" y="214" class="d-s" text-anchor="start">header values</text><path d="M220,199 L230,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="340" y="160" width="96" height="78" rx="10" class="d-box "/><text x="352" y="182" class="d-t d-h" text-anchor="start">dry_run?</text><text x="352" y="199" class="d-s" text-anchor="start">return</text><text x="352" y="214" class="d-s" text-anchor="start">preview</text><path d="M328,199 L338,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="448" y="160" width="96" height="78" rx="10" class="d-box "/><text x="460" y="182" class="d-t d-h" text-anchor="start">Confirm</text><text x="460" y="199" class="d-s" text-anchor="start">destructive:</text><text x="460" y="214" class="d-s" text-anchor="start">428 until set</text><path d="M436,199 L446,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="556" y="160" width="96" height="78" rx="10" class="d-box "/><text x="568" y="182" class="d-t d-h" text-anchor="start">Precheck</text><text x="568" y="199" class="d-s" text-anchor="start">409 if</text><text x="568" y="214" class="d-s" text-anchor="start">blocked</text><path d="M544,199 L554,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="664" y="160" width="96" height="78" rx="10" class="d-box "/><text x="676" y="182" class="d-t d-h" text-anchor="start">Run</text><text x="676" y="199" class="d-s" text-anchor="start">shell=False</text><text x="676" y="214" class="d-s" text-anchor="start">lock, timeout</text><path d="M652,199 L662,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="772" y="160" width="96" height="78" rx="10" class="d-box "/><text x="784" y="182" class="d-t d-h" text-anchor="start">Verify</text><text x="784" y="199" class="d-s" text-anchor="start">state really</text><text x="784" y="214" class="d-s" text-anchor="start">changed?</text><path d="M760,199 L770,199" class="d-msg" marker-end="url(#sec-a)"/><rect x="880" y="160" width="96" height="78" rx="10" class="d-box "/><text x="892" y="182" class="d-t d-h" text-anchor="start">Audit</text><text x="892" y="199" class="d-s" text-anchor="start">append</text><text x="892" y="214" class="d-s" text-anchor="start">audit.jsonl</text><path d="M868,199 L878,199" class="d-msg" marker-end="url(#sec-a)"/></svg></div></div>
+  <div class="scroll" tabindex="0"><table class="mid">
+    <thead><tr><th>Control</th><th>What the code does</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Bind</td><td>uvicorn <code>--host 127.0.0.1</code> in every Makefile target and service file</td><td><code>Makefile</code>, <code>scripts/service.py</code></td></tr>
+      <tr><td>Host</td><td>Must be <code>localhost</code>, <code>127.0.0.1</code> or <code>::1</code>, else 403. Blocks DNS rebinding</td><td><code>security.py</code></td></tr>
+      <tr><td>Origin</td><td>If sent, its host must be loopback, else 403</td><td><code>security.py</code></td></tr>
+      <tr><td>Sec-Fetch-Site</td><td><code>cross-site</code> is refused with 403</td><td><code>security.py</code></td></tr>
+      <tr><td>Token</td><td>32-byte <code>token_urlsafe</code> in <code>~/.eyrie/token</code>, created mode 0600. Needed for every non-GET/HEAD/OPTIONS request (<code>X-Eyrie-Token</code>) and every WebSocket. Compared with <code>hmac.compare_digest</code>. 401 if wrong</td><td><code>security.py</code></td></tr>
+      <tr><td>Token bootstrap</td><td><code>GET /api/v1/auth/token</code> hands it to same-origin pages; the middleware has already refused other hosts, origins and cross-site fetches</td><td><code>routers/auth.py</code>, <code>api/client.ts</code></td></tr>
+      <tr><td>WebSocket</td><td>Token may come as subprotocol <code>eyrie.token.&lt;t&gt;</code>; the server accepts <code>eyrie</code>. Rejections close before accept with 4000+status</td><td><code>security.py</code>, <code>routers/sessions.py</code></td></tr>
+      <tr><td>Headers</td><td><code>X-Frame-Options: DENY</code>, <code>frame-ancestors 'none'</code>, <code>nosniff</code>, <code>no-referrer</code> on every HTTP response</td><td><code>security.py</code></td></tr>
+      <tr><td>Argv only</td><td><code>subprocess.run(argv, shell=False, stdin=DEVNULL, timeout=cli.timeout_s)</code>, serialised by one lock. Names match <code>[A-Za-z0-9][A-Za-z0-9._-]{0,63}</code> so a value can't pose as a flag; stdio commands follow <code>--</code>; tmux always gets 2+ argv items</td><td><code>actions/runner.py</code>, <code>actions/registry.py</code></td></tr>
+      <tr><td>Declared actions</td><td><code>mcp.add</code>, <code>mcp.remove</code>*, <code>plugins.enable</code>, <code>plugins.disable</code>, <code>sessions.start</code>, <code>sessions.stop</code>* (* destructive). Plugin toggles 409 unless installed; every action is verified after it runs</td><td><code>actions/registry.py</code>, <code>routers/actions.py</code></td></tr>
+      <tr><td>Secret masking</td><td>Preview and audit argv mask values after <code>-e/--env</code> (<code>K=***</code>) and <code>-H/--header</code> (<code>Name: ***</code>). Audited params mask <code>env</code> and <code>headers</code> values. Plugin list output keeps only known fields (drops plugin MCP configs)</td><td><code>registry.redact</code>, <code>routers/actions._safe_params</code>, <code>sources/plugins.py</code></td></tr>
+      <tr><td>Audit</td><td>Every action run, every browser-terminal connection (on close), and every Nexus create, write and delete</td><td><code>actions/audit.py</code></td></tr>
+      <tr><td>Confinement</td><td>Nexus: name regexes, no symlinked files or folders, the resolved path's parent must be the agent folder. Sessions: <code>cwd</code> must be under <code>sessions.roots</code> or a directory Claude Code or Codex already knows. UI: files served only from inside <code>ui_dir</code>. Tasks: one configured file</td><td><code>sources/nexus.py</code>, <code>sessions/dirs.py</code>, <code>ui.py</code></td></tr>
+      <tr><td>Privacy</td><td><code>privacy.hide_mcp</code> names are filtered from MCP lists and failures. External sessions never expose command-line arguments</td><td><code>sources/mcp.py</code>, <code>sessions/external.py</code></td></tr>
+      <tr><td>Widget <span class="tag pr">PR #20</span></td><td>The panel's webview does no HTTP: CSP <code>connect-src ipc:</code>, capability <code>core:event:default</code>. Rust reads the token, accepts only <code>http://127.0.0.1:</code> / <code>http://localhost:</code> base URLs, checks action ids, and opens only <code>/…</code> Eyrie paths</td><td><code>widget/src-tauri/src/lib.rs</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="data">
+  <p class="eyebrow">05 / Data model</p>
+  <h2>What Eyrie stores, reads and writes</h2>
+
+  <h3>usage.db (SQLite, schema version 1)</h3>
+  <div class="scroll" tabindex="0"><table class="mid">
+    <thead><tr><th>Table</th><th>Columns</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>meta</code></td><td><code>key</code> PK, <code>value</code></td><td><code>schema_version = "1"</code>. A different version raises: it needs a migration, not a rebuild</td></tr>
+      <tr><td><code>files</code></td><td><code>path</code> PK, <code>inode</code>, <code>size</code>, <code>offset</code></td><td>Byte offset of the last complete line read from each transcript</td></tr>
+      <tr><td><code>messages</code></td><td class="wrap"><code>key</code> PK (<code>message.id|requestId</code>), <code>ts</code>, <code>session_id</code>, <code>project</code> (cwd), <code>model</code> (normalised), <code>subagent</code>, <code>input</code>, <code>output</code>, <code>cache_read</code>, <code>cache_write_5m</code>, <code>cache_write_1h</code></td><td>Index <code>messages_ts</code>. Tokens only; no dollars stored. Rows outlive their transcripts</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>audit.jsonl</h3>
+  <p>One JSON object per line, appended under a lock. <code>GET /api/v1/audit</code> returns the newest first.</p>
+<pre><code>{"ts": "2026-10-19T09:12:03+00:00", "action": "mcp.add",
+ "argv": ["claude", "mcp", "add", "-s", "user", "-t", "stdio", "ctx", "-e", "API_KEY=***", "--", "npx", "ctx-mcp"],
+ "params": {"client": "claude", "name": "ctx", "env": {"API_KEY": "***"}, ...},
+ "ok": true, "exit_code": 0, "duration_ms": 812, "message": "&lt;last 500 chars of stdout+stderr&gt;"}</code></pre>
+  <p>Action names written: <code>mcp.add</code>, <code>mcp.remove</code>, <code>plugins.enable</code>, <code>plugins.disable</code>, <code>sessions.start</code>, <code>sessions.stop</code>, <code>sessions.attach</code>, <code>nexus.create</code>, <code>nexus.write</code>, <code>nexus.delete</code>.</p>
+
+  <h3>Config: <code>eyrie.toml</code> and <code>EYRIE_*</code></h3>
+  <p>Precedence: init args, then env (<code>EYRIE_</code> prefix, <code>__</code> for nesting, e.g. <code>EYRIE_PATHS__VAULT=~/notes</code>), then the TOML file at <code>$EYRIE_CONFIG</code> or <code>&lt;repo&gt;/eyrie.toml</code>. Paths are <code>~</code>-expanded.</p>
+  <div class="scroll" tabindex="0"><table class="wide">
+    <thead><tr><th>Key</th><th>Default</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>paths.claude_home</code></td><td><code>~/.claude</code></td><td>Transcripts, settings, plugin state</td></tr>
+      <tr><td><code>paths.claude_json</code></td><td><code>~/.claude.json</code></td><td>Projects, MCP servers, known dirs</td></tr>
+      <tr><td><code>paths.codex_home</code></td><td><code>~/.codex</code></td><td><code>state_5.sqlite</code>, <code>config.toml</code></td></tr>
+      <tr><td><code>paths.vault</code></td><td><code>~/workspace/Obsidian Vault</code></td><td>Personal default; see §8</td></tr>
+      <tr><td><code>paths.tasks_file</code></td><td><code>Personal/Tasks.md</code></td><td>Relative to the vault</td></tr>
+      <tr><td><code>paths.nexus_dir</code></td><td><code>agent-memory/Nexus</code></td><td>Relative to the vault</td></tr>
+      <tr><td><code>paths.data_dir</code></td><td><code>~/.eyrie</code></td><td>Token, audit, usage.db, tmux.conf</td></tr>
+      <tr><td><code>sources.enabled</code></td><td>all eight</td><td><code>sessions claude codex mcp plugins nexus tasks usage</code></td></tr>
+      <tr><td><code>sessions.roots</code></td><td><code>[]</code></td><td>Extra trees where sessions may start</td></tr>
+      <tr><td><code>sessions.socket</code></td><td><code>eyrie</code></td><td><code>tmux -L</code> socket name</td></tr>
+      <tr><td><code>sessions.idle_minutes</code></td><td><code>10</code></td><td><code>session_idle</code> threshold</td></tr>
+      <tr><td><code>privacy.hide_mcp</code></td><td><code>[]</code></td><td>MCP names hidden from the UI</td></tr>
+      <tr><td><code>cli.claude_bin</code>, <code>codex_bin</code>, <code>tmux_bin</code></td><td>PATH lookup</td><td>Explicit binaries</td></tr>
+      <tr><td><code>cli.env</code></td><td><code>{}</code></td><td>Extra env for CLI calls, e.g. a sandbox <code>CLAUDE_CONFIG_DIR</code></td></tr>
+      <tr><td><code>cli.timeout_s</code></td><td><code>60</code></td><td>Per CLI call</td></tr>
+      <tr><td><code>server.ui_dir</code></td><td><code>&lt;repo&gt;/frontend/dist</code></td><td>Built UI served at <code>/</code></td></tr>
+      <tr><td><code>pricing.&lt;model&gt;</code></td><td>built-in table (2026-10-06)</td><td>$/MTok: <code>input output cache_write_5m cache_write_1h cache_read</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>There is no port key: the port is a uvicorn argument (<code>BACKEND_PORT</code>, <code>INSTALL_PORT</code>, <code>service.py --port</code>).</p>
+
+  <h3>Files read vs written</h3>
+  <div class="scroll" tabindex="0"><table class="wide">
+    <thead><tr><th>Path</th><th>Read</th><th>Written by Eyrie</th></tr></thead>
+    <tbody>
+      <tr><td><code>~/.claude.json</code></td><td>Projects, last-session cost, MCP servers (user, local)</td><td>Never directly; <code>claude mcp</code> writes it</td></tr>
+      <tr><td><code>&lt;project&gt;/.mcp.json</code></td><td>Project-scope MCP servers</td><td>Never directly; <code>claude mcp</code></td></tr>
+      <tr><td><code>~/.claude/projects/**/*.jsonl</code></td><td>Usage index, MCP failures, external-session activity</td><td>Never</td></tr>
+      <tr><td><code>~/.claude/settings*.json</code>, <code>plugins/installed_plugins.json</code></td><td>Enabled plugins; stat as plugin cache key</td><td>Never directly; <code>claude plugin</code></td></tr>
+      <tr><td><code>~/.codex/state_5.sqlite</code></td><td>Threads, known dirs, activity (read-only URI)</td><td>Never</td></tr>
+      <tr><td><code>~/.codex/config.toml</code></td><td>Codex MCP servers</td><td>Never directly; <code>codex mcp</code></td></tr>
+      <tr><td><code>&lt;vault&gt;/Personal/Tasks.md</code></td><td>Tasks</td><td>Line edits, atomic write</td></tr>
+      <tr><td><code>&lt;vault&gt;/agent-memory/Nexus/*/*.md</code></td><td>Memory files</td><td>Create, write; delete moves to <code>&lt;vault&gt;/.trash</code></td></tr>
+      <tr><td><code>~/.eyrie/token</code></td><td>Every start</td><td>Created once, mode 0600</td></tr>
+      <tr><td><code>~/.eyrie/audit.jsonl</code></td><td><code>/audit</code></td><td>Appended</td></tr>
+      <tr><td><code>~/.eyrie/usage.db</code></td><td>Reports</td><td>Upserts</td></tr>
+      <tr><td><code>~/.eyrie/tmux.conf</code></td><td>By tmux at server start</td><td>Rewritten if it differs: <code>remain-on-exit on</code>, 50k history, mouse</td></tr>
+      <tr><td><code>~/.eyrie/logs/eyrie.log</code></td><td><code>make logs</code></td><td>Service stdout/stderr</td></tr>
+      <tr><td>LaunchAgent plist / systemd unit</td><td><code>make status</code></td><td><code>scripts/service.py install</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="api">
+  <p class="eyebrow">06 / API surface</p>
+  <h2><code>/api/v1</code></h2>
+  <p>From the routers, cross-checked with <code>python -m app.openapi</code>. Every JSON route has a response model in <code>schemas.py</code>; <code>make types</code> generates <code>frontend/src/api/generated.ts</code> from it. Token = needs <code>X-Eyrie-Token</code>.</p>
+  <div class="scroll" tabindex="0"><table class="wide">
+    <thead><tr><th>Method</th><th>Path</th><th>Token</th><th>Returns / does</th><th>Errors</th></tr></thead>
+    <tbody>
+      <tr><td><code>GET</code></td><td><code>/api/v1/health</code></td><td></td><td><code>{status: ok}</code></td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/meta</code></td><td></td><td>Home directory and version</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/summary</code></td><td></td><td><code>Summary</code>: state, attention, sessions, spend, tasks, recent projects, health</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/auth/token</code></td><td></td><td>The install token, for same-origin pages</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/sources</code></td><td></td><td>Each enabled source: id, title, available, reason</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/sources/{id}</code></td><td></td><td>Typed snapshot: <code>claude codex mcp plugins nexus tasks sessions usage</code></td><td>404 unknown or disabled</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/v1/actions/{action_id}</code></td><td>yes</td><td>Body <code>{params, dry_run, confirm}</code> → <code>ActionPreview</code> or <code>ActionResult</code></td><td>404, 422, 428, 409, 503</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/audit?limit=100</code></td><td></td><td>Newest audit entries (1–1000)</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/usage?days=30</code></td><td></td><td><code>UsageReport</code> (1–365 days)</td><td>404 disabled</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/tasks</code></td><td></td><td><code>{etag, tasks[]}</code></td><td>404 disabled, 409 folder missing</td></tr>
+      <tr><td><code>POST</code></td><td><code>/api/v1/tasks</code></td><td>yes</td><td>Add <code>{text}</code>; <code>If-Match</code> required</td><td>409 stale (+current), 422</td></tr>
+      <tr><td><code>PATCH</code></td><td><code>/api/v1/tasks/{task_id}</code></td><td>yes</td><td><code>{done?, text?}</code>; <code>If-Match</code></td><td>409 (+current), 404 (+current), 422</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/api/v1/tasks/{task_id}</code></td><td>yes</td><td>Remove the line; <code>If-Match</code></td><td>409, 404, 422</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/nexus/{agent}/{name}</code></td><td></td><td><code>NexusFile</code>: content, etag, modified, linked_from</td><td>404, 422</td></tr>
+      <tr><td><code>PUT</code></td><td><code>/api/v1/nexus/{agent}/{name}</code></td><td>yes</td><td>Create (<code>If-Match: absent</code>) or replace; audited</td><td>409 (+current), 404 no agent, 422</td></tr>
+      <tr><td><code>DELETE</code></td><td><code>/api/v1/nexus/{agent}/{name}</code></td><td>yes</td><td>Move to <code>.trash</code>; <code>If-Match</code>; audited</td><td>409 (+current), 404, 422</td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/sessions/conversations?limit=20</code></td><td></td><td>Recent Claude conversations from the usage index</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/sessions/{name}/screen?lines=80</code></td><td></td><td><code>capture-pane -p -J</code> text</td><td>404</td></tr>
+      <tr><td><code>WS</code></td><td><code>/api/v1/sessions/{name}/term?readonly=</code></td><td>yes</td><td>Terminal bridge; binary I/O, JSON resize. Not in OpenAPI</td><td>4401, 4403, 4404, 4503, 4429</td></tr>
+    </tbody>
+  </table></div>
+  <p>Unknown <code>/api/*</code> paths are a JSON 404 for every method. Everything else under <code>GET/HEAD /</code> is the SPA: files from <code>ui_dir</code> (<code>assets/</code> cached as immutable), otherwise <code>index.html</code>, or a 503 page if the UI isn't built.</p>
+</section>
+
+<!-- ============================================================ 7 -->
+<section id="deploy">
+  <p class="eyebrow">07 / Deployment</p>
+  <h2>One process, one port, per user</h2>
+  <p>Native, no Docker: a container can't drive the host's tmux or the host's <code>claude</code> and <code>codex</code> with your credentials.</p>
+  <div class="scroll" tabindex="0"><table class="mid">
+    <thead><tr><th>Mode</th><th>Ports</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td><code>make dev</code></td><td>API 127.0.0.1:8000, Vite 127.0.0.1:5173</td><td>uvicorn <code>--reload</code>; Vite proxies <code>/api</code> including WebSockets</td></tr>
+      <tr><td><code>make serve</code></td><td>127.0.0.1:8787</td><td>Builds the UI, runs uvicorn in the foreground</td></tr>
+      <tr><td><code>make install</code></td><td>127.0.0.1:8787 (<code>INSTALL_PORT</code>)</td><td><code>scripts/service.py install</code>: needs <code>backend/.venv</code> and <code>frontend/dist</code>; waits up to 10 s for <code>/health</code></td></tr>
+      <tr><td>Widget <span class="tag pr">PR #20</span></td><td>talks to <code>EYRIE_URL</code> or 127.0.0.1:8787</td><td><code>npm run tauri dev</code>; autostart plugin enables start-at-login once on first run</td></tr>
+    </tbody>
+  </table></div>
+  <div class="grid2">
+    <div class="card"><h4>macOS: launchd agent <code>local.eyrie</code></h4><ul>
+      <li><code>~/Library/LaunchAgents/local.eyrie.plist</code> via <code>plistlib</code>, checked with <code>plutil -lint</code>.</li>
+      <li><code>RunAtLoad</code>, <code>KeepAlive</code>, <code>ThrottleInterval 10</code>.</li>
+      <li><code>AbandonProcessGroup</code>: restarting Eyrie never kills its tmux sessions.</li>
+      <li><code>launchctl bootout</code> then <code>bootstrap gui/&lt;uid&gt;</code>.</li>
+    </ul></div>
+    <div class="card"><h4>Linux: systemd user unit <code>eyrie.service</code></h4><ul>
+      <li><code>~/.config/systemd/user/eyrie.service</code>, systemd-quoted args.</li>
+      <li><code>Restart=on-failure</code>, <code>RestartSec=5</code>.</li>
+      <li><code>KillMode=process</code>: only Eyrie stops, tmux sessions keep running.</li>
+      <li><code>daemon-reload</code>, <code>enable</code>, <code>restart</code>. Tip: <code>loginctl enable-linger</code>.</li>
+    </ul></div>
+  </div>
+  <h3>PATH capture</h3>
+  <p>launchd and systemd user units start with a minimal PATH, so <code>claude</code>, <code>codex</code> and <code>tmux</code> wouldn't be found. At install, <code>login_path()</code> runs <code>$SHELL -lic 'printf "__EYRIE_PATH__%s__END__" "$PATH"'</code> with only <code>HOME USER LOGNAME SHELL</code> and <code>TERM</code> set, takes the value between the markers (so shell noise doesn't matter), and writes it into the plist or unit. It falls back to the current PATH and warns about any tool missing from it. Re-run <code>make install</code> after pulling changes.</p>
+  <h3>Platforms</h3>
+  <div class="scroll" tabindex="0"><table class="mid">
+    <thead><tr><th>Platform</th><th>Service</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>macOS 13+</td><td>launchd agent</td><td><span class="tag built">built</span> primary platform</td></tr>
+      <tr><td>Ubuntu 24.04 / Debian</td><td>systemd user unit</td><td><span class="tag built">built</span> suite passes on 24.04; CI runs on Ubuntu</td></tr>
+      <tr><td>Fedora 40+</td><td>same systemd unit (any Linux with <code>systemctl</code>)</td><td><span class="tag built">built</span> same code path as Ubuntu; container verification listed in docs</td></tr>
+      <tr><td>Other Linux without systemd</td><td>none: <code>make serve</code></td><td><code>service.py</code> exits with a hint</td></tr>
+      <tr><td>Windows (native)</td><td>per-user scheduled task</td><td><span class="tag planned">deferred</span> needs a non-tmux session layer and a ConPTY bridge; Unix-only code is kept in <code>sessions/terminal.py</code> and tmux</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 8 -->
+<section id="limits">
+  <p class="eyebrow">08 / Known limits and next steps</p>
+  <h2>Where it's thin</h2>
+  <h3>Limits in today's code</h3>
+  <ul>
+    <li><strong>Claude Code and Codex are hard-coded.</strong> Tool names are literals in the action models (<code>Literal["claude","codex"]</code>), argv building, <code>Runner.binary</code>, external detection (<code>TOOLS</code>, <code>HELPERS</code>), sources and the summary.</li>
+    <li><strong>Personal defaults.</strong> <code>paths.vault = ~/workspace/Obsidian Vault</code>, <code>Personal/Tasks.md</code> and <code>agent-memory/Nexus</code> fit one machine. Another user has to write <code>eyrie.toml</code> by hand; missing folders just show the source as unavailable.</li>
+    <li><strong>One global CLI lock.</strong> <code>Runner.run</code> serialises every call, including tmux <code>list-sessions</code> and <code>--version</code> probes, so a slow <code>claude mcp add</code> (up to <code>timeout_s</code> = 60 s) stalls the summary and Sessions polls behind it.</li>
+    <li><strong>Masking is narrow.</strong> Only env and header values are masked. A secret passed as a stdio <code>command</code> or <code>args</code> item, or in an MCP URL, is shown in the preview and written to the audit log.</li>
+    <li><strong>Task edits aren't audited</strong>; Nexus edits and actions are.</li>
+    <li><strong>Polling, not push.</strong> Every view polls (Sessions every 4 s, summary every 10 s from each client), and each summary runs <code>ps</code> plus tmux calls.</li>
+    <li><code>GET /sessions/{name}/screen</code> is served but no page calls it any more; the terminal replaced the screen preview.</li>
+    <li>Cost reads 0–15% low: Claude Code doesn't log some background calls (titles, compaction). The Usage page says so.</li>
+    <li>The terminal limit (8) is a per-process counter, which is fine for the single uvicorn worker Eyrie runs.</li>
+  </ul>
+  <h3>Next steps</h3>
+  <div class="grid2">
+    <div class="card"><h4>Tool-adapter layer <span class="tag planned">planned</span></h4><p>One adapter per tool (binary, session argv, transcript and usage reader, MCP and plugin verbs, process-detection rules) behind an interface, so Gemini and others can be added without touching the routers.</p></div>
+    <div class="card"><h4>First-run setup <span class="tag planned">planned</span></h4><p>Detect or ask for the vault, tasks file, Nexus folder and session roots, then write <code>eyrie.toml</code>, instead of shipping personal defaults.</p></div>
+    <div class="card"><h4>Packaging <span class="tag planned">planned</span></h4><p>PyInstaller onefile <code>eyrie-server</code> as a Tauri sidecar, <code>frontend/dist</code> as a resource; <code>.dmg</code>, <code>.deb</code>, <code>.rpm</code> from a tag-triggered release workflow; first launch installs the service.</p></div>
+    <div class="card"><h4>Unified brand mark <span class="tag planned">planned</span></h4><p>One mark across the app header (<code>e.</code> tile), favicon, tray icons (<code>widget/make_icons.py</code>) and the landing page.</p></div>
+    <div class="card"><h4>Widget <span class="tag pr">PR #20</span></h4><p>Tray icon by <code>summary.state</code>, macOS cost title, rich menu on all platforms, panel via <code>widget.html</code>; commands <code>summary refresh action add_task open_eyrie get_settings set_show_cost set_autostart start_eyrie hide quit</code>.</p></div>
+    <div class="card"><h4>Subagents per session <span class="tag planned">idea</span></h4><p>List a session's Claude subagents from <code>~/.claude/projects/&lt;proj&gt;/&lt;session&gt;/subagents/agent-*.jsonl</code> plus each <code>.meta.json</code> (<code>description</code>, <code>agentType</code>, <code>finished</code>). The usage index already reads those transcripts for cost.</p></div>
+  </div>
+</section>
+
+<footer>
+  Generated from the code on <code>main</code> (4d1aecb) and <code>origin/feat/widget</code>. Design history: <code>docs/architecture.md</code>, <code>docs/home-and-widget.md</code>.
+</footer>
+</div>
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('theme');
+  try { var saved = localStorage.getItem('eyrie-lld-theme'); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var cur = root.getAttribute('data-theme') ||
+      (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('eyrie-lld-theme', next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
