@@ -1,5 +1,7 @@
-"""Settings from eyrie.toml (repo root, or $EYRIE_CONFIG), overridable with EYRIE_* env vars,
-e.g. EYRIE_PATHS__VAULT=~/notes."""
+"""Settings from eyrie.toml, overridable with EYRIE_* env vars, e.g. EYRIE_PATHS__TASKS=~/todo.md.
+
+The file is $EYRIE_CONFIG, else ~/.eyrie/eyrie.toml (written by first-run setup and the
+Settings page), else <repo>/eyrie.toml (a dev checkout's own config)."""
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -17,8 +19,20 @@ from app.usage.prices import ModelPrice
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _config_file() -> Path:
-    return Path(os.environ.get("EYRIE_CONFIG", REPO_ROOT / "eyrie.toml")).expanduser()
+USER_CONFIG = Path("~/.eyrie/eyrie.toml")
+
+
+def config_path() -> Path:
+    """Where setup writes the config."""
+    return Path(os.environ.get("EYRIE_CONFIG", USER_CONFIG)).expanduser()
+
+
+def active_config() -> Path:
+    """Where config is read from: the setup-written file, or a dev checkout's own."""
+    p = config_path()
+    if "EYRIE_CONFIG" in os.environ or p.exists():
+        return p
+    return REPO_ROOT / "eyrie.toml"
 
 
 class Paths(BaseModel):
@@ -29,9 +43,8 @@ class Paths(BaseModel):
     codex_home: Path = Path("~/.codex")
     # Gemini CLI's ~/.gemini; with GEMINI_CLI_HOME=<dir> it lives in <dir>/.gemini.
     gemini_home: Path = Path("~/.gemini")
-    vault: Path = Path("~/workspace/Obsidian Vault")
-    # Relative to the vault. Personal tasks only; the vault-root Tasks.md holds work tasks.
-    tasks_file: Path = Path("Personal/Tasks.md")
+    # A markdown checklist for the Tasks page (e.g. a file in an Obsidian vault). Off until set.
+    tasks: Path | None = None
     # Claude Code subagents' persistent memory (<agent>/*.md). Default: <claude_home>/agent-memory.
     agent_memory: Path | None = None
     data_dir: Path = Path("~/.eyrie")
@@ -42,12 +55,20 @@ class Paths(BaseModel):
         return v.expanduser() if v is not None else None
 
     @property
-    def tasks(self) -> Path:
-        return self.vault / self.tasks_file
-
-    @property
     def memory(self) -> Path:
         return self.agent_memory or self.claude_home / "agent-memory"
+
+
+class Tools(BaseModel):
+    # "auto": every tool that's installed or whose state folder exists; or a list of tool ids.
+    enabled: str | list[str] = "auto"
+
+    @field_validator("enabled")
+    @classmethod
+    def _auto_or_list(cls, v):
+        if isinstance(v, str) and v != "auto":
+            raise ValueError('tools.enabled is "auto" or a list of tool ids')
+        return v
 
 
 class Sources(BaseModel):
@@ -99,6 +120,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="EYRIE_", env_nested_delimiter="__")
 
     paths: Paths = Paths()
+    tools: Tools = Tools()
     sources: Sources = Sources()
     privacy: Privacy = Privacy()
     cli: Cli = Cli()
@@ -116,7 +138,7 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        return init_settings, env_settings, TomlConfigSettingsSource(settings_cls, toml_file=_config_file())
+        return init_settings, env_settings, TomlConfigSettingsSource(settings_cls, toml_file=active_config())
 
 
 @lru_cache

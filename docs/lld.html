@@ -367,15 +367,16 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
   <p>Action names written: <code>mcp.add</code>, <code>mcp.remove</code>, <code>plugins.enable</code>, <code>plugins.disable</code>, <code>sessions.start</code>, <code>sessions.stop</code>, <code>sessions.attach</code>, <code>memory.create</code>, <code>memory.write</code>, <code>memory.delete</code>, <code>tasks.add</code>, <code>tasks.update</code>, <code>tasks.delete</code>.</p>
 
   <h3>Config: <code>eyrie.toml</code> and <code>EYRIE_*</code></h3>
-  <p>Precedence: init args, then env (<code>EYRIE_</code> prefix, <code>__</code> for nesting, e.g. <code>EYRIE_PATHS__VAULT=~/notes</code>), then the TOML file at <code>$EYRIE_CONFIG</code> or <code>&lt;repo&gt;/eyrie.toml</code>. Paths are <code>~</code>-expanded.</p>
+  <p>Precedence: init args, then env (<code>EYRIE_</code> prefix, <code>__</code> for nesting, e.g. <code>EYRIE_PATHS__TASKS=~/todo.md</code>), then the TOML file at <code>$EYRIE_CONFIG</code>, else <code>~/.eyrie/eyrie.toml</code> (written by first-run setup and the Settings page via <code>PUT /api/v1/setup</code>), else <code>&lt;repo&gt;/eyrie.toml</code>. Paths are <code>~</code>-expanded.</p>
   <div class="scroll" tabindex="0"><table class="wide">
     <thead><tr><th>Key</th><th>Default</th><th>Use</th></tr></thead>
     <tbody>
       <tr><td><code>paths.claude_home</code></td><td><code>~/.claude</code></td><td>Transcripts, settings, plugin state</td></tr>
       <tr><td><code>paths.claude_json</code></td><td><code>~/.claude.json</code></td><td>Projects, MCP servers, known dirs</td></tr>
       <tr><td><code>paths.codex_home</code></td><td><code>~/.codex</code></td><td><code>state_5.sqlite</code>, <code>config.toml</code></td></tr>
-      <tr><td><code>paths.vault</code></td><td><code>~/workspace/Obsidian Vault</code></td><td>Personal default; see §8</td></tr>
-      <tr><td><code>paths.tasks_file</code></td><td><code>Personal/Tasks.md</code></td><td>Relative to the vault</td></tr>
+      <tr><td><code>paths.gemini_home</code></td><td><code>~/.gemini</code></td><td>Gemini CLI state</td></tr>
+      <tr><td><code>paths.tasks</code></td><td>unset</td><td>Markdown checklist for the Tasks page; off until set (first run / Settings)</td></tr>
+      <tr><td><code>tools.enabled</code></td><td><code>"auto"</code></td><td>Tools installed or used here, or an explicit list</td></tr>
       <tr><td><code>paths.agent_memory</code></td><td><code>&lt;claude_home&gt;/agent-memory</code></td><td>Claude Code subagent memory</td></tr>
       <tr><td><code>paths.data_dir</code></td><td><code>~/.eyrie</code></td><td>Token, audit, usage.db, tmux.conf</td></tr>
       <tr><td><code>sources.enabled</code></td><td>all eight</td><td><code>sessions claude codex mcp plugins memory tasks usage</code></td></tr>
@@ -425,6 +426,8 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
       <tr><td><code>GET</code></td><td><code>/api/v1/health</code></td><td></td><td><code>{status: ok}</code></td><td></td></tr>
       <tr><td><code>GET</code></td><td><code>/api/v1/meta</code></td><td></td><td>Home directory and version</td><td></td></tr>
       <tr><td><code>GET</code></td><td><code>/api/v1/summary</code></td><td></td><td><code>Summary</code>: state, attention, sessions, spend, tasks, recent projects, health</td><td></td></tr>
+      <tr><td><code>GET</code></td><td><code>/api/v1/setup</code></td><td></td><td>What Eyrie detects and the current answers, with the config file's etag</td><td></td></tr>
+      <tr><td><code>PUT</code></td><td><code>/api/v1/setup</code></td><td>yes</td><td>Write and apply tools, session roots and tasks file; <code>If-Match</code>; audited</td><td>409 (+current), 422</td></tr>
       <tr><td><code>GET</code></td><td><code>/api/v1/auth/token</code></td><td></td><td>The install token, for same-origin pages</td><td></td></tr>
       <tr><td><code>GET</code></td><td><code>/api/v1/sources</code></td><td></td><td>Each enabled source: id, title, available, reason</td><td></td></tr>
       <tr><td><code>GET</code></td><td><code>/api/v1/sources/{id}</code></td><td></td><td>Typed snapshot: <code>claude codex mcp plugins memory tasks sessions usage</code></td><td>404 unknown or disabled</td></tr>
@@ -496,7 +499,6 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
   <h3>Limits in today's code</h3>
   <ul>
     <li><strong>Claude Code and Codex are hard-coded.</strong> Tool names are literals in the action models (<code>Literal["claude","codex"]</code>), argv building, <code>Runner.binary</code>, external detection (<code>TOOLS</code>, <code>HELPERS</code>), sources and the summary.</li>
-    <li><strong>Personal defaults.</strong> <code>paths.vault = ~/workspace/Obsidian Vault</code> and <code>Personal/Tasks.md</code> fit one machine. Another user has to write <code>eyrie.toml</code> by hand; missing folders just show the source as unavailable.</li>
     <li><strong>Masking is by shape.</strong> <code>app/masking.py</code> catches secret-named flags and <code>NAME=value</code> pairs, URL passwords and query values, and well-known token formats. A secret with none of those shapes (say, a bare random string as a positional arg) still shows.</li>
     <li><strong>Polling, not push.</strong> Every view polls (Sessions every 4 s, summary every 10 s from each client), and each summary runs <code>ps</code> plus tmux calls.</li>
     <li><code>GET /sessions/{name}/screen</code> is served but no page calls it any more; the terminal replaced the screen preview.</li>
@@ -506,7 +508,7 @@ footer { color: var(--muted); font-size: 13px; padding: 32px 0 0; }
   <h3>Next steps</h3>
   <div class="grid2">
     <div class="card"><h4>Tool-adapter layer <span class="tag planned">planned</span></h4><p>One adapter per tool (binary, session argv, transcript and usage reader, MCP and plugin verbs, process-detection rules) behind an interface, so Gemini and others can be added without touching the routers.</p></div>
-    <div class="card"><h4>First-run setup <span class="tag planned">planned</span></h4><p>Detect or ask for the tasks file, the agent-memory folder and session roots, then write <code>eyrie.toml</code>, instead of shipping personal defaults.</p></div>
+    <div class="card"><h4>First-run setup <span class="tag built">built</span></h4><p><code>app/setup.py</code>: detects tools, suggests session roots from known projects, offers Obsidian vaults, writes <code>~/.eyrie/eyrie.toml</code> (merged, etag-checked, audited) and applies it live. The UI redirects to <code>/setup</code> until a config exists; <code>/settings</code> edits it later.</p></div>
     <div class="card"><h4>Packaging <span class="tag planned">planned</span></h4><p>PyInstaller onefile <code>eyrie-server</code> as a Tauri sidecar, <code>frontend/dist</code> as a resource; <code>.dmg</code>, <code>.deb</code>, <code>.rpm</code> from a tag-triggered release workflow; first launch installs the service.</p></div>
     <div class="card"><h4>Unified brand mark <span class="tag planned">planned</span></h4><p>One mark across the app header (<code>e.</code> tile), favicon, tray icons (<code>widget/make_icons.py</code>) and the landing page.</p></div>
     <div class="card"><h4>Widget <span class="tag pr">PR #20</span></h4><p>Tray icon by <code>summary.state</code>, macOS cost title, rich menu on all platforms, panel via <code>widget.html</code>; commands <code>summary refresh action add_task open_eyrie get_settings set_show_cost set_autostart start_eyrie hide quit</code>.</p></div>

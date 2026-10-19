@@ -112,6 +112,13 @@ Two wins fall out of this:
 
 - `paths.vault` loses its personal default. Tasks becomes `paths.tasks = "<file>"`, and it's off until set.
 
+**As built (2026-10-20):** binaries and tool homes stay under their existing keys
+(`cli.<tool>_bin`, `paths.<tool>_home`) rather than `[tools.<id>]` tables; first run doesn't
+need to set them. `paths.tasks` is an absolute file path, and `paths.vault` / `tasks_file`
+are gone. New answers are applied to the running app (no restart), and writing merges into
+the existing file so other sections survive. Obsidian vaults are offered as a starting
+folder only, never a file name, since a vault can hold several task lists.
+
 ### 5.2 First-run flow
 
 `GET /api/v1/setup` reports what Eyrie detects; `POST /api/v1/setup` writes `~/.eyrie/eyrie.toml`, using the token, the etag check and the audit log as usual. The UI shows a setup screen whenever no config file exists.

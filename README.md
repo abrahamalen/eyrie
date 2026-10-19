@@ -69,10 +69,12 @@ instead of editing types by hand.
 
 ## Configuration
 
-Copy `eyrie.example.toml` to `eyrie.toml` (gitignored). Every key is optional: paths to
-the vault and to Claude/Codex state, which sources are enabled, where sessions may start
-(`[sessions] roots`), MCP servers to hide, price overrides, CLI paths. Env vars override
-the file, e.g. `EYRIE_PATHS__VAULT=~/notes`; `EYRIE_CONFIG` points at another file.
+On first run Eyrie asks which tools you use, where you work and (optionally) which markdown
+file holds your tasks, then writes `~/.eyrie/eyrie.toml`. Change it later on the
+**Settings** page; changes apply at once. Every other key (price overrides, MCP servers to
+hide, CLI paths, which sources are enabled) is documented in `eyrie.example.toml`. Env vars
+override the file, e.g. `EYRIE_PATHS__TASKS=~/notes/todo.md`; `EYRIE_CONFIG` points at
+another file. A dev checkout can keep its own `eyrie.toml` (gitignored) instead.
 
 ## Security
 

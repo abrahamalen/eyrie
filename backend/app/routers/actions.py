@@ -8,6 +8,7 @@ from app.actions.runner import CliNotFound
 from app.masking import mask_args, mask_url, mask_value
 from app.schemas import ActionPreview, ActionResult, AuditEntry
 from app.sessions.dirs import is_allowed
+from app.tools import TOOLS, enabled
 
 router = APIRouter(prefix="/api/v1", tags=["actions"])
 
@@ -72,14 +73,17 @@ def _installed_plugin(state, plugin_id: str) -> dict | None:
 
 
 def _precheck(state, action_id: str, params) -> str | None:
+    tool = getattr(params, "tool", None) or getattr(params, "client", None)
+    if tool and tool not in enabled(state.settings):
+        return f"{TOOLS[tool].title} isn't enabled here; turn it on in Settings"
     # `claude plugin enable` reports success for a plugin that isn't installed, and
     # records it as enabled anyway, so check first.
     if action_id.startswith("plugins.") and _installed_plugin(state, params.plugin) is None:
         return f"{params.plugin} isn't installed"
     if action_id == "sessions.start":
         if not is_allowed(state.settings, params.cwd):
-            return (f"{params.cwd} isn't an allowed directory. Use a project Claude Code or Codex already knows, "
-                    "or add a parent folder to sessions.roots in eyrie.toml.")
+            return (f"{params.cwd} isn't an allowed directory. Use a project one of your tools already knows, "
+                    "or add a parent folder under Settings → Where you work.")
         if state.registry["sessions"].tmux.exists(params.name):
             return f"A session named {params.name} already exists"
     if action_id == "sessions.stop" and not state.registry["sessions"].tmux.exists(params.name):

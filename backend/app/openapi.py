@@ -11,7 +11,7 @@ from app.main import create_app
 
 def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
-        settings = Settings(paths=Paths(data_dir=Path(tmp), vault=Path(tmp), claude_home=Path(tmp),
+        settings = Settings(paths=Paths(data_dir=Path(tmp), claude_home=Path(tmp),
                                         claude_json=Path(tmp) / ".claude.json", codex_home=Path(tmp)))
         spec = create_app(settings).openapi()
     json.dump(spec, sys.stdout, indent=2, sort_keys=True)

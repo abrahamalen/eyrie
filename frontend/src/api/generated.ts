@@ -154,6 +154,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Setup */
+        get: operations["read_setup_api_v1_setup_get"];
+        /**
+         * Write Setup
+         * @description Write ~/.eyrie/eyrie.toml (If-Match: absent on first run) and apply it at once.
+         */
+        put: operations["write_setup_api_v1_setup_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sources": {
         parameters: {
             query?: never;
@@ -433,6 +454,13 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** AgentMemoryInfo */
+        AgentMemoryInfo: {
+            /** Exists */
+            exists: boolean;
+            /** Path */
+            path: string;
+        };
         /** AttentionItem */
         AttentionItem: {
             /** Detail */
@@ -570,6 +598,15 @@ export interface components {
             threads: components["schemas"]["CodexThread"][];
             totals: components["schemas"]["CodexTotals"];
         };
+        /** ConfigFile */
+        ConfigFile: {
+            /** Etag */
+            etag: string;
+            /** Exists */
+            exists: boolean;
+            /** Path */
+            path: string;
+        };
         /** Conversation */
         Conversation: {
             /** Id */
@@ -596,6 +633,28 @@ export interface components {
             cost: number;
             /** Tokens */
             tokens: number;
+        };
+        /** DetectedTool */
+        DetectedTool: {
+            /** Enabled */
+            enabled: boolean;
+            /** Home */
+            home: string | null;
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "claude" | "codex" | "gemini";
+            /** Installed */
+            installed: boolean;
+            /** Path */
+            path: string | null;
+            /** Title */
+            title: string;
+            /** Used */
+            used: boolean;
+            /** Version */
+            version: string | null;
         };
         /**
          * ExternalSession
@@ -636,9 +695,9 @@ export interface components {
         };
         /** Health */
         Health: {
-            claude: components["schemas"]["ToolHealth"];
-            codex: components["schemas"]["ToolHealth"];
-            gemini: components["schemas"]["ToolHealth"];
+            claude: components["schemas"]["ToolHealth"] | null;
+            codex: components["schemas"]["ToolHealth"] | null;
+            gemini: components["schemas"]["ToolHealth"] | null;
             tmux: components["schemas"]["ToolHealth"];
             usage_index: components["schemas"]["IndexStats"] | null;
         };
@@ -752,6 +811,8 @@ export interface components {
         };
         /** Meta */
         Meta: {
+            /** Configured */
+            configured: boolean;
             /** Home */
             home: string;
             /** Tools */
@@ -856,6 +917,35 @@ export interface components {
             /** Sessions */
             sessions: components["schemas"]["Session"][];
         };
+        /** SetupBody */
+        SetupBody: {
+            /**
+             * Roots
+             * @default []
+             */
+            roots: string[];
+            /** Tasks */
+            tasks?: string | null;
+            /** Tools Enabled */
+            tools_enabled: "auto" | ("claude" | "codex" | "gemini")[];
+        };
+        /** SetupState */
+        SetupState: {
+            agent_memory: components["schemas"]["AgentMemoryInfo"];
+            config: components["schemas"]["ConfigFile"];
+            /** Obsidian Vaults */
+            obsidian_vaults: string[];
+            /** Roots */
+            roots: string[];
+            /** Suggested Roots */
+            suggested_roots: components["schemas"]["SuggestedRoot"][];
+            /** Tasks */
+            tasks: string | null;
+            /** Tools */
+            tools: components["schemas"]["DetectedTool"][];
+            /** Tools Enabled */
+            tools_enabled: "auto" | ("claude" | "codex" | "gemini")[];
+        };
         /** SourceInfo */
         SourceInfo: {
             /** Available */
@@ -884,6 +974,13 @@ export interface components {
         Status: {
             /** Status */
             status: string;
+        };
+        /** SuggestedRoot */
+        SuggestedRoot: {
+            /** Path */
+            path: string;
+            /** Projects */
+            projects: number;
         };
         /** Summary */
         Summary: {
@@ -980,6 +1077,8 @@ export interface components {
          * @description What one tool can do here, so the UI offers only that.
          */
         ToolInfo: {
+            /** Enabled */
+            enabled: boolean;
             /**
              * Id
              * @enum {string}
@@ -1406,6 +1505,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Screen"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_setup_api_v1_setup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupState"];
+                };
+            };
+        };
+    };
+    write_setup_api_v1_setup_put: {
+        parameters: {
+            query?: never;
+            header: {
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupState"];
                 };
             };
             /** @description Validation Error */

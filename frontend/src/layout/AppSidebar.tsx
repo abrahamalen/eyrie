@@ -4,6 +4,7 @@ import {
   ChartColumnStacked,
   Cloud,
   History,
+  Settings,
   LayoutDashboard,
   MonitorPlay,
   Plug,
@@ -56,6 +57,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
     items: [
       { to: '/tasks', label: 'Tasks', icon: SquareCheck },
       { to: '/activity', label: 'Activity', icon: History },
+      { to: '/settings', label: 'Settings', icon: Settings },
     ],
   },
 ]

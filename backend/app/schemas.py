@@ -371,9 +371,10 @@ class ToolHealth(BaseModel):
 
 class Health(BaseModel):
     tmux: ToolHealth
-    claude: ToolHealth
-    codex: ToolHealth
-    gemini: ToolHealth
+    # None when the tool isn't enabled here (tools.enabled)
+    claude: ToolHealth | None
+    codex: ToolHealth | None
+    gemini: ToolHealth | None
     usage_index: IndexStats | None
 
 
@@ -401,6 +402,7 @@ class ToolInfo(BaseModel):
     title: str
     installed: bool
     used: bool
+    enabled: bool
     session_modes: list[Literal["new", "continue", "resume"]]
     resume_requires_cwd: bool
     # Eyrie picks a new conversation's id up front (so the preview matches what runs).
@@ -412,7 +414,55 @@ class ToolInfo(BaseModel):
 class Meta(BaseModel):
     home: str
     version: str
+    # False until first-run setup has written a config file
+    configured: bool
     tools: list[ToolInfo]
+
+
+# --- Setup --------------------------------------------------------------------------------
+
+class ConfigFile(BaseModel):
+    path: str
+    exists: bool
+    etag: str
+
+
+class DetectedTool(BaseModel):
+    id: ToolId
+    title: str
+    installed: bool
+    version: str | None
+    path: str | None
+    home: str | None
+    used: bool
+    enabled: bool
+
+
+class SuggestedRoot(BaseModel):
+    path: str
+    projects: int
+
+
+class AgentMemoryInfo(BaseModel):
+    path: str
+    exists: bool
+
+
+class SetupState(BaseModel):
+    config: ConfigFile
+    tools_enabled: Literal["auto"] | list[ToolId]
+    tools: list[DetectedTool]
+    roots: list[str]
+    suggested_roots: list[SuggestedRoot]
+    tasks: str | None
+    obsidian_vaults: list[str]
+    agent_memory: AgentMemoryInfo
+
+
+class SetupBody(BaseModel):
+    tools_enabled: Literal["auto"] | list[ToolId]
+    roots: list[str] = []
+    tasks: str | None = None
 
 
 class Token(BaseModel):

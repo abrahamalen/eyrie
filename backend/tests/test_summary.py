@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app import tools as app_tools
 from app.actions import runner
 from app.actions.runner import CliNotFound, RunResult
 from tests.test_usage import assistant, write
@@ -49,6 +50,7 @@ def tools(monkeypatch):
     fake = FakeTools()
     monkeypatch.setattr(runner.Runner, "run", lambda self, tool, args, cwd=None: fake.run(self, tool, args, cwd))
     monkeypatch.setattr(runner.Runner, "binary", lambda self, tool: fake.binary(self, tool))
+    monkeypatch.setattr(app_tools, "installed", lambda settings, tool: tool not in fake.missing)
     return fake
 
 
@@ -78,7 +80,7 @@ def test_missing_cli_is_a_problem_and_sorted_first(client, tools, home):
     assert kinds(s)[0] == "cli_missing" and "codex isn't installed" in s["attention"][0]["title"]
     assert [a for a in s["attention"] if "gemini" in a["title"]] == []
     assert s["health"]["codex"] == {"found": False, "version": None, "path": None, "used": True}
-    assert s["health"]["gemini"]["used"] is False
+    assert s["health"]["gemini"] is None  # neither installed nor used: not enabled
 
 
 def test_session_states(client, tools):

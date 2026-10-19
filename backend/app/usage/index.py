@@ -82,8 +82,8 @@ def _migrate_1_to_2(db_path: Path, con: sqlite3.Connection) -> None:
 
 
 class UsageIndex:
-    def __init__(self, db_path: Path, readers: dict, settings, min_interval: float = 10.0) -> None:
-        """readers: tool id -> that adapter's UsageCaps."""
+    def __init__(self, db_path: Path, readers, settings, min_interval: float = 10.0) -> None:
+        """readers: tool id -> that adapter's UsageCaps, or a callable returning that."""
         self.db_path = db_path
         self.readers = readers
         self.settings = settings
@@ -108,22 +108,27 @@ class UsageIndex:
         con.executescript(INDEXES)
         return con
 
+    def _readers(self) -> dict:
+        return self.readers() if callable(self.readers) else self.readers
+
     def transcript_files(self) -> list[tuple[str, Path, bool]]:
-        return [(tool, p, sub) for tool, r in self.readers.items() for p, sub in r.files(self.settings)]
+        return [(tool, p, sub) for tool, r in self._readers().items() for p, sub in r.files(self.settings)]
 
     def scan(self, force: bool = False) -> None:
         with self._lock:
             if not force and time.monotonic() - self._last_scan < self.min_interval:
                 return
             started = time.perf_counter()
+            readers = self._readers()
             with closing(self.connect()) as con:
                 known = {p: (i, s, o, st) for p, i, s, o, st in con.execute("SELECT path, inode, size, offset, state FROM files")}
-                for tool, path, subagent in self.transcript_files():
-                    self._scan_file(con, tool, path, subagent, known.get(str(path)))
+                for tool, r in readers.items():
+                    for path, subagent in r.files(self.settings):
+                        self._scan_file(con, r, tool, path, subagent, known.get(str(path)))
             self._last_scan = time.monotonic()
             self.last_scan_ms = (time.perf_counter() - started) * 1000
 
-    def _scan_file(self, con: sqlite3.Connection, tool: str, path: Path, subagent: bool, known) -> None:
+    def _scan_file(self, con: sqlite3.Connection, reader, tool: str, path: Path, subagent: bool, known) -> None:
         try:
             st = path.stat()
         except FileNotFoundError:
@@ -137,7 +142,6 @@ class UsageIndex:
                 offset, state = prev_offset, json.loads(prev_state) if prev_state else {}
         if known and offset == st.st_size:
             return
-        reader = self.readers[tool]
         with open(path, "rb") as f:
             f.seek(offset)
             chunk = f.read(st.st_size - offset)

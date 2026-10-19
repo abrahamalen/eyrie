@@ -3,6 +3,16 @@
 import type { ToolInfo } from '@/api/types'
 
 let tools: ToolInfo[] = []
+// Assume configured until /meta says otherwise, so a backend that's down never forces setup.
+let configured = true
+
+export function setConfigured(c: boolean) {
+  configured = c
+}
+
+export function isConfigured(): boolean {
+  return configured
+}
 
 export function setTools(t: ToolInfo[]) {
   tools = t
