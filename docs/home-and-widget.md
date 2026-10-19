@@ -112,6 +112,13 @@ Data colours stay as they are. The chart palette is the validated categorical on
 
 ## 4. The widget
 
+**Built** (`widget/`, Tauri 2.12.1). What the build found:
+
+- **Mark**: a smiley-face problem. A nest drawn as a bowl with a round bird above it read as a face at 22 px. The mark is now a solid peak with a bird in flight above it (an eyrie is a nest on a crag); `widget/make_icons.py` draws the three tray states and the app icon.
+- **Release**: `Eyrie.app` (ad-hoc signed, `LSUIElement` so there's no Dock icon at launch) and `Eyrie_0.1.0_aarch64.dmg`, 3.1 MB.
+- **DMG layout**: `bundle_dmg.sh` drives Finder with AppleScript to lay out the DMG window, which needs automation permission. Builds run it with `CI=true`, which skips that step.
+- **Testing**: the panel is a second Vite entry. A dev-only bridge fallback lets it be checked in a browser; production builds don't include it.
+
 A tray app: a menu-bar icon on macOS, an indicator in the Ubuntu top bar.
 
 ### 4.1 Icon
