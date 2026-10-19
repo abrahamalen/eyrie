@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { api } from '@/api/client'
 import { usePoll } from '@/usePoll'
-import { fmtCompact, fmtNum, fmtUsd, shortPath } from '@/format'
+import { fmtCompact, fmtNum, fmtUsd, shortPath, toolTitle } from '@/format'
 import { StatTile } from '@/components/StatTile'
 import { BarList } from '@/components/BarList'
 import { UsageChart, UsageLegend } from '@/components/UsageChart'
-import { type Metric, seriesColor, seriesOf } from '@/usageSeries'
+import { type Metric, seriesColor } from '@/usageSeries'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/PageHeader'
@@ -54,7 +54,7 @@ export function UsagePage() {
       <PageHeader
         eyebrow="Work"
         title="Usage"
-        description={<>Claude Code cost and tokens over time, from session transcripts.</>}
+        description={<>Cost and tokens over time for every tool, from their session transcripts.</>}
         actions={
           <>
         <Segmented label="Metric" options={['cost', 'tokens'] as const} value={metric} onChange={setMetric}
@@ -70,11 +70,20 @@ export function UsagePage() {
       {data && (
         <div className={`flex flex-col gap-6 ${stale ? 'opacity-60' : ''}`}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatTile value={fmtUsd(data.totals.cost)} label={`Claude cost, last ${data.range.days} days`} />
+            <StatTile value={fmtUsd(data.totals.cost)} label={`Cost at list prices, last ${data.range.days} days`} />
             <StatTile value={fmtCompact(data.totals.tokens)} label="Tokens, including cache" />
             <StatTile value={fmtNum(data.totals.sessions)} label="Sessions" />
             <StatTile value={fmtNum(data.totals.messages)} label="API responses" />
           </div>
+
+          {data.by_tool.length > 1 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {data.by_tool.map((t) => (
+                <StatTile key={t.tool} value={metric === 'cost' ? fmtUsd(t.cost) : fmtCompact(t.tokens)}
+                  label={`${toolTitle(t.tool)} · ${fmtNum(t.sessions)} sessions`} />
+              ))}
+            </div>
+          )}
 
           {data.pricing.unpriced_models.length > 0 && (
             <div role="status" className="rounded-lg border border-amber-500/60 bg-amber-500/10 px-4 py-3 text-sm">
@@ -85,9 +94,9 @@ export function UsagePage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{metric === 'cost' ? 'Daily cost' : 'Daily tokens'} by model</CardTitle>
+              <CardTitle>{metric === 'cost' ? 'Daily cost' : 'Daily tokens'} by tool</CardTitle>
               <CardDescription>
-                <UsageLegend models={data.by_model.map((m) => m.model)} />
+                <UsageLegend tools={data.by_model.map((m) => m.tool)} />
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -110,6 +119,7 @@ export function UsagePage() {
                   <thead className="eyebrow tracking-[0.06em]">
                     <tr>
                       <th className="py-1.5 text-left font-medium">Model</th>
+                      <th className="py-1.5 pl-4 text-left font-medium">Tool</th>
                       <th className="py-1.5 pl-4 text-right font-medium">Cost</th>
                       <th className="py-1.5 pl-4 text-right font-medium">Input</th>
                       <th className="py-1.5 pl-4 text-right font-medium">Output</th>
@@ -119,13 +129,14 @@ export function UsagePage() {
                   </thead>
                   <tbody className="tabular-nums">
                     {data.by_model.map((m) => (
-                      <tr key={m.model} className="border-t">
+                      <tr key={`${m.tool}:${m.model}`} className="border-t">
                         <td className="py-1.5">
                           <span className="inline-flex items-center gap-2">
-                            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: seriesColor(seriesOf(m.model)) }} />
+                            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: seriesColor(m.tool) }} />
                             {m.model}
                           </span>
                         </td>
+                        <td className="py-1.5 pl-4 text-muted-foreground">{toolTitle(m.tool)}</td>
                         <td className="py-1.5 pl-4 text-right">{m.priced ? fmtUsd(m.cost) : 'no price'}</td>
                         <td className="py-1.5 pl-4 text-right">{fmtCompact(m.input)}</td>
                         <td className="py-1.5 pl-4 text-right">{fmtCompact(m.output)}</td>
@@ -135,7 +146,7 @@ export function UsagePage() {
                     ))}
                     {!data.by_model.length && (
                       <tr>
-                        <td colSpan={6} className="py-3 text-muted-foreground">No usage in this range.</td>
+                        <td colSpan={7} className="py-3 text-muted-foreground">No usage in this range.</td>
                       </tr>
                     )}
                   </tbody>
@@ -158,40 +169,11 @@ export function UsagePage() {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Codex</CardTitle>
-              <CardDescription>
-                Codex keeps one lifetime token total per thread, so it can't be split by day. These are threads active
-                in the last {data.range.days} days.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.codex.available ? (
-                <div className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <StatTile value={fmtNum(data.codex.threads)} label="Active threads" />
-                    <StatTile value={fmtCompact(data.codex.tokens)} label="Lifetime tokens in those threads" />
-                  </div>
-                  <BarList
-                    rows={data.codex.by_model.map((m) => ({ name: m.model, value: m.tokens }))}
-                    format={fmtCompact}
-                    emptyLabel="No Codex threads in this range."
-                  />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {data.codex.error ? `Couldn't read Codex: ${data.codex.error}` : 'Codex state not found.'}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
           <p className="text-xs text-muted-foreground">
             {data.note} Prices updated {data.pricing.updated}. Index: {fmtNum(data.index.messages)} responses from{' '}
             {fmtNum(data.index.files)} transcripts
             {data.index.oldest ? `, since ${new Date(data.index.oldest).toLocaleDateString('en-GB')}` : ''}. Kept in
-            ~/.eyrie/usage.db, so history stays after Claude Code prunes old transcripts.
+            ~/.eyrie/usage.db, so history stays after the tools prune old transcripts.
           </p>
         </div>
       )}

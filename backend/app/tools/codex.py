@@ -50,6 +50,50 @@ class Sessions:
             return set()
 
 
+def _usage_row(key: str, ts: str, state: dict, u: dict):
+    # OpenAI counts cached (and cache-written) tokens inside input_tokens; reasoning tokens are
+    # inside output_tokens. Store input as the uncached part so pricing can't double-count.
+    cached = u.get("cached_input_tokens") or 0
+    written = u.get("cache_write_input_tokens") or 0
+    fresh = max((u.get("input_tokens") or 0) - cached - written, 0)
+    return (key, ts, state.get("session"), state.get("cwd"), state.get("model") or "unknown", 0,
+            fresh, u.get("output_tokens") or 0, cached, written, 0)
+
+
+class Usage:
+    """Per-call usage from ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl.
+
+    The session and directory come from the `session_meta` line and the model from the latest
+    `turn_context`, so they're carried in the per-file state. Newer Codex writes one
+    `token_usage_record` per API response (keyed on its response_id); older rollouts only have
+    `token_count` events, whose `last_token_usage` is one call and whose running total is
+    repeated when nothing changed, so they're keyed on (session, running total). Once a file
+    has records, its token_count events are ignored, so a call isn't counted twice.
+    """
+    needles = (b'"session_meta"', b'"turn_context"', b'"token_usage_record"', b'"token_count"')
+
+    def files(self, settings: Settings) -> list[tuple[Path, bool]]:
+        d = settings.paths.codex_home / "sessions"
+        return [(p, False) for p in d.glob("*/*/*/rollout-*.jsonl")] if d.exists() else []
+
+    def parse(self, d: dict, subagent: bool, state: dict):
+        kind, p, ts = d.get("type"), d.get("payload") or {}, d.get("timestamp")
+        if kind == "session_meta":
+            state["session"], state["cwd"] = p.get("id"), p.get("cwd")
+        elif kind == "turn_context":
+            state["model"] = p.get("model") or state.get("model")
+            state["cwd"] = p.get("cwd") or state.get("cwd")
+        elif kind == "token_usage_record" and ts and isinstance(p.get("usage"), dict):
+            state["records"] = True
+            return _usage_row(f"codex:{p.get('response_id') or ts}", ts, state, p["usage"])
+        elif kind == "event_msg" and p.get("type") == "token_count" and ts and not state.get("records"):
+            info = p.get("info") or {}
+            last, total = info.get("last_token_usage"), info.get("total_token_usage") or {}
+            if isinstance(last, dict) and total.get("total_tokens"):
+                return _usage_row(f"codex:{state.get('session')}:{total['total_tokens']}", ts, state, last)
+        return None
+
+
 class Mcp:
     def servers(self, settings: Settings) -> list[dict]:
         path = settings.paths.codex_home / "config.toml"
@@ -83,4 +127,4 @@ class Mcp:
 
 
 TOOL = Tool(id="codex", title="Codex", binary="codex", needs="Codex sessions and Codex MCP changes can't run",
-            sessions=Sessions(), mcp=Mcp())
+            sessions=Sessions(), usage=Usage(), mcp=Mcp())

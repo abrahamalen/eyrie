@@ -1,14 +1,17 @@
-"""Claude API list prices, $ per million tokens. Transcripts record tokens, not dollars.
+"""API list prices, $ per million tokens. Transcripts record tokens, not dollars.
 
-Checked against Claude Code's own per-session cost (cost-state records): its token counts
-priced with these rates match the cost it reports to within a few percent. Override or
-add models under [pricing] in eyrie.toml.
+Claude: checked against Claude Code's own per-session cost (cost-state records): its token
+counts priced with these rates match the cost it reports to within a few percent.
+OpenAI (Codex): the Standard tier, short-context column, from
+developers.openai.com/api/docs/pricing. Codex's context window (258,400) is under the 272K
+long-context threshold, so the long-context rates never apply.
+Override or add models under [pricing] in eyrie.toml.
 """
 import re
 
 from pydantic import BaseModel
 
-PRICES_UPDATED = "2026-10-06"
+PRICES_UPDATED = "2026-10-20"
 
 
 class ModelPrice(BaseModel):
@@ -39,6 +42,23 @@ DEFAULT_PRICES: dict[str, ModelPrice] = {
     "claude-sonnet-4-6": _std(3, 15),
     "claude-haiku-5-5": _std(0.10, 0.50),
     "claude-haiku-4-5": _std(1, 5),
+}
+
+def _openai(input: float, cached: float, output: float, cache_write: float | None = None) -> ModelPrice:
+    # Codex rows store uncached input, cached input as cache_read, and cache writes as 5m.
+    w = input if cache_write is None else cache_write
+    return ModelPrice(input=input, output=output, cache_write_5m=w, cache_write_1h=w, cache_read=cached)
+
+
+DEFAULT_PRICES |= {
+    "gpt-6-astra": _openai(10, 1.0, 50, 12.5),
+    "gpt-6.1-sol": _openai(2, 0.10, 10, 2.5),
+    "gpt-6-sol": _openai(2, 0.20, 10, 2.5),
+    "gpt-6-luna": _openai(0.10, 0.01, 0.50, 0.125),
+    "gpt-5.6-sol": _openai(4, 0.40, 20, 5),
+    "gpt-5.6-terra": _openai(2, 0.20, 12, 2.5),
+    "gpt-5.5": _openai(5, 0.50, 30),
+    "gpt-5.4": _openai(2.5, 0.25, 15),
 }
 
 _SUFFIX = re.compile(r"(\[[^\]]*\]|-\d{8})$")

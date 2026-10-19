@@ -4,7 +4,7 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { api, StaleError } from '@/api/client'
 import type { Summary } from '@/api/types'
 import { usePoll } from '@/usePoll'
-import { fmtAgo, fmtUsd, shortPath } from '@/format'
+import { fmtAgo, fmtUsd, shortPath, toolTitle } from '@/format'
 import { PageHeader } from '@/components/PageHeader'
 import { Sparkline } from '@/components/Sparkline'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
@@ -158,7 +158,7 @@ export function OverviewPage() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-mono text-[13.5px]">{s.name}</div>
                       <div className="truncate text-[13px] text-muted-foreground">
-                        {s.tool === 'codex' ? 'Codex' : 'Claude Code'} · {s.project ? shortPath(s.project) : '—'} ·{' '}
+                        {toolTitle(s.tool)} · {s.project ? shortPath(s.project) : '—'} ·{' '}
                         {!s.alive ? `exited${s.exit_status ? ` (${s.exit_status})` : ''}` : idle ? `idle ${s.idle_minutes} min` : !s.managed && s.idle_minutes ? `active ${s.idle_minutes} min ago` : 'running'}
                       </div>
                     </div>

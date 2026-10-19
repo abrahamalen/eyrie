@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { UsageReport } from '@/api/types'
-import { type Metric, seriesColor, seriesOf, seriesOrder } from '@/usageSeries'
+import { toolTitle } from '@/format'
+import { type Metric, seriesColor, seriesOrder, toolOfModel } from '@/usageSeries'
 
 export type { Metric } from '@/usageSeries'
 
@@ -43,18 +44,19 @@ export function UsageChart({
     return () => ro.disconnect()
   }, [])
 
-  const series = seriesOrder(report.by_model.map((m) => m.model))
+  const series = seriesOrder(report.by_model.map((m) => m.tool))
+  const toolOf = toolOfModel(report)
   const days = report.days.map((d) => {
     const vals: Record<string, number> = {}
     for (const [model, v] of Object.entries(d.models)) {
-      const s = seriesOf(model)
+      const s = toolOf(model)
       vals[s] = (vals[s] ?? 0) + v[metric]
     }
     return { day: d.day, vals, total: Object.values(vals).reduce((a, b) => a + b, 0) }
   })
   const max = Math.max(0, ...days.map((d) => d.total))
   if (max === 0) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">No Claude Code usage in this range.</div>
+    return <div className="py-16 text-center text-sm text-muted-foreground">No usage in this range.</div>
   }
 
   const step = niceStep(max / 4)
@@ -72,7 +74,7 @@ export function UsageChart({
 
   return (
     <div ref={wrap} className="relative" onMouseLeave={() => setHover(null)}>
-      <svg width={width} height={H} role="img" aria-label={`Daily ${metric} by model; the table below lists the same data`}>
+      <svg width={width} height={H} role="img" aria-label={`Daily ${metric} by tool; the tables below break it down by model and project`}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} className="stroke-border" strokeWidth={1} />
@@ -149,7 +151,7 @@ export function UsageChart({
             hovered.vals[s] ? (
               <div key={s} className="flex items-center gap-2 text-muted-foreground">
                 <span className="size-2 rounded-sm" style={{ background: seriesColor(s) }} />
-                <span className="flex-1">{s}</span>
+                <span className="flex-1">{toolTitle(s)}</span>
                 <span className="tabular-nums text-foreground">{format(hovered.vals[s])}</span>
               </div>
             ) : null,
@@ -161,13 +163,13 @@ export function UsageChart({
   )
 }
 
-export function UsageLegend({ models }: { models: string[] }) {
+export function UsageLegend({ tools }: { tools: string[] }) {
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      {seriesOrder(models).map((s) => (
+      {seriesOrder(tools).map((s) => (
         <span key={s} className="inline-flex items-center gap-1.5">
           <span className="size-2.5 rounded-sm" style={{ background: seriesColor(s) }} />
-          {s}
+          {toolTitle(s)}
         </span>
       ))}
     </div>

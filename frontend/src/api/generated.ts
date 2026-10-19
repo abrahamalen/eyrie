@@ -530,28 +530,6 @@ export interface components {
             projects: components["schemas"]["ClaudeProject"][];
             totals: components["schemas"]["ClaudeTotals"];
         };
-        /** CodexModelUsage */
-        CodexModelUsage: {
-            /** Model */
-            model: string;
-            /** Threads */
-            threads: number;
-            /** Tokens */
-            tokens: number;
-        };
-        /** CodexSummary */
-        CodexSummary: {
-            /** Available */
-            available: boolean;
-            /** By Model */
-            by_model: components["schemas"]["CodexModelUsage"][];
-            /** Error */
-            error?: string | null;
-            /** Threads */
-            threads: number;
-            /** Tokens */
-            tokens: number;
-        };
         /** CodexThread */
         CodexThread: {
             /** Cwd */
@@ -1015,6 +993,11 @@ export interface components {
             priced: boolean;
             /** Tokens */
             tokens: number;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex";
         };
         /** UsageProject */
         UsageProject: {
@@ -1042,7 +1025,8 @@ export interface components {
             by_model: components["schemas"]["UsageModel"][];
             /** By Project */
             by_project: components["schemas"]["UsageProject"][];
-            codex: components["schemas"]["CodexSummary"];
+            /** By Tool */
+            by_tool: components["schemas"]["UsageTool"][];
             /** Days */
             days: components["schemas"]["UsageDay"][];
             index: components["schemas"]["IndexStats"];
@@ -1051,6 +1035,20 @@ export interface components {
             pricing: components["schemas"]["Pricing"];
             range: components["schemas"]["UsageRange"];
             totals: components["schemas"]["UsageTotals"];
+        };
+        /** UsageTool */
+        UsageTool: {
+            /** Cost */
+            cost: number;
+            /** Sessions */
+            sessions: number;
+            /** Tokens */
+            tokens: number;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex";
         };
         /** UsageTotals */
         UsageTotals: {

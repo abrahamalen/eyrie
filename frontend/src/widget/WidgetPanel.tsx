@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Summary } from '@/api/types'
-import { fmtUsd, shortPath, setHome } from '@/format'
+import { fmtUsd, setHome, shortPath, toolTitle } from '@/format'
 import { Sparkline } from '@/components/Sparkline'
 import { bridge, type WidgetSettings } from './bridge'
 
@@ -134,7 +134,7 @@ export function WidgetPanel() {
           const idle = s.attention.some((a) => a.kind === 'session_idle' && a.href === `/sessions?open=${x.name}`)
           return (
             <Row key={x.pid ?? x.name} dot={!x.alive ? (x.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} mono title={x.name}
-              sub={`${x.tool === 'codex' ? 'Codex' : 'Claude Code'} · ${shortPath(x.project ?? '').split('/').pop() || '~'} · ${!x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${x.idle_minutes} min ago` : 'running'}`}>
+              sub={`${toolTitle(x.tool)} · ${shortPath(x.project ?? '').split('/').pop() || '~'} · ${!x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${x.idle_minutes} min ago` : 'running'}`}>
               {x.managed ? (
                 <button className={ghost} onClick={() => bridge.open(`/sessions?open=${x.name}`)}>Open</button>
               ) : (
@@ -149,7 +149,7 @@ export function WidgetPanel() {
             {s.recent_projects.map((p) => (
               <button key={p.path} onClick={() => preview(p.path, p.tool)}
                 className="rounded-md border bg-card px-2.5 py-1.5 text-left font-mono text-[12px] hover:border-brand">
-                {shortPath(p.path)} <span className="text-muted-foreground">· {p.tool === 'codex' ? 'Codex' : 'Claude Code'}</span>
+                {shortPath(p.path)} <span className="text-muted-foreground">· {toolTitle(p.tool)}</span>
               </button>
             ))}
             {!s.recent_projects.length && <p className="text-[12.5px] text-muted-foreground">No recent projects yet.</p>}
