@@ -119,3 +119,14 @@ def test_write_keeps_file_mode_and_leaves_no_temp(authed, tasks_file):
     authed.post("/api/v1/tasks", json={"text": "x"}, headers={"If-Match": s["etag"]})
     assert tasks_file.stat().st_mode & 0o777 == 0o600
     assert [p.name for p in tasks_file.parent.iterdir()] == ["Tasks.md"]
+
+
+def test_task_edits_are_audited_without_their_text(authed):
+    cur = authed.get("/api/v1/tasks").json()
+    r = authed.post("/api/v1/tasks", json={"text": "call the dentist"}, headers={"If-Match": cur["etag"]}).json()
+    t = next(t for t in r["tasks"] if t["text"] == "call the dentist")
+    authed.patch(f"/api/v1/tasks/{t['id']}", json={"done": True}, headers={"If-Match": r["etag"]})
+    entries = authed.get("/api/v1/audit").json()
+    assert [e["action"] for e in entries[:2]] == ["tasks.update", "tasks.add"]
+    assert entries[0]["params"] == {"id": t["id"], "done": True, "text_changed": False}
+    assert "dentist" not in str(entries)

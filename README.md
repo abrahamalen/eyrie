@@ -87,7 +87,7 @@ Eyrie can run commands as you, so it only obeys this machine:
   are called with argument lists, never through a shell, and their config files are
   never edited directly.
 - Every write is checked against what you last saw (etags), confined to its folder, and
-  logged.
+  logged: actions, terminal connections, memory and task edits (task text itself isn't logged).
 
 ## Architecture
 

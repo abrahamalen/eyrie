@@ -5,6 +5,7 @@ from pydantic import BaseModel, ValidationError
 
 from app.actions.registry import ACTIONS, Context, redact
 from app.actions.runner import CliNotFound
+from app.masking import mask_args, mask_url, mask_value
 from app.schemas import ActionPreview, ActionResult, AuditEntry
 from app.sessions.dirs import is_allowed
 
@@ -118,6 +119,12 @@ def _safe_params(params) -> dict:
     for key in ("env", "headers"):
         if d.get(key):
             d[key] = {k: "***" for k in d[key]}
+    if d.get("url"):
+        d["url"] = mask_url(d["url"])
+    if d.get("command"):
+        d["command"] = mask_value(d["command"])
+    if d.get("args"):
+        d["args"] = mask_args(d["args"])
     return d
 
 
