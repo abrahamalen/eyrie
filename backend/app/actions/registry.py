@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Callable, Literal
 from pydantic import BaseModel, field_validator, model_validator
 
 from app.masking import mask_args
+from app.tools import TOOLS, ToolId
 
 if TYPE_CHECKING:
     from app.actions.runner import Runner
@@ -48,8 +49,15 @@ def _project_dir(scope: str, project_dir: str | None) -> Path | None:
     return p.resolve()
 
 
+def _mcp_tool(client: str):
+    mcp = TOOLS[client].mcp
+    if mcp is None:
+        raise ValueError(f"{TOOLS[client].title} has no MCP support")
+    return mcp
+
+
 class McpAdd(BaseModel):
-    client: Literal["claude", "codex"]
+    client: ToolId
     name: str
     transport: Literal["stdio", "http", "sse"]
     command: str | None = None
@@ -84,15 +92,7 @@ class McpAdd(BaseModel):
         for k, v in self.headers.items():
             if not HEADER_NAME.match(k) or "\n" in v or "\r" in v:
                 raise ValueError(f"Bad header: {k}")
-        if self.client == "codex":
-            if self.transport == "sse":
-                raise ValueError("Codex supports stdio and http servers only")
-            if self.scope != "user":
-                raise ValueError("Codex servers are global; use scope 'user'")
-            if self.headers:
-                raise ValueError("Codex can't set headers; use bearer_token_env_var")
-        elif self.bearer_token_env_var:
-            raise ValueError("bearer_token_env_var is Codex-only; use headers for Claude Code")
+        _mcp_tool(self.client).validate(self)
         if self.bearer_token_env_var and not ENV_KEY.match(self.bearer_token_env_var):
             raise ValueError("Bad bearer_token_env_var")
         self.project_dir = str(_project_dir(self.scope, self.project_dir) or "") or None
@@ -100,7 +100,7 @@ class McpAdd(BaseModel):
 
 
 class McpRemove(BaseModel):
-    client: Literal["claude", "codex"]
+    client: ToolId
     name: str
     scope: Scope = "user"
     project_dir: str | None = None
@@ -112,8 +112,7 @@ class McpRemove(BaseModel):
 
     @model_validator(mode="after")
     def _check(self):
-        if self.client == "codex" and self.scope != "user":
-            raise ValueError("Codex servers are global; use scope 'user'")
+        _mcp_tool(self.client).validate(self)
         self.project_dir = str(_project_dir(self.scope, self.project_dir) or "") or None
         return self
 
@@ -141,7 +140,7 @@ def _uuid(v: str | None, what: str) -> str | None:
 
 
 class SessionStart(BaseModel):
-    tool: Literal["claude", "codex"]
+    tool: ToolId
     cwd: str
     # new: fresh conversation; continue: latest conversation in cwd; resume: resume_id
     mode: Literal["new", "continue", "resume"] = "new"
@@ -158,10 +157,15 @@ class SessionStart(BaseModel):
             raise ValueError("name must look like eyrie-<4-16 lowercase letters/digits>")
         if (self.mode == "resume") != (self.resume_id is not None):
             raise ValueError("resume_id is required for mode 'resume' and only allowed there")
-        if self.conversation_id and not (self.tool == "claude" and self.mode == "new"):
-            raise ValueError("conversation_id only applies to a new Claude Code session")
+        sessions = TOOLS[self.tool].sessions
+        if sessions is None or self.mode not in sessions.modes:
+            raise ValueError(f"{TOOLS[self.tool].title} can't start a '{self.mode}' session")
+        wants_id = sessions.wants_conversation_id(self.mode)
+        if self.conversation_id and not wants_id:
+            raise ValueError(f"conversation_id only applies where Eyrie picks the id, not a {self.mode} "
+                             f"{TOOLS[self.tool].title} session")
         self.name = self.name or f"eyrie-{secrets.token_hex(3)}"
-        if self.tool == "claude" and self.mode == "new":
+        if wants_id:
             self.conversation_id = self.conversation_id or str(uuid.uuid4())
         return self
 
@@ -201,32 +205,11 @@ class Action:
 
 
 def _mcp_add(p: McpAdd, ctx: Context) -> Planned:
-    cwd = Path(p.project_dir) if p.project_dir else None
-    if p.client == "codex":
-        args = ["mcp", "add", p.name]
-        if p.transport == "stdio":
-            for k, v in p.env.items():
-                args += ["--env", f"{k}={v}"]
-            return Planned("codex", args + ["--", p.command, *p.args])
-        args += ["--url", p.url]
-        if p.bearer_token_env_var:
-            args += ["--bearer-token-env-var", p.bearer_token_env_var]
-        return Planned("codex", args)
-    args = ["mcp", "add", "-s", p.scope, "-t", p.transport, p.name]
-    if p.transport == "stdio":
-        for k, v in p.env.items():
-            args += ["-e", f"{k}={v}"]
-        return Planned("claude", args + ["--", p.command, *p.args], cwd)
-    args.append(p.url)
-    for k, v in p.headers.items():
-        args += ["-H", f"{k}: {v}"]
-    return Planned("claude", args, cwd)
+    return Planned(p.client, *_mcp_tool(p.client).add(p))
 
 
 def _mcp_remove(p: McpRemove, ctx: Context) -> Planned:
-    if p.client == "codex":
-        return Planned("codex", ["mcp", "remove", p.name])
-    return Planned("claude", ["mcp", "remove", "-s", p.scope, p.name], Path(p.project_dir) if p.project_dir else None)
+    return Planned(p.client, *_mcp_tool(p.client).remove(p))
 
 
 def _plugin(verb: str):
@@ -241,13 +224,7 @@ def _plugin(verb: str):
 def _session_start(p: SessionStart, ctx: Context) -> Planned:
     from app.sessions.tmux import base_args
 
-    exe = ctx.runner.binary(p.tool)
-    if p.tool == "claude":
-        cmd = {"new": [exe, "--session-id", p.conversation_id], "continue": [exe, "--continue"],
-               "resume": [exe, "--resume", p.resume_id]}[p.mode]
-    else:
-        cmd = {"new": [exe, "--cd", p.cwd], "continue": [exe, "--cd", p.cwd, "resume", "--last"],
-               "resume": [exe, "--cd", p.cwd, "resume", p.resume_id]}[p.mode]
+    cmd = TOOLS[p.tool].sessions.argv(ctx.runner.binary(p.tool), p.mode, p.cwd, p.resume_id, p.conversation_id)
     tags = {"@eyrie_tool": p.tool, "@eyrie_cwd": p.cwd, "@eyrie_mode": p.mode,
             "@eyrie_conv": p.conversation_id or p.resume_id or ""}
     args = [*base_args(ctx.settings), "new-session", "-d", "-s", p.name, "-x", "200", "-y", "50", "-c", p.cwd, *cmd]

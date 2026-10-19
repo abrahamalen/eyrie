@@ -1,9 +1,9 @@
-"""Claude Code and Codex sessions running outside Eyrie (in your own terminals).
+"""Sessions of the known tools running outside Eyrie (in your own terminals).
 
 Read-only: `ps` for the processes, `lsof` (macOS) or /proc (Linux) for each one's working
-directory, and the tools' own transcripts / thread DB for when it was last active. An
-interactive session is a `claude` or `codex` process with a terminal; their helper processes
-(daemons, background pty hosts, app servers) are skipped. Sessions Eyrie started itself are
+directory, and each tool's adapter for when it was last active. An interactive session is
+a tool's process with a terminal; its helper processes (each adapter lists them: daemons,
+background pty hosts, app servers) are skipped. Sessions Eyrie started itself are
 excluded here because they're listed (and controllable) as Eyrie sessions.
 
 Only the tool and a resume target are taken from each command line: arguments can contain a
@@ -11,19 +11,13 @@ prompt, and Eyrie doesn't read or show those.
 """
 import os
 import re
-import sqlite3
 import subprocess
 import sys
-from contextlib import closing
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from app.config import Settings
+from app.tools import TOOLS
 
-TOOLS = {"claude", "codex"}
-# First argument of helper processes that aren't interactive sessions.
-HELPERS = {"daemon", "bg-pty-host", "bg-spare", "app-server", "mcp", "mcp-server", "exec-server", "login",
-           "logout", "plugin", "--version", "-v", "doctor", "update", "install", "proto", "code-mode-host"}
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
@@ -39,7 +33,7 @@ def _etime_seconds(v: str) -> int:
 
 
 def parse_ps(output: str) -> list[dict]:
-    """Rows of `ps -axo pid=,tty=,etime=,command=` → interactive claude/codex sessions."""
+    """Rows of `ps -axo pid=,tty=,etime=,command=` → interactive sessions of the known tools."""
     found = []
     for line in output.splitlines():
         cols = line.split(None, 3)
@@ -49,8 +43,8 @@ def parse_ps(output: str) -> list[dict]:
         if tty in ("?", "??", "-"):
             continue  # no terminal: a daemon or helper
         args = command.split()
-        tool = os.path.basename(args[0])
-        if tool not in TOOLS or (len(args) > 1 and args[1] in HELPERS):
+        tool = next((t for t in TOOLS.values() if t.sessions and os.path.basename(args[0]) == t.binary), None)
+        if tool is None or (len(args) > 1 and args[1] in tool.sessions.helpers):
             continue
         resume = None
         for flag in ("--resume", "-r", "resume"):
@@ -61,7 +55,7 @@ def parse_ps(output: str) -> list[dict]:
                     resume = target
                 break
         try:
-            found.append({"pid": int(pid), "tool": tool, "tty": tty, "age_seconds": _etime_seconds(etime), "resume": resume})
+            found.append({"pid": int(pid), "tool": tool.id, "tty": tty, "age_seconds": _etime_seconds(etime), "resume": resume})
         except ValueError:
             continue
     return found
@@ -100,11 +94,6 @@ def _cwds(pids: list[int]) -> dict[int, str]:
     return out
 
 
-def transcript_dir(claude_home: Path, cwd: str) -> Path:
-    # Claude Code keeps a project's transcripts under its path with non-alphanumerics as "-".
-    return claude_home / "projects" / re.sub(r"[^A-Za-z0-9]", "-", cwd)
-
-
 class ExternalSessions:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -117,14 +106,11 @@ class ExternalSessions:
         self._cwd_cache.update(_cwds(missing))
         live = {p["pid"] for p in procs}
         self._cwd_cache = {k: v for k, v in self._cwd_cache.items() if k in live}
-        codex_last = self._codex_activity()
+        lookups = {t: TOOLS[t].sessions.activity(self.settings) for t in {p["tool"] for p in procs}}
         out = []
         for p in procs:
             cwd = self._cwd_cache.get(p["pid"])
-            if p["tool"] == "claude":
-                last, exact = self._claude_activity(cwd, p["resume"])
-            else:
-                last, exact = codex_last.get(cwd or ""), False
+            last, exact = lookups[p["tool"]](cwd, p["resume"])
             out.append({
                 "pid": p["pid"],
                 "tool": p["tool"],
@@ -140,24 +126,3 @@ class ExternalSessions:
             })
         out.sort(key=lambda s: s["last_activity"] or s["started"], reverse=True)
         return out
-
-    def _claude_activity(self, cwd: str | None, resume: str | None) -> tuple[datetime | None, bool]:
-        if not cwd:
-            return None, False
-        d = transcript_dir(self.settings.paths.claude_home, cwd)
-        exact = d / f"{resume}.jsonl" if resume and UUID_RE.match(resume) else None
-        if exact and exact.exists():
-            return datetime.fromtimestamp(exact.stat().st_mtime, tz=timezone.utc), True
-        mtimes = [f.stat().st_mtime for f in d.glob("*.jsonl")] if d.is_dir() else []
-        return (datetime.fromtimestamp(max(mtimes), tz=timezone.utc) if mtimes else None), False
-
-    def _codex_activity(self) -> dict[str, datetime]:
-        db = self.settings.paths.codex_home / "state_5.sqlite"
-        if not db.exists():
-            return {}
-        try:
-            with closing(sqlite3.connect(f"file:{db}?mode=ro", uri=True)) as con:
-                rows = con.execute("SELECT cwd, max(updated_at) FROM threads GROUP BY cwd").fetchall()
-        except sqlite3.Error:
-            return {}
-        return {cwd: datetime.fromtimestamp(ts, tz=timezone.utc) for cwd, ts in rows if cwd and ts}

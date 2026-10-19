@@ -5,7 +5,8 @@ import time
 import pytest
 
 from app.sessions import external
-from app.sessions.external import ExternalSessions, parse_ps, transcript_dir
+from app.sessions.external import ExternalSessions, parse_ps
+from app.tools.claude import transcript_dir
 
 UUID = "516f62bf-361d-40b5-9698-9d33633899d1"
 

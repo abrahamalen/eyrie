@@ -42,9 +42,10 @@ class Runner:
         self.settings = settings
 
     def binary(self, tool: str) -> str:
-        configured = {"claude": self.settings.cli.claude_bin, "codex": self.settings.cli.codex_bin,
-                      "tmux": self.settings.cli.tmux_bin}[tool]
-        found = configured or shutil.which(tool)
+        from app.tools import TOOLS
+
+        configured = getattr(self.settings.cli, f"{tool}_bin", None)
+        found = configured or shutil.which(TOOLS[tool].binary if tool in TOOLS else tool)
         if not found:
             raise CliNotFound(f"`{tool}` CLI not found on PATH; set cli.{tool}_bin in eyrie.toml")
         return found
