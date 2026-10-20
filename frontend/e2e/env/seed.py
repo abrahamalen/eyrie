@@ -7,6 +7,7 @@ every page has something to show. Never touches the real ~/.claude, ~/.codex or 
 (stand-in claude/codex binaries). Reuses the transcript builders from backend/tests.
 """
 import json
+import os
 import sqlite3
 import sys
 from datetime import timedelta
@@ -24,6 +25,8 @@ CLAUDE_CONVS = {
     "atlas": ["9c8b7a6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d"],
 }
 CODEX_THREAD = "01a13480-5390-7ed3-85c3-0e32b8d04c8e"
+# The idle-sessions journey's conversation: a big context, last active three days ago.
+IDLE_CONV = "7d3c2b1a-0f9e-4d8c-b7a6-5f4e3d2c1b0a"
 
 FAKE_CLAUDE = """#!/bin/sh
 # Stand-in for `claude` in the journey suite: answers the calls Eyrie makes, and otherwise
@@ -99,6 +102,14 @@ def main(root: Path) -> None:
                         input_tokens=1200 + 97 * (n % 13), output_tokens=400 + 53 * (n % 11),
                         cache_read_input_tokens=20000 + 1500 * (n % 7), cache_creation_input_tokens=800 * (n % 3)))
             write(transcript_dir(claude_home, cwd) / f"{conv}.jsonl", records)
+    idle_at = NOW - timedelta(days=3)
+    idle = transcript_dir(claude_home, str(projects / "eyrie")) / f"{IDLE_CONV}.jsonl"
+    write(idle, [
+        assistant("msg_idle", model=models[0], ts=idle_at, session=IDLE_CONV, cwd=str(projects / "eyrie"), req="req_idle",
+                  input_tokens=1800, output_tokens=900, cache_read_input_tokens=138000, cache_creation_input_tokens=2400),
+        {"type": "custom-title", "customTitle": "tidy-release-notes", "sessionId": IDLE_CONV},
+    ])
+    os.utime(idle, (idle_at.timestamp(), idle_at.timestamp()))
     (claude_home / "settings.json").write_text('{"enabledPlugins": {"release-notes@eyrie-demo": true}}\n')
     mem = claude_home / "agent-memory"
     (mem / "code-reviewer").mkdir(parents=True)

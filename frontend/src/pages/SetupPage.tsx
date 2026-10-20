@@ -13,12 +13,18 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 
-type Draft = { tools: Set<string>; roots: string[]; tasks: string }
+type Draft = { tools: Set<string>; roots: string[]; tasks: string; idleHours: string }
 
 const STEPS = ['Tools', 'Where you work', 'Tasks', 'Review'] as const
 
 function fromState(s: SetupState): Draft {
-  return { tools: new Set(s.tools.filter((t) => t.enabled).map((t) => t.id)), roots: s.roots, tasks: s.tasks ?? '' }
+  return { tools: new Set(s.tools.filter((t) => t.enabled).map((t) => t.id)), roots: s.roots, tasks: s.tasks ?? '', idleHours: String(s.idle_hours) }
+}
+
+/** 1–720 whole hours, else null (the backend keeps the current value). */
+function validHours(v: string): number | null {
+  const n = Number(v)
+  return Number.isInteger(n) && n >= 1 && n <= 720 ? n : null
 }
 
 /** "auto" while every detected tool is ticked, so a tool installed later appears by itself. */
@@ -29,6 +35,7 @@ function toBody(s: SetupState, d: Draft): SetupBody {
     tools_enabled: auto ? 'auto' : s.tools.filter((t) => d.tools.has(t.id)).map((t) => t.id),
     roots: d.roots,
     tasks: d.tasks.trim() || null,
+    idle_hours: validHours(d.idleHours),
   }
 }
 
@@ -223,8 +230,23 @@ export function SetupPage({ firstRun }: { firstRun: boolean }) {
             <CardContent><View state={state} draft={draft} setDraft={setDraft} /></CardContent>
           </Card>
         ))}
+        <Card>
+          <CardHeader><CardTitle>Idle sessions</CardTitle></CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <label htmlFor="setup-idle-hours" className="flex flex-wrap items-center gap-2 text-sm">
+              Suggest stopping sessions idle for
+              <Input id="setup-idle-hours" type="number" min={1} max={720} className="w-24 font-mono" value={draft.idleHours}
+                aria-invalid={validHours(draft.idleHours) === null}
+                onChange={(e) => setDraft({ ...draft, idleHours: e.target.value })} />
+              hours
+            </label>
+            <p className="text-[13px] text-muted-foreground">
+              Eyrie only suggests; it never stops a session on its own. 1–720 hours, saved as <code className="font-mono">[sessions] idle_hours</code>.
+            </p>
+          </CardContent>
+        </Card>
         <div className="flex items-center gap-3">
-          <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+          <Button onClick={save} disabled={busy || validHours(draft.idleHours) === null}>{busy ? 'Saving…' : 'Save'}</Button>
           {notes}
         </div>
       </div>

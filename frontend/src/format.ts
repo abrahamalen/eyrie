@@ -49,3 +49,22 @@ const TOOL_TITLES: Record<string, string> = { claude: 'Claude Code', codex: 'Cod
 export function toolTitle(tool: string | null | undefined): string {
   return tool ? (toolInfo(tool)?.title ?? TOOL_TITLES[tool] ?? tool) : 'Unknown tool'
 }
+
+/** "45 min", "26 h", "2 d 3 h": how long a session has been idle. */
+export function fmtIdle(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`
+  if (minutes < 48 * 60) return `${Math.round(minutes / 60)} h`
+  const h = Math.round((minutes % 1440) / 60)
+  return `${Math.floor(minutes / 1440)} d${h ? ` ${h} h` : ''}`
+}
+
+/** "~410 MB", "~1.2 GB": RSS is an upper bound, so it's always approximate. */
+export function fmtBytes(n: number | null | undefined): string {
+  const mb = (n ?? 0) / 1024 / 1024
+  return mb >= 1000 ? `~${(mb / 1024).toFixed(1)} GB` : `~${Math.max(1, Math.round(mb))} MB`
+}
+
+/** "~142k tokens". */
+export function fmtTokens(n: number): string {
+  return `~${n >= 1000 ? `${Math.round(n / 1000)}k` : n} tokens`
+}

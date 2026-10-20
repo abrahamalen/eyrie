@@ -67,8 +67,10 @@ class SessionsSource:
             # Without tmux Eyrie can't run sessions, but it can still see the ones in your terminals.
             external = self.external.list()
             idle.annotate(self.settings, [], external, self.external.stats, self.usage, self.snoozes)
-            return {"sessions": [], "external": external, "dirs": [], "error": self.available().reason}
+            return {"sessions": [], "external": external, "dirs": [], "error": self.available().reason,
+                    "idle_hours": self.settings.sessions.idle_hours}
         managed = name_managed(self.settings, self.tmux.list())
         external = self.external.list(self.tmux.pane_pids())
         idle.annotate(self.settings, managed, external, self.external.stats, self.usage, self.snoozes)
-        return {"sessions": managed, "external": external, "dirs": allowed_dirs(self.settings), "error": None}
+        return {"sessions": managed, "external": external, "dirs": allowed_dirs(self.settings), "error": None,
+                "idle_hours": self.settings.sessions.idle_hours}

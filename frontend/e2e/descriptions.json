@@ -10,5 +10,6 @@
   "Read and edit what a subagent remembers": "Opens a subagent's memory file, appends a line, saves, and checks the file on disk changed by exactly that line.",
   "Tick off a task": "Ticks a task on the Tasks page and checks only that line of the markdown file changed.",
   "Review my settings": "The Settings page shows what setup chose, and saving writes the config file.",
-  "Glance at the top-bar widget": "The menu-bar widget's panel at its real size, reading the same summary as the home page. Desktop only."
+  "Glance at the top-bar widget": "The menu-bar widget's panel at its real size, reading the same summary as the home page. Desktop only.",
+  "Review idle sessions and stop one": "A session idle for three days shows up as a suggestion on the home page (with its RAM and the /compact hint), then under the Idle filter on Sessions. Stop shows the resume command and the exact signal, and only after confirming sends SIGTERM to that one process, a throwaway stand-in, which exits."
 }

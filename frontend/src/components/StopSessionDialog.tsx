@@ -12,7 +12,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { toolTitle } from '@/format'
+import { ResumeBlock } from '@/components/StopExternalDialog'
+import { fmtIdle, shortPath, toolTitle } from '@/format'
 
 /** Page-level so polling can drop the session's row without closing this dialog. */
 export function StopSessionDialog({ session, onClose }: { session: Session | null; onClose: (stopped: boolean) => void }) {
@@ -35,7 +36,7 @@ export function StopSessionDialog({ session, onClose }: { session: Session | nul
   const label = s?.alive ? 'Stop' : 'Close'
   return (
     <AlertDialog open={!!session} onOpenChange={(o) => !o && onClose(!!result?.ok)}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle>
             {label} {s?.name}?
@@ -46,6 +47,15 @@ export function StopSessionDialog({ session, onClose }: { session: Session | nul
               : 'The process has already exited. This removes the finished tmux session and its scrollback.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {s?.alive && (
+          <div className="flex flex-col gap-2 text-sm">
+            <p className="text-muted-foreground">
+              {[s.display_name !== s.name ? s.display_name : null, s.cwd ? shortPath(s.cwd) : null,
+                s.idle?.idle ? `idle ${fmtIdle(s.idle.minutes)}` : null].filter(Boolean).join(' · ')}
+            </p>
+            <ResumeBlock command={s.resume_command} tool={s.tool ?? 'claude'} />
+          </div>
+        )}
         <CommandPreview argv={argv} />
         <ResultLine result={result} />
         <AlertDialogFooter>

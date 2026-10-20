@@ -5,7 +5,7 @@
  *  and a private tmux server, and passes its location in JOURNEY_ROOT. Nothing here may
  *  touch the real ~/.eyrie, ~/.claude or ~/.codex, so every file path below is under it.
  */
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { expect, test, type Page } from '@playwright/test'
@@ -347,4 +347,74 @@ test('Glance at the top-bar widget', async ({ page }) => {
   await expect(page.getByRole('textbox', { name: 'New task' })).toBeVisible()
   await page.waitForTimeout(BEAT)
   await shot(page, 'adding a task')
+})
+
+/** True while `pid` is a live process (a reaped child is gone; node reaps its children). */
+function running(pid: number) {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+test('Review idle sessions and stop one', async ({ page }) => {
+  // A real throwaway process (`sleep`, named `claude`): the backend lists it as an idle
+  // session in a terminal, and it's the only process the backend may signal (serve.py).
+  const pidFile = path.join(ROOT, 'idle-session.pid')
+  const child = spawn('/bin/bash', ['-c', 'exec -a claude sleep 600'], { stdio: 'ignore' })
+  const pid = child.pid!
+  fs.writeFileSync(pidFile, String(pid))
+  try {
+    await home(page)
+    const card = page.locator('[data-slot="card"]', { hasText: 'Suggestions' })
+    await expect(card.getByText('tidy-release-notes')).toBeVisible({ timeout: 20_000 })
+    await expect(card.getByText(/re-reads ~142k tokens of context/)).toBeVisible()
+    await card.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(BEAT)
+    await shot(page, 'suggestions on the home page')
+
+    if (!phone()) {
+      // The widget panel's one-line summary, at the panel's size.
+      const size = page.viewportSize()!
+      await page.setViewportSize({ width: 380, height: 640 })
+      await page.goto('/widget.html')
+      await expect(page.getByText('1 idle session', { exact: false })).toBeVisible({ timeout: 20_000 })
+      await page.waitForTimeout(BEAT)
+      await shot(page, 'widget: idle sessions line')
+      await page.setViewportSize(size)
+      await home(page)
+    }
+
+    await nav(page, 'Sessions')
+    await page.getByRole('group', { name: 'Filter sessions' }).getByRole('button', { name: /^Idle/ }).click()
+    await expect(page).toHaveURL(/filter=idle/)
+    const row = page.getByRole('row').filter({ hasText: 'tidy-release-notes' })
+    await expect(row).toBeVisible()
+    await expect(row.getByText(/idle 3 d/)).toBeVisible()
+    await expect(page.getByRole('row').filter({ hasText: 'Codex · ttys011' })).toHaveCount(0) // active, so filtered out
+    await fitsWidth(page) // wide tables scroll inside their card, not the page
+    await page.waitForTimeout(BEAT)
+    await shot(page, 'sessions, idle only')
+
+    await row.getByRole('button', { name: 'Stop', exact: true }).click()
+    const confirm = page.getByRole('alertdialog')
+    await expect(confirm.getByText('7d3c2b1a-0f9e-4d8c-b7a6-5f4e3d2c1b0a')).toBeVisible()
+    await expect(confirm.getByText(`$ kill -TERM ${pid}`)).toBeVisible()
+    await page.waitForTimeout(BEAT)
+    await shot(page, 'confirm with the resume command')
+    expect(running(pid)).toBe(true) // nothing happens before you confirm
+
+    await confirm.getByRole('button', { name: 'Stop session' }).click()
+    await expect(confirm.getByRole('status')).toContainText(`Stopped. Claude Code (pid ${pid}) exited`, { timeout: 15_000 })
+    await expect.poll(() => running(pid), { timeout: 5_000 }).toBe(false)
+    await page.waitForTimeout(BEAT)
+    await shot(page, 'stopped')
+    await confirm.getByRole('button', { name: 'Close' }).click()
+    await expect(row).toBeHidden({ timeout: 15_000 })
+  } finally {
+    if (running(pid)) process.kill(pid, 'SIGKILL')
+    fs.rmSync(pidFile, { force: true })
+  }
 })

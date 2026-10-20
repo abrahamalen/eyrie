@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { SessionTool, Summary } from '@/api/types'
-import { fmtUsd, setHome, shortPath, toolTitle } from '@/format'
+import { fmtBytes, fmtIdle, fmtUsd, setHome, shortPath, toolTitle } from '@/format'
 import { Sparkline } from '@/components/Sparkline'
 import { bridge, type WidgetSettings } from './bridge'
 
@@ -129,11 +129,20 @@ export function WidgetPanel() {
         </Section>
       )}
 
+      {s.suggestions.count > 0 && (
+        <section className="border-b px-4 py-2">
+          <Row dot="attention" title={`${s.suggestions.count} idle session${s.suggestions.count === 1 ? '' : 's'}${s.suggestions.rss_bytes ? ` · ${fmtBytes(s.suggestions.rss_bytes)}` : ''}`}
+            sub={`No activity for ${s.suggestions.idle_hours} h or more`}>
+            <button className={btn} onClick={() => bridge.open('/sessions?filter=idle')}>Review</button>
+          </Row>
+        </section>
+      )}
+
       <Section title="Sessions">
         {s.sessions.map((x) => {
           const idle = s.attention.some((a) => a.kind === 'session_idle' && a.href === x.href)
           const named = x.name_source === 'user' || x.name_source === 'tool'
-          const state = !x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${x.idle_minutes} min ago` : 'running'
+          const state = !x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${fmtIdle(x.idle_minutes)} ago` : 'running'
           return (
             <Row key={x.pid ?? x.name} dot={!x.alive ? (x.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} mono={!named}
               title={x.display_name} onClick={() => bridge.open(x.href)}

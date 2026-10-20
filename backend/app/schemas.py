@@ -244,6 +244,7 @@ class SessionsSnapshot(BaseModel):
     external: list[ExternalSession]
     dirs: list[str]
     error: str | None
+    idle_hours: int  # sessions.idle_hours: what counts as idle
 
 
 class Conversation(BaseModel):

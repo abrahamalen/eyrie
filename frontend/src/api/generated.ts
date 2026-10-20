@@ -1030,6 +1030,8 @@ export interface components {
             error: string | null;
             /** External */
             external: components["schemas"]["ExternalSession"][];
+            /** Idle Hours */
+            idle_hours: number;
             /** Sessions */
             sessions: components["schemas"]["Session"][];
         };
