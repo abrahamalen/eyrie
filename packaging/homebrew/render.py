@@ -17,7 +17,15 @@ HOMEPAGE = "https://alenabraham.me/eyrie/"
 def sums(version: str) -> dict[str, str]:
     url = f"https://github.com/{REPO}/releases/download/v{version}/SHA256SUMS"
     # curl, not urllib: some Python builds (python.org's on macOS) ship without CA certificates.
-    lines = subprocess.run(["curl", "-fsSL", url], capture_output=True, text=True, check=True).stdout.splitlines()
+    # Some networks block the release-asset redirect host; `gh` (through the API) still works.
+    for cmd in (["curl", "-fsSL", url],
+                ["gh", "release", "download", f"v{version}", "-R", REPO, "-p", "SHA256SUMS", "-O", "-"]):
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            lines = r.stdout.splitlines()
+            break
+    else:
+        sys.exit(f"couldn't download SHA256SUMS for v{version} (curl and gh both failed)")
     return {name.lstrip("*"): digest for digest, name in (line.split(None, 1) for line in lines if line.strip())}
 
 

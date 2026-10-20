@@ -36,7 +36,9 @@ install).
   One implementation, two entry points.
 - **Where things live in a packaged install:**
   - the service's program is the sidecar's real path inside the app: on macOS
-    `Eyrie.app/Contents/MacOS/eyrie-server`, on Linux `/usr/lib/eyrie/eyrie-server`;
+    `Eyrie.app/Contents/Resources/eyrie-server/eyrie-server` (UI in `…/Resources/ui`), on Linux
+    `/usr/lib/Eyrie/eyrie-server/eyrie-server` (UI in `/usr/lib/Eyrie/ui`), and for server-only
+    installs `~/.local/lib/eyrie/current/…`;
   - the UI is a Tauri resource, passed to the service as `EYRIE_SERVER__UI_DIR`;
   - config is `~/.eyrie/eyrie.toml` (already the default since #31).
 - **Measured (prototype, 2026-10-20), PyInstaller 6.22.3, Python 3.12:**
@@ -101,8 +103,8 @@ browser downloads are how most people install.
 ## 6. Updates
 
 - **v0.2 (decided):** no auto-update. The widget checks the GitHub releases API at most once
-  a day (one GET, no account) and shows "Update available: v0.x" with a link and the one-line
-  terminal command. It needs no signing keys and has no moving parts.
+  a day (one GET, no account) and adds an "Update available: vX.Y.Z" menu item that opens the
+  release page. It needs no signing keys and has no moving parts.
 - **Later:** Tauri's updater plugin (signed update manifest on GitHub Releases, ed25519 key
   as a CI secret) once releases are regular.
 
@@ -126,8 +128,8 @@ Each build job:
 3. build `eyrie-server` with PyInstaller (pinned);
 4. `tauri build` with the sidecar as `externalBin`;
 5. a **smoke test** of the artifact:
-   - macOS: mount the dmg and run `Eyrie.app/Contents/MacOS/eyrie-server --version`, then `serve` and curl `/api/v1/health` and `/`;
-   - Linux: install in clean `debian:12`, `ubuntu:24.04` and `fedora:41` containers (`apt install ./eyrie.deb`, `dnf install ./eyrie.rpm`) and do the same, so dependencies are checked on each distro family.
+   - macOS: mount the dmg and run `Eyrie.app/Contents/Resources/eyrie-server/eyrie-server --version`, then `serve` and curl `/api/v1/health` and `/`;
+   - Linux: install the x86_64 `.deb`/`.rpm` in clean `debian:12`, `ubuntu:24.04` and `fedora:41` containers (`apt install ./eyrie.deb`, `dnf install ./eyrie.rpm`) and do the same, so dependencies are checked on each distro family. arm64 packages are built but not install-tested in CI (checked by hand for rc1). The AppImage is attached only when Tauri produces one.
 
 ### 7.1 Installing from the terminal
 
@@ -144,11 +146,11 @@ Two ways, both verifying checksums and both ending with `eyrie-server service in
      - **macOS:** copies `Eyrie.app` to `~/Applications`;
      - **Debian/Ubuntu:** `sudo apt install ./eyrie_X.Y.Z_amd64.deb`;
      - **Fedora:** `sudo dnf install ./eyrie-X.Y.Z.x86_64.rpm`;
-     - **anything else, or `--user`:** unpacks the `eyrie-server` tarball into `~/.local/lib/eyrie` and links `~/.local/bin/eyrie-server`, with no root needed.
+     - **`--server-only` (macOS or Linux), or a Linux without apt/dnf:** unpacks the `eyrie-server` tarball for the platform into `~/.local/lib/eyrie` and links `~/.local/bin/eyrie-server`, with no root needed.
    - It installs the service and prints the URL.
    - Flags: `--version vX.Y.Z` pins a version; `--server-only` skips the widget, for machines without a desktop (servers, SSH boxes; you reach the UI over an SSH tunnel); `--uninstall` removes the service and package, never `~/.eyrie`.
    - The script is short and readable, and the docs show how to download and read it before running it.
-2. **Homebrew** (macOS and Linux), from a tap repo `abrahamalen/homebrew-eyrie` that the release job updates:
+2. **Homebrew** (macOS and Linux), from the tap repo `abrahamalen/homebrew-eyrie`. After each release its formula and cask are regenerated with `packaging/homebrew/render.py` and pushed by hand (automating it needs a token that can push to the tap):
 
    ```
    brew install abrahamalen/eyrie/eyrie          # app + widget (cask, macOS)
@@ -156,7 +158,7 @@ Two ways, both verifying checksums and both ending with `eyrie-server service in
    ```
 
    - Formula installs aren't quarantined, so unsigned binaries run.
-   - The cask sets `quarantine: false` via its `postflight` (`xattr -dr`), with a note saying so.
+   - The cask clears the quarantine flag in `postflight_steps` (`xattr -dr com.apple.quarantine`), with a note saying so.
 
 apt and dnf **repositories** (`apt install eyrie` with no download step) are deferred. They need a signed repo hosted somewhere. The `.deb`/`.rpm` from releases, plus the script, cover installing for now.
 
