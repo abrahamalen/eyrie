@@ -182,6 +182,23 @@ class UsageIndex:
             messages, oldest = con.execute("SELECT count(*), min(ts) FROM messages").fetchone()
         return {"files": files, "messages": messages, "oldest": oldest, "last_scan_ms": round(self.last_scan_ms, 1)}
 
+    def last_turns(self, keys: list[tuple[str, str]]) -> dict[tuple[str, str], dict]:
+        """(tool, session id) → its latest top-level turn: when, the prompt size (every adapter
+        stores `input` as the uncached part, so input + cache read + cache writes is the whole
+        context) and whether it wrote a 1 h cache entry. Read-only; never scans."""
+        if not keys or not self.db_path.exists():
+            return {}
+        out = {}
+        with closing(self.connect()) as con:
+            for tool, sid in keys:
+                row = con.execute(
+                    "SELECT ts, input + cache_read + cache_write_5m + cache_write_1h, cache_write_1h FROM messages "
+                    "WHERE tool = ? AND session_id = ? AND subagent = 0 ORDER BY ts DESC LIMIT 1", (tool, sid),
+                ).fetchone()
+                if row:
+                    out[(tool, sid)] = {"ts": row[0], "context_tokens": row[1], "wrote_1h": row[2] > 0}
+        return out
+
     def recent_sessions(self, limit: int = 20, tool: str = "claude") -> list[dict]:
         """Most recent top-level conversations of one tool, newest first."""
         with closing(self.connect()) as con:

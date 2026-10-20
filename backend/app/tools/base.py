@@ -25,6 +25,10 @@ class SessionCaps(Protocol):
     resume_requires_cwd: bool
     # A first argument that marks a helper process rather than an interactive session.
     helpers: frozenset[str]
+    # What shrinks the context inside the session ("/compact"), for the resume-cost hint.
+    compact_command: str | None
+    # Prompt-cache lifetime in minutes (default, after a 1 h cache write); None: unknown.
+    cache_minutes: tuple[int, int] | None
 
     def argv(self, exe: str, mode: str, cwd: str, resume_id: str | None, conversation_id: str | None) -> list[str]:
         """The program tmux runs for a new Eyrie session (always 2+ items, so no shell)."""

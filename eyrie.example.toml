@@ -22,6 +22,10 @@ enabled = ["sessions", "claude", "codex", "mcp", "plugins", "memory", "tasks", "
 # Sessions may start in any directory under these, or in one your tools already know.
 roots = []                            # e.g. ["~/personal/projects"]
 socket = "eyrie"                      # Eyrie's private tmux server: tmux -L eyrie ls
+idle_hours = 24                       # suggest stopping sessions with no activity for this long
+large_context_tokens = 100000         # "run /compact first" hint above this context size
+idle_requires_detached = false        # true: only suggest sessions with no client attached (where known)
+stop_wait_seconds = 5                 # how long Stop waits for an exit after SIGTERM
 
 [server]
 # ui_dir = "frontend/dist"           # built UI served at / (make build); default: this checkout's

@@ -1,12 +1,14 @@
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ValidationError
 
-from app.actions.registry import ACTIONS, Blocked, Context, redact
+from app.actions.registry import ACTIONS, NOT_LISTED, STOP_MESSAGES, Blocked, Context, redact
 from app.actions.runner import CliNotFound
 from app.masking import mask_args, mask_url, mask_value
 from app.schemas import ActionPreview, ActionResult, AuditEntry
+from app.sessions import procs
 from app.sessions.dirs import is_allowed
 from app.tools import TOOLS, enabled
 
@@ -63,7 +65,7 @@ def run_action(action_id: str, body: ActionRequest, request: Request):
     ok, messages, result = True, [], None
     for step in steps:
         try:
-            result = state.runner.run(step.tool, step.args, cwd=step.cwd)
+            result = step.call() if step.call else state.runner.run(step.tool, step.args, cwd=step.cwd)
         except CliNotFound as e:
             raise HTTPException(503, str(e))
         if step.explain:
@@ -83,7 +85,7 @@ def run_action(action_id: str, body: ActionRequest, request: Request):
         source.invalidate()
     entry = state.audit.record(action_id, shown, _safe_params(params), ok, result.exit_code, result.duration_ms, message)
     return {"action": action_id, "argv": shown, "ok": ok, "exit_code": result.exit_code,
-            "message": message, "duration_ms": entry["duration_ms"]}
+            "message": message, "duration_ms": entry["duration_ms"], "state": planned.state() if planned.state else None}
 
 
 def _installed_plugin(state, plugin_id: str) -> dict | None:
@@ -109,12 +111,30 @@ def _precheck(state, action_id: str, params) -> str | None:
             return f"A session named {params.name} already exists"
     if action_id in ("sessions.stop", "sessions.open_terminal") and not state.registry["sessions"].tmux.exists(params.name):
         return f"No session named {params.name}"
+    if action_id == "sessions.stop_external":
+        return _stop_precheck(state, params)
     if action_id == "sessions.focus":
         # Only a session Eyrie lists right now (an enabled tool's, not one of its own panes), on that tty.
         src = state.registry["sessions"]
         exclude = src.tmux.pane_pids() if src.available().available else set()
         if src.external.find(params.pid, params.tty, exclude) is None:
-            return "That session isn't running any more, or isn't one of your Claude Code, Codex or Gemini sessions."
+            return NOT_LISTED
+    return None
+
+
+def _stop_precheck(state, params) -> str | None:
+    """Only a session Eyrie lists right now, of that tool on that tty, running as you, and the
+    very process you were shown (same start time). docs/stop-and-idle.md §4.1."""
+    src = state.registry["sessions"]
+    exclude = src.tmux.pane_pids() if src.available().available else set()
+    s = src.external.find(params.pid, params.tty, exclude)
+    if s is None or s["tool"] != params.tool or procs.protected(params.pid):
+        return NOT_LISTED
+    if not s["uid_ok"]:
+        return f"pid {params.pid} belongs to another user; Eyrie only stops your own sessions."
+    shown = datetime.fromisoformat(s["process_started"]) if s["process_started"] else None
+    if shown is None or int(shown.timestamp()) != int(params.started.timestamp()):
+        return STOP_MESSAGES["reused"].format(pid=params.pid)
     return None
 
 
@@ -146,7 +166,7 @@ def _verify(state, action_id: str, params) -> str | None:
 
 
 def _safe_params(params) -> dict:
-    d = params.model_dump()
+    d = params.model_dump(mode="json")
     for key in ("env", "headers"):
         if d.get(key):
             d[key] = {k: "***" for k in d[key]}

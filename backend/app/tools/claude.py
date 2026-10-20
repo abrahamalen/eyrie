@@ -22,6 +22,9 @@ def transcript_dir(claude_home: Path, cwd: str) -> Path:
 class Sessions:
     modes = ("new", "continue", "resume")
     resume_requires_cwd = False
+    compact_command = "/compact"
+    # Prompt-cache lifetime in minutes: (default, when the turn wrote a 1 h cache entry).
+    cache_minutes = (5, 60)
     helpers = frozenset({"daemon", "bg-pty-host", "bg-spare", "mcp", "mcp-server", "login", "logout", "plugin",
                          "--version", "-v", "doctor", "update", "install"})
 

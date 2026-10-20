@@ -61,6 +61,7 @@ def detect(settings: Settings, versions) -> dict:
         "tasks": str(settings.paths.tasks) if settings.paths.tasks else None,
         "obsidian_vaults": _obsidian_vaults(),
         "agent_memory": {"path": str(settings.paths.memory), "exists": settings.paths.memory.is_dir()},
+        "idle_hours": settings.sessions.idle_hours,
     }
 
 
@@ -101,6 +102,9 @@ def write(settings: Settings, body, if_match: str) -> Settings:
         raise ValueError(f"{path} isn't valid TOML ({e}); fix or remove it first") from e
     data.setdefault("tools", {})["enabled"] = tools
     data.setdefault("sessions", {})["roots"] = [str(r) for r in roots]
+    idle_hours = body.idle_hours or settings.sessions.idle_hours
+    if body.idle_hours is not None:
+        data["sessions"]["idle_hours"] = body.idle_hours
     if tasks:
         data.setdefault("paths", {})["tasks"] = str(tasks)
     else:
@@ -109,7 +113,7 @@ def write(settings: Settings, body, if_match: str) -> Settings:
     atomic_write(path, dump_toml(data, header=True))
     return settings.model_copy(update={
         "tools": Tools(enabled=tools),
-        "sessions": settings.sessions.model_copy(update={"roots": roots}),
+        "sessions": settings.sessions.model_copy(update={"roots": roots, "idle_hours": idle_hours}),
         "paths": settings.paths.model_copy(update={"tasks": tasks}),
     })
 

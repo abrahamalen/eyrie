@@ -2,7 +2,7 @@
 them, and the frontend's TypeScript types are generated from that (`make types`)."""
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.tools import ToolId
 
@@ -165,6 +165,30 @@ class TasksSnapshot(BaseModel):
 # user: you named it; tool: the tool did; id: a short conversation id; none: no id known either.
 NameSource = Literal["user", "tool", "id", "none"]
 
+
+class Resources(BaseModel):
+    """What keeping a session costs (docs/stop-and-idle.md §3.2)."""
+    rss_bytes: int | None  # RSS of the process and its descendants: an upper bound
+    child_processes: int | None
+
+
+class Idle(BaseModel):
+    """How long a live session has gone without activity, and the suggestion about it (§3)."""
+    minutes: int
+    since: str  # the activity it's measured from
+    exact: bool  # False: the activity is the newest in its directory, not this conversation's
+    idle: bool  # at least sessions.idle_hours
+    suggested: bool  # idle, not snoozed or dismissed (and detached, if that's required)
+    key: str  # for PUT /api/v1/suggestions/{key}
+    snoozed_until: str | None
+    dismissed: bool
+    attached: bool | None  # a client is attached; None: unknown
+    context_tokens: int | None  # the last turn's prompt size
+    cache_expired: bool | None
+    # Set only when the /compact hint applies (large context, cache expired, idle).
+    compact_command: str | None
+
+
 class Session(BaseModel):
     name: str
     tool: ToolId | None
@@ -183,6 +207,8 @@ class Session(BaseModel):
     name_source: NameSource
     # Exact command to pick the conversation up again in a terminal (shown, never run).
     resume_command: str | None
+    resources: Resources
+    idle: Idle | None  # None when not running, or its activity is unknown
 
 
 class ExternalSession(BaseModel):
@@ -205,6 +231,12 @@ class ExternalSession(BaseModel):
     # What sessions.focus can do: select the tab, select the tmux pane, raise the app, nothing.
     focus: Literal["tab", "pane", "app", "none"]
     href: str
+    # The process's exact start time: sessions.stop_external must name it (pid reuse check).
+    process_started: str | None
+    uid_ok: bool  # runs as you
+    resume_command: str | None
+    resources: Resources
+    idle: Idle | None
 
 
 class SessionsSnapshot(BaseModel):
@@ -319,6 +351,8 @@ class ActionResult(BaseModel):
     exit_code: int
     message: str
     duration_ms: float
+    # sessions.stop_external: exited | still_running | stuck | already_exited | reused | denied
+    state: str | None = None
 
 
 class AuditEntry(BaseModel):
@@ -357,6 +391,38 @@ class SummarySession(BaseModel):
     name_source: NameSource
     conversation_id: str | None
     href: str  # the app's page for this session (/sessions?open=… or /sessions?ext=…)
+
+
+class SuggestionItem(BaseModel):
+    """A session Eyrie suggests stopping (docs/stop-and-idle.md §6.1)."""
+    key: str
+    managed: bool
+    name: str | None  # Eyrie session name
+    pid: int | None  # external session
+    tool: ToolId
+    display_name: str
+    project: str | None
+    idle_minutes: int
+    idle_exact: bool
+    rss_bytes: int | None
+    child_processes: int | None
+    context_tokens: int | None
+    compact_command: str | None
+    href: str
+
+
+class Suggestions(BaseModel):
+    idle_hours: int
+    count: int
+    rss_bytes: int  # held by the suggested sessions
+    items: list[SuggestionItem]
+
+
+class Snooze(BaseModel):
+    key: str
+    until: str | None  # None: dismissed until the session is used again
+    activity: str | None
+    at: str
 
 
 class DayCost(BaseModel):
@@ -407,6 +473,7 @@ class Summary(BaseModel):
     tasks: SummaryTasks | None  # None when no tasks file is set
     recent_projects: list[RecentProject]
     health: Health
+    suggestions: Suggestions
     generated_at: str
 
 
@@ -488,12 +555,15 @@ class SetupState(BaseModel):
     tasks: str | None
     obsidian_vaults: list[str]
     agent_memory: AgentMemoryInfo
+    idle_hours: int
 
 
 class SetupBody(BaseModel):
     tools_enabled: Literal["auto"] | list[ToolId]
     roots: list[str] = []
     tasks: str | None = None
+    # Suggest stopping sessions idle this long; None leaves the current value.
+    idle_hours: int | None = Field(None, ge=1, le=720)
 
 
 class Token(BaseModel):
