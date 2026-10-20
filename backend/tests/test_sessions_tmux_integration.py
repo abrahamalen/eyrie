@@ -66,11 +66,15 @@ def test_real_tmux_lifecycle(real):
     # The process exits: the session stays (remain-on-exit) and reports its exit status.
     import subprocess
     subprocess.run(["tmux", "-L", socket, "send-keys", "-t", "eyrie-itest", "hello", "Enter"], check=True)
-    # tmux can mark the pane dead a moment before it records the exit status, so wait for both.
+    dead = wait_for(lambda: not c.get("/api/v1/sources/sessions").json()["sessions"][0]["alive"])
+    assert dead
+    # tmux records the exit status a moment after it marks the pane dead, and on GitHub's
+    # runners it sometimes never fills it in (tmux 3.4; not reproducible in a 24.04
+    # container). Eyrie reports None then, which the UI shows as plain "exited".
     s = wait_for(lambda: (x := c.get("/api/v1/sources/sessions").json()["sessions"][0])
-                 and not x["alive"] and x["exit_status"] is not None and x)
-    assert s, "session never reported an exit status"
-    assert s["exit_status"] == 0 and "got: hello" in c.get("/api/v1/sessions/eyrie-itest/screen").json()["text"]
+                 and x["exit_status"] is not None and x, timeout=5.0) \
+        or c.get("/api/v1/sources/sessions").json()["sessions"][0]
+    assert s["exit_status"] in (0, None) and "got: hello" in c.get("/api/v1/sessions/eyrie-itest/screen").json()["text"]
     r = c.post("/api/v1/actions/sessions.stop", json={"params": {"name": "eyrie-itest"}, "confirm": True}).json()
     assert r["ok"], r
     assert c.get("/api/v1/sources/sessions").json()["sessions"] == []
