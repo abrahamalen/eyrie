@@ -375,7 +375,7 @@ export function SessionsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-mono text-xs">{c.project ? shortPath(c.project) : '(unknown directory)'}</div>
                   <div className="text-xs text-muted-foreground">
-                    {fmtAgo(c.last)} · {fmtNum(c.messages)} responses
+                    {fmtAgo(c.last)} · {fmtNum(c.messages)} {c.messages === 1 ? 'response' : 'responses'}
                   </div>
                 </div>
                 <Button
