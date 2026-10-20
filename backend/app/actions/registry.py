@@ -6,18 +6,19 @@ There is deliberately no generic "run a command" action.
 """
 import re
 import secrets
+import sys
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Literal
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.masking import mask_args
 from app.tools import TOOLS, ToolId
 
 if TYPE_CHECKING:
-    from app.actions.runner import Runner
+    from app.actions.runner import Runner, RunResult
     from app.config import Settings
 
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -193,10 +194,43 @@ class SessionStop(BaseModel):
         return v
 
 
+class SessionFocus(BaseModel):
+    """Bring the terminal of one of your own sessions to the front (docs/session-names-and-jump.md §5)."""
+    pid: int = Field(ge=2, le=99_999_999)
+    tty: str
+
+    @field_validator("tty")
+    @classmethod
+    def _tty(cls, v: str) -> str:
+        from app.sessions.focus import TTY_RE
+
+        if not TTY_RE.match(v):
+            raise ValueError("tty must look like ttys004 or pts/3")
+        return v
+
+
+class SessionOpenTerminal(BaseModel):
+    """A new Terminal/iTerm2 window attached to an Eyrie session (macOS)."""
+    name: str
+    app: Literal["terminal", "iterm"] = "terminal"
+
+    @field_validator("name")
+    @classmethod
+    def _valid(cls, v: str) -> str:
+        if not SESSION_NAME.match(v):
+            raise ValueError("Not an Eyrie session name")
+        return v
+
+
+class Blocked(Exception):
+    """The action can't go ahead; the message says why and what to do instead (HTTP 409)."""
+
+
 @dataclass
 class Context:
     settings: "Settings"
     runner: "Runner"
+    registry: dict | None = None
 
 
 @dataclass
@@ -204,6 +238,10 @@ class Planned:
     tool: str
     args: list[str]
     cwd: Path | None = None
+    # Run after this one succeeds (e.g. the tmux pane, then the terminal holding its client).
+    then: list["Planned"] = field(default_factory=list)
+    # The run's result → (ok, message for people), when exit code + output aren't enough.
+    explain: Callable[["RunResult"], tuple[bool, str]] | None = None
 
 
 @dataclass
@@ -214,6 +252,8 @@ class Action:
     destructive: bool = False
     # Name of the source whose cached state this action changes.
     invalidates: str | None = None
+    # Check against live state before planning (and on dry runs): the plan inspects processes.
+    precheck_first: bool = False
 
 
 def _mcp_add(p: McpAdd, ctx: Context) -> Planned:
@@ -251,6 +291,73 @@ def _session_stop(p: SessionStop, ctx: Context) -> Planned:
     return Planned("tmux", [*base_args(ctx.settings), "kill-session", "-t", p.name])
 
 
+def _focus_host(host, tty: str, ctx: Context) -> Planned:
+    """Select the tab / raise the app holding `tty` (Terminal, iTerm2, or an app-only host)."""
+    from app.sessions import focus
+
+    label = host.label
+    if host.focus == "tab":
+        return Planned("osascript", focus.tab_args(host, tty), explain=lambda r: focus.explain(
+            r, f"Switched to the {label} tab on {tty}.", f"Couldn't find the {label} tab on {tty}. It may have just closed.",
+            label))
+    if host.focus == "app":
+        return Planned("osascript", focus.activate_args(host), explain=lambda r: focus.explain(
+            r, f"Brought {label} to the front. Eyrie can't pick its tab: look for {tty}.",
+            f"Couldn't bring {label} to the front.", label))
+    raise Blocked(f"Running in {label} on {tty}. Eyrie can't switch to it; switch to it yourself.")
+
+
+def _tmux_pane(host, tty: str, ctx: Context) -> Planned:
+    """Your own tmux: find the pane on `tty`, show it in its client, then raise that client's terminal."""
+    from app.sessions import focus
+
+    r = ctx.runner.run("tmux", [*host.tmux_args, "list-panes", "-a", "-F",
+                                "#{pane_tty} #{pane_id} #{session_attached} #{session_name}"])
+    found = focus.find_pane(r.stdout, tty) if r.ok else None
+    if found is None:
+        raise Blocked(f"Couldn't find the tmux pane on {tty}. Is your tmux server on a custom socket?")
+    pane, session, attached = found
+    if not attached:
+        raise Blocked(f"No terminal is attached to tmux session “{session}”. Run: tmux attach -t {session}")
+    then, where = [], ""
+    clients = ctx.runner.run("tmux", [*host.tmux_args, "list-clients", "-F", "#{client_tty} #{client_pid} #{client_session}"])
+    ext = ctx.registry["sessions"].external if ctx.registry else None
+    for line in clients.stdout.splitlines() if clients.ok else []:
+        ctty, cpid, csession = (line.split(" ", 2) + ["", ""])[:3]
+        ctty = ctty.removeprefix("/dev/")
+        if csession != session or not cpid.isdigit() or not focus.TTY_RE.match(ctty) or ext is None:
+            continue
+        chost = focus.detect(ext.table, int(cpid))
+        if chost.focus in ("tab", "app"):
+            then.append(_focus_host(chost, ctty, ctx))
+            where = f" in {chost.label}"
+        break
+    return Planned("tmux", focus.tmux_focus_args(host, pane), then=then,
+                   explain=lambda res: (res.ok, f"Selected the tmux pane on {tty}{where}." if res.ok
+                                        else f"tmux couldn't switch to the pane: {res.stderr.strip()}"))
+
+
+def _session_focus(p: SessionFocus, ctx: Context) -> Planned:
+    # The precheck has just listed sessions and confirmed this pid is one, on this tty.
+    host = ctx.registry["sessions"].external.hosts.get(p.pid) if ctx.registry else None
+    if host is None:
+        raise Blocked("That session isn't running any more.")
+    if host.focus == "pane":
+        return _tmux_pane(host, p.tty, ctx)
+    return _focus_host(host, p.tty, ctx)
+
+
+def _session_open_terminal(p: SessionOpenTerminal, ctx: Context) -> Planned:
+    from app.sessions import focus
+
+    if sys.platform != "darwin":
+        raise Blocked("Opening a terminal window is macOS-only; copy the attach command instead.")
+    title = focus.APP_TITLES[p.app]
+    args = focus.open_terminal_args(p.app, ctx.runner.binary("tmux"), ctx.settings.sessions.socket, p.name)
+    return Planned("osascript", args, explain=lambda r: focus.explain(
+        r, f"Opened a new {title} window attached to {p.name}.", f"{title} didn't open a window.", title))
+
+
 ACTIONS: dict[str, Action] = {a.id: a for a in [
     Action("mcp.add", McpAdd, _mcp_add, invalidates="mcp"),
     Action("mcp.remove", McpRemove, _mcp_remove, destructive=True, invalidates="mcp"),
@@ -258,6 +365,8 @@ ACTIONS: dict[str, Action] = {a.id: a for a in [
     Action("plugins.disable", PluginToggle, _plugin("disable"), invalidates="plugins"),
     Action("sessions.start", SessionStart, _session_start),
     Action("sessions.stop", SessionStop, _session_stop, destructive=True),
+    Action("sessions.focus", SessionFocus, _session_focus, precheck_first=True),
+    Action("sessions.open_terminal", SessionOpenTerminal, _session_open_terminal, precheck_first=True),
 ]}
 
 

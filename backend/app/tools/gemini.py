@@ -22,6 +22,7 @@ from pathlib import Path
 
 from app.config import Settings
 from app.masking import mask_args, mask_url
+from app.sessions.names import Name, clean, tail_records
 from app.sources.claude import safe_read_json
 from app.tools.base import Tool
 
@@ -89,6 +90,54 @@ class Sessions:
 
     def known_dirs(self, settings: Settings) -> set[Path]:
         return {Path(root) for root in project_dirs(settings)}
+
+    def names(self, settings: Settings):
+        """Gemini has no rename; a session's `summary` (written by `{"$set": {"summary": …}}`
+        updates) is its title. The file is chats/session-<time>-<sid8>.jsonl: by id when the
+        session was resumed by id, else the newest one written since the process started."""
+        dirs = project_dirs(settings)
+
+        def lookup(pid, cwd, conversation_id, resume, started):
+            conv = conversation_id or (resume if resume and UUID_RE.match(resume) else None)
+            d = dirs.get(cwd or "") or (data_dir(settings, cwd) if cwd else None)
+            chats = d / "chats" if d else None
+            if not chats or not chats.is_dir():
+                return Name(conv)
+            if conv:
+                files, exact = sorted(chats.glob(f"session-*-{conv[:8]}.jsonl"), key=_mtime), True
+            else:
+                since = started.timestamp() - 5 if started else 0
+                files = sorted((f for f in chats.glob("session-*.jsonl") if _mtime(f) >= since), key=_mtime)
+                exact = False
+            if not files:
+                return Name(conv)
+            sid = _session_id(files[-1]) or conv
+            summary = None
+            for r in tail_records(files[-1], needle=b'"summary"'):
+                s = r.get("$set") if isinstance(r.get("$set"), dict) else r
+                summary = clean(s.get("summary")) or summary
+            if not sid:
+                return Name()
+            return Name(sid, summary, "tool" if summary else "id", exact)
+        return lookup
+
+
+def _mtime(f: Path) -> float:
+    try:
+        return f.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+def _session_id(path: Path) -> str | None:
+    """The metadata line (the first) names the session."""
+    try:
+        with path.open("rb") as f:
+            first = json.loads(f.readline(65536) or b"{}")
+    except (OSError, ValueError):
+        return None
+    sid = first.get("sessionId") if isinstance(first, dict) else None
+    return sid if isinstance(sid, str) and UUID_RE.match(sid) else None
 
 
 class Usage:

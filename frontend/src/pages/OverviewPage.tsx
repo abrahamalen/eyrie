@@ -152,26 +152,22 @@ export function OverviewPage() {
               </CardHeader>
               <CardContent className="flex flex-col">
                 {data.sessions.map((s) => {
-                  const idle = data.attention.some((a) => a.kind === 'session_idle' && a.href === `/sessions?open=${s.name}`)
+                  const idle = data.attention.some((a) => a.kind === 'session_idle' && a.href === s.href)
+                  const named = s.name_source === 'user' || s.name_source === 'tool'
                   return (
                   <div key={s.pid ?? s.name} className="flex items-center gap-3 border-b py-3">
                     <Dot tone={!s.alive ? (s.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-mono text-[13.5px]">{s.name}</div>
+                      <div className={`truncate text-[13.5px] ${named ? 'font-medium' : 'font-mono'}`} title={s.conversation_id ?? undefined}>{s.display_name}</div>
                       <div className="truncate text-[13px] text-muted-foreground">
                         {toolTitle(s.tool)} · {s.project ? shortPath(s.project) : '—'} ·{' '}
+                        {!s.managed && s.tty ? `${s.tty} · ` : ''}
                         {!s.alive ? `exited${s.exit_status ? ` (${s.exit_status})` : ''}` : idle ? `idle ${s.idle_minutes} min` : !s.managed && s.idle_minutes ? `active ${s.idle_minutes} min ago` : 'running'}
                       </div>
                     </div>
-                    {s.managed ? (
-                      <Button variant="outline" size="sm" render={<Link to={`/sessions?open=${s.name}`} />}>
-                        Open
-                      </Button>
-                    ) : (
-                      <span className="font-mono text-[12.5px] text-muted-foreground" title="Running in one of your terminals">
-                        {s.tty}
-                      </span>
-                    )}
+                    <Button variant="outline" size="sm" render={<Link to={s.href} />}>
+                      Open
+                    </Button>
                   </div>
                   )
                 })}

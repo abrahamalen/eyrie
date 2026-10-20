@@ -162,6 +162,9 @@ class TasksSnapshot(BaseModel):
 
 # --- Sessions -------------------------------------------------------------------------------
 
+# user: you named it; tool: the tool did; id: a short conversation id; none: no id known either.
+NameSource = Literal["user", "tool", "id", "none"]
+
 class Session(BaseModel):
     name: str
     tool: ToolId | None
@@ -175,6 +178,11 @@ class Session(BaseModel):
     exit_status: int | None
     command: str | None
     attach: str
+    # The name you (or the tool) gave the conversation, else its short id, else `name`.
+    display_name: str
+    name_source: NameSource
+    # Exact command to pick the conversation up again in a terminal (shown, never run).
+    resume_command: str | None
 
 
 class ExternalSession(BaseModel):
@@ -188,6 +196,15 @@ class ExternalSession(BaseModel):
     last_activity: str | None
     idle_minutes: int | None
     activity_exact: bool
+    conversation_id: str | None
+    display_name: str
+    name_source: NameSource
+    # False when the conversation is a best guess (newest in its directory).
+    name_exact: bool
+    terminal: str | None  # what it runs in: "iTerm2", "Warp", "tmux", …
+    # What sessions.focus can do: select the tab, select the tmux pane, raise the app, nothing.
+    focus: Literal["tab", "pane", "app", "none"]
+    href: str
 
 
 class SessionsSnapshot(BaseModel):
@@ -336,6 +353,10 @@ class SummarySession(BaseModel):
     managed: bool
     tty: str | None
     pid: int | None
+    display_name: str
+    name_source: NameSource
+    conversation_id: str | None
+    href: str  # the app's page for this session (/sessions?open=… or /sessions?ext=…)
 
 
 class DayCost(BaseModel):
@@ -417,6 +438,7 @@ class Features(BaseModel):
     agent_memory: bool  # Claude Code is enabled and its agent-memory folder exists
     mcp: bool           # an enabled tool has MCP support
     plugins: bool       # an enabled tool has plugins
+    terminal_windows: bool  # macOS: Eyrie can open a session in Terminal/iTerm2
 
 
 class Meta(BaseModel):

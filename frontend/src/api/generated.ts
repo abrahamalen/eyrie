@@ -663,18 +663,38 @@ export interface components {
         ExternalSession: {
             /** Activity Exact */
             activity_exact: boolean;
+            /** Conversation Id */
+            conversation_id: string | null;
             /** Cwd */
             cwd: string | null;
+            /** Display Name */
+            display_name: string;
+            /**
+             * Focus
+             * @enum {string}
+             */
+            focus: "tab" | "pane" | "app" | "none";
+            /** Href */
+            href: string;
             /** Idle Minutes */
             idle_minutes: number | null;
             /** Last Activity */
             last_activity: string | null;
+            /** Name Exact */
+            name_exact: boolean;
+            /**
+             * Name Source
+             * @enum {string}
+             */
+            name_source: "user" | "tool" | "id" | "none";
             /** Pid */
             pid: number;
             /** Resume */
             resume: string | null;
             /** Started */
             started: string;
+            /** Terminal */
+            terminal: string | null;
             /**
              * Tool
              * @enum {string}
@@ -696,6 +716,8 @@ export interface components {
             plugins: boolean;
             /** Tasks */
             tasks: boolean;
+            /** Terminal Windows */
+            terminal_windows: boolean;
         };
         /** FileBody */
         FileBody: {
@@ -910,6 +932,8 @@ export interface components {
             created: string | null;
             /** Cwd */
             cwd: string | null;
+            /** Display Name */
+            display_name: string;
             /** Exit Status */
             exit_status: number | null;
             /** Last Output */
@@ -918,6 +942,13 @@ export interface components {
             mode: string | null;
             /** Name */
             name: string;
+            /**
+             * Name Source
+             * @enum {string}
+             */
+            name_source: "user" | "tool" | "id" | "none";
+            /** Resume Command */
+            resume_command: string | null;
             /** Tool */
             tool: ("claude" | "codex" | "gemini") | null;
         };
@@ -1020,8 +1051,14 @@ export interface components {
         SummarySession: {
             /** Alive */
             alive: boolean;
+            /** Conversation Id */
+            conversation_id: string | null;
+            /** Display Name */
+            display_name: string;
             /** Exit Status */
             exit_status: number | null;
+            /** Href */
+            href: string;
             /** Idle Minutes */
             idle_minutes: number | null;
             /** Last Output */
@@ -1030,6 +1067,11 @@ export interface components {
             managed: boolean;
             /** Name */
             name: string;
+            /**
+             * Name Source
+             * @enum {string}
+             */
+            name_source: "user" | "tool" | "id" | "none";
             /** Pid */
             pid: number | null;
             /** Project */

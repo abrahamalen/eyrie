@@ -180,10 +180,20 @@ async fn add_task(text: String) -> Result<Value, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// A path on Eyrie itself (`/sessions?ext=…`), never another host or a scheme: the links
+/// come from the summary, and are opened as EYRIE_URL + path.
+fn eyrie_page(path: &str) -> bool {
+    path.starts_with('/')
+        && !path.starts_with("//")
+        && !path.contains("..")
+        && !path.contains('\\')
+        && path.chars().all(|c| c.is_ascii_graphic())
+}
+
 /// Opens a page of Eyrie in the default browser. Only Eyrie's own pages.
 #[tauri::command]
 fn open_eyrie(app: AppHandle, path: String) -> Result<(), String> {
-    if !path.starts_with('/') || path.starts_with("//") || path.contains("..") {
+    if !eyrie_page(&path) {
         return Err("not an Eyrie page".into());
     }
     hide_panel(&app);
@@ -392,7 +402,8 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, summary: Option<&Value>) -> tauri:
             if !sessions.is_empty() {
                 items.push(Box::new(PredefinedMenuItem::separator(app)?));
                 for (i, sess) in sessions.iter().take(8).enumerate() {
-                    let name = sess["name"].as_str().unwrap_or("");
+                    // The session's own name (or short id); older servers only send `name`.
+                    let name = sess["display_name"].as_str().or(sess["name"].as_str()).unwrap_or("");
                     let managed = sess["managed"].as_bool().unwrap_or(true);
                     let label = if !managed {
                         // Started in one of your terminals: Eyrie can't attach, so say where it is.
@@ -406,7 +417,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, summary: Option<&Value>) -> tauri:
                             _ => format!("{name}  ·  running"),
                         }
                     };
-                    let id = if managed { format!("ses:{name}") } else { format!("ext:{i}") };
+                    let id = format!("ses:{i}");
                     items.push(Box::new(MenuItem::with_id(app, id, label, true, None::<&str>)?));
                 }
             }
@@ -570,16 +581,26 @@ fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
         }
         other => {
             let last = app.state::<AppState>().last.lock().unwrap().clone();
-            if let Some(name) = other.strip_prefix("ses:") {
-                open(&format!("/sessions?open={name}"));
-            } else if other.starts_with("ext:") {
-                open("/sessions");
+            if let (Some(i), Some(s)) = (other.strip_prefix("ses:"), last.as_ref()) {
+                // The session's own link: ?open= for Eyrie's, ?ext=<pid> for one in your terminals.
+                let href = i.parse::<usize>().ok().and_then(|i| session_href(&s["sessions"][i]));
+                open(&href.unwrap_or_else(|| "/sessions".into()));
             } else if let (Some(i), Some(s)) = (other.strip_prefix("att:"), last) {
                 let href = i.parse::<usize>().ok().and_then(|i| s["attention"][i]["href"].as_str().map(String::from));
                 open(&href.unwrap_or_else(|| "/".into()));
             }
         }
     }
+}
+
+/// Where a summary session opens in the app; older servers have no `href`.
+fn session_href(sess: &Value) -> Option<String> {
+    let href = match sess["href"].as_str() {
+        Some(h) => h.to_string(),
+        None if sess["managed"].as_bool().unwrap_or(false) => format!("/sessions?open={}", sess["name"].as_str()?),
+        None => "/sessions".into(),
+    };
+    eyrie_page(&href).then_some(href)
 }
 
 fn start_polling<R: Runtime>(app: AppHandle<R>) {
@@ -655,7 +676,27 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::newer;
+    use super::{eyrie_page, newer, session_href};
+    use serde_json::json;
+
+    #[test]
+    fn only_eyrie_pages_open() {
+        assert!(eyrie_page("/sessions?open=eyrie-7f3a"));
+        assert!(eyrie_page("/sessions?ext=4242&tool=claude&id=6636c681-a73f-4aa7-a8cb-c8e1f313d9ee"));
+        for bad in ["https://evil.example", "//evil.example/x", "/../etc", "/a\\b", "/a b", "/a\nb", "mailto:x", ""] {
+            assert!(!eyrie_page(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn session_links_come_from_the_summary() {
+        let ext = json!({"name": "claude · ttys004", "managed": false, "href": "/sessions?ext=4242&tool=claude"});
+        assert_eq!(session_href(&ext).as_deref(), Some("/sessions?ext=4242&tool=claude"));
+        let old = json!({"name": "eyrie-7f3a", "managed": true});
+        assert_eq!(session_href(&old).as_deref(), Some("/sessions?open=eyrie-7f3a"));
+        let evil = json!({"name": "x", "managed": false, "href": "https://evil.example"});
+        assert_eq!(session_href(&evil), None);
+    }
 
     #[test]
     fn release_tags_compare_numerically() {

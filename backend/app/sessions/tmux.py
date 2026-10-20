@@ -19,7 +19,7 @@ set -g history-limit 50000
 set -g mouse on
 """
 FIELDS = ["session_name", "@eyrie_tool", "@eyrie_cwd", "@eyrie_mode", "@eyrie_conv", "session_created",
-          "session_activity", "session_attached", "pane_dead", "pane_dead_status", "pane_current_command"]
+          "session_activity", "session_attached", "pane_dead", "pane_dead_status", "pane_current_command", "pane_pid"]
 
 
 def conf_path(settings: Settings) -> Path:
@@ -73,6 +73,7 @@ class Tmux:
                 "exit_status": int(v["pane_dead_status"]) if dead and v.get("pane_dead_status", "").lstrip("-").isdigit() else None,
                 "command": v.get("pane_current_command") or None,
                 "attach": attach_command(self.settings, v["session_name"]),
+                "pid": int(v["pane_pid"]) if v.get("pane_pid", "").isdigit() else None,
             })
         out.sort(key=lambda s: s["created"] or "", reverse=True)
         return out
