@@ -1,25 +1,5 @@
 import type { ReactNode } from 'react'
-import {
-  ArrowDown,
-  ArrowRight,
-  ArrowUpRight,
-  Bot,
-  ChartColumnStacked,
-  Eye,
-  FileCheck,
-  KeyRound,
-  ListChecks,
-  Lock,
-  MonitorPlay,
-  PanelTop,
-  Play,
-  Plug,
-  Puzzle,
-  ScrollText,
-  ShieldCheck,
-  SquareTerminal,
-  type LucideIcon,
-} from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Bot, ChartColumnStacked, Eye, FileCheck, KeyRound, ListChecks, Lock, MonitorPlay, PanelTop, Play, Plug, Puzzle, ScrollText, ShieldCheck, SquareTerminal, type LucideIcon } from 'lucide-react'
 import { Logo } from '@eyrie/components/Logo'
 import { Card } from '@eyrie/components/ui/card'
 import { ButtonLink, Command, CopyButton, Eyebrow, ThemeToggle } from './components'
@@ -71,6 +51,10 @@ function Header() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          {/* The way back to the rest of the site; on phones the footer has it. */}
+          <a href="https://alenabraham.me/" className="hidden items-center gap-1 rounded-md px-2 py-1.5 text-[13.5px] text-muted-foreground no-underline hover:text-foreground sm:inline-flex">
+            <ArrowLeft className="size-3.5" aria-hidden /> alenabraham.me
+          </a>
           <a href={REPO} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[13.5px] font-medium no-underline hover:text-brand">
             GitHub <ArrowUpRight className="size-3.5" aria-hidden />
           </a>
