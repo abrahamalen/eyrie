@@ -85,6 +85,7 @@ landing-build: landing/node_modules/.stamp ## Typecheck, lint and build the land
 
 landing-dist: landing-build ## Package the landing page as build/eyrie-landing-$(VERSION).tar.gz (index.html at the root)
 	mkdir -p build
+	cp scripts/install.sh landing/dist/install.sh  # served as alenabraham.me/eyrie/install.sh
 	COPYFILE_DISABLE=1 tar -C landing/dist -czf build/eyrie-landing-$(VERSION).tar.gz $$(cd landing/dist && ls -A)
 	@echo "Wrote build/eyrie-landing-$(VERSION).tar.gz"
 

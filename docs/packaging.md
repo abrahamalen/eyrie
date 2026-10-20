@@ -184,8 +184,12 @@ apt and dnf **repositories** (`apt install eyrie` with no download step) are def
    on fedora:41; each `serve` + `/health`, `/meta`, `/`) → publish (`SHA256SUMS`, notes,
    pre-release for tags with `-`). Lints clean with actionlint 1.7.9 (1.7.7 doesn't know `macos-15-intel`). First real run: a
    `v0.2.0-rc1` tag on the personal repo. Watch: RPM versions can't contain `-`.
-6. **Code:** `scripts/install.sh` (tested in debian, ubuntu and fedora containers and on macOS),
-   the Homebrew tap, and the website serving `/eyrie/install.sh`.
+6. **Code (install script done):** `scripts/install.sh`, POSIX sh, shellcheck clean. Tested
+   against a local mirror of the rc1 release: `.deb` on debian:12, `.rpm` on fedora:41,
+   `--server-only` tarball on ubuntu:24.04, a tampered file refused on checksum, `--uninstall`
+   (package gone, `~/.eyrie` kept), and a macOS `--dry-run`. Shipped inside the landing tarball
+   (so the site serves `/eyrie/install.sh`) and attached to each release. The Homebrew tap
+   (`abrahamalen/homebrew-eyrie`) is still to do.
 
 ## 9. Decisions (2026-10-20)
 
