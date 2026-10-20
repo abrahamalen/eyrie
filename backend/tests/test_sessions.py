@@ -110,6 +110,7 @@ def test_directory_must_be_allowed(authed, tmux, tmp_path):
 
 def test_roots_allow_subdirectories(settings, tmux, tmp_path):
     from fastapi.testclient import TestClient
+
     from app.config import Sessions
     from app.main import create_app
     root = tmp_path / "projects"

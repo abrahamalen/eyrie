@@ -1,5 +1,4 @@
 import json
-import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -93,7 +92,8 @@ def test_session_states(client, tools):
     s = summary(client)
     by = {a["kind"]: a for a in s["attention"]}
     assert set(kinds(s)) == {"session_exited_error", "session_idle"}
-    assert by["session_idle"]["title"].startswith("eyrie-idle1 has been idle 2") and by["session_idle"]["href"] == "/sessions?open=eyrie-idle1"
+    assert by["session_idle"]["title"].startswith("eyrie-idle1 has been idle 2")
+    assert by["session_idle"]["href"] == "/sessions?open=eyrie-idle1"
     assert "code 1" in by["session_exited_error"]["title"]
     assert kinds(s)[0] == "session_exited_error"  # problems before attention
     idle = {x["name"]: x["idle_minutes"] for x in s["sessions"]}
@@ -102,6 +102,7 @@ def test_session_states(client, tools):
 
 def test_idle_threshold_configurable(settings, tools):
     from fastapi.testclient import TestClient
+
     from app.config import Sessions
     from app.main import create_app
     tools.sessions = [("eyrie-idle1", "claude", "/p", 25, False, None)]

@@ -12,10 +12,10 @@ import tomllib
 from collections import Counter
 from pathlib import Path
 
+from app import tools as tool_registry
 from app.config import Settings, Tools, config_path
 from app.fsutil import atomic_write, etag, read_text
 from app.sources.claude import safe_read_json
-from app import tools as tool_registry
 from app.tools import TOOL_IDS, TOOLS, enabled, used
 
 BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")

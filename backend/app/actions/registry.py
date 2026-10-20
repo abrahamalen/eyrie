@@ -7,9 +7,10 @@ There is deliberately no generic "run a command" action.
 import re
 import secrets
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -267,7 +268,7 @@ def redact(tool: str, args: list[str]) -> list[str]:
     out = [tool]
     prev = None
     masked = mask_args(args)
-    for a, m in zip(args, masked):
+    for a, m in zip(args, masked, strict=True):
         if prev in ENV_FLAGS:
             out.append(a.partition("=")[0] + "=***")
         elif prev in HEADER_FLAGS:

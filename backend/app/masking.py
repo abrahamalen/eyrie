@@ -8,7 +8,7 @@ import re
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 MASK = "***"
-SECRET_NAME = re.compile(r"(?i)(token|secret|passw(or)?d|api[-_]?key|apikey|auth|credential|private[-_]?key|access[-_]?key|session|cookie|sig(nature)?)")
+SECRET_NAME = re.compile(r"(?i)(token|secret|passw(or)?d|api[-_]?key|apikey|auth|credential|private[-_]?key|access[-_]?key|session|cookie|sig(nature)?)")  # noqa: E501
 TOKEN_SHAPES = re.compile(
     r"^(sk-[A-Za-z0-9_-]{16,}|sk_(live|test)_[A-Za-z0-9]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}"
     r"|glpat-[A-Za-z0-9_-]{16,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$")

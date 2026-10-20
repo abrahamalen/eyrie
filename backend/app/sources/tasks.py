@@ -43,7 +43,7 @@ def _parse(lines: list[str]) -> list[Task]:
             continue
         text = m["text"]
         # Keyed on text, not the checkbox, so an id survives toggling.
-        base = hashlib.sha1(text.encode()).hexdigest()[:10]
+        base = hashlib.sha1(text.encode(), usedforsecurity=False).hexdigest()[:10]
         n = seen.get(base, 0)
         seen[base] = n + 1
         tasks.append(Task(id=base if n == 0 else f"{base}-{n}", done=m["status"] in "xX", text=text, line=i))

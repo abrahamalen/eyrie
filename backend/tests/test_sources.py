@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app.config import Privacy, Settings, Sources
+from app.config import Privacy, Sources
 from app.main import create_app
 
 

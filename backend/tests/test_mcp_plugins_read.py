@@ -14,7 +14,8 @@ def test_reads_all_claude_scopes_and_codex(client, home, tmp_path):
     d["projects"][str(proj)] = {"mcpServers": {"mine": {"command": "npx", "args": ["-y", "srv"]}}}
     (home / ".claude.json").write_text(json.dumps(d))
     (home / ".codex").mkdir()
-    (home / ".codex/config.toml").write_text('[mcp_servers.docs]\nurl = "https://d/mcp"\n\n[mcp_servers.fs]\ncommand = "fs"\nargs = ["--ro"]\n')
+    (home / ".codex/config.toml").write_text(
+        '[mcp_servers.docs]\nurl = "https://d/mcp"\n\n[mcp_servers.fs]\ncommand = "fs"\nargs = ["--ro"]\n')
     got = {(m["client"], m["scope"], m["name"]): (m["type"], m["target"], m["project"])
            for m in client.get("/api/v1/sources/mcp").json()["configured"]}
     assert got[("claude", "user", "obsidian")][0] == "stdio"
