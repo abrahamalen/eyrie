@@ -4,12 +4,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import Settings
+from app.sessions.names import NAME_RE, Name, clean, tail_records
 from app.sources.claude import safe_read_json
 from app.tools._mcp import entry
 from app.tools.base import Tool
 from app.usage.prices import normalize_model
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+SHORT_ID = re.compile(r"^[0-9a-f]{8}$")
 
 
 def transcript_dir(claude_home: Path, cwd: str) -> Path:
@@ -44,6 +46,58 @@ class Sessions:
 
     def known_dirs(self, settings: Settings) -> set[Path]:
         return {Path(p) for p in ((safe_read_json(settings.paths.claude_json) or {}).get("projects") or {})}
+
+    def names(self, settings: Settings):
+        """Running claude writes ~/.claude/sessions/<pid>.json with its conversation id and
+        name (nameSource "user" after /rename or --resume <name>; "auto"/"derived" when Claude
+        chose it). Otherwise the transcript's last custom-title (yours) or ai-title (Claude's),
+        which Claude re-appends near the end of the file after each turn."""
+        home = settings.paths.claude_home
+
+        def lookup(pid, cwd, conversation_id, resume, started):
+            conv = conversation_id
+            if pid:
+                d = safe_read_json(home / "sessions" / f"{pid}.json")
+                sid = d.get("sessionId") if isinstance(d, dict) and d.get("pid") == pid else None
+                if isinstance(sid, str) and UUID_RE.match(sid):
+                    conv = sid
+                    name = clean(d.get("name"))
+                    if name and d.get("nameSource") and name != sid[:8]:
+                        return Name(sid, name, "user" if d["nameSource"] == "user" else "tool")
+            if not conv and resume and SHORT_ID.match(resume):
+                # `claude attach <id8>`: a terminal on a background session, which has its own pid file.
+                for f in (home / "sessions").glob("*.json"):
+                    d = safe_read_json(f)
+                    sid = d.get("sessionId") if isinstance(d, dict) else None
+                    if isinstance(sid, str) and UUID_RE.match(sid) and sid.startswith(resume):
+                        name = clean(d.get("name"))
+                        if name and d.get("nameSource") and name != sid[:8]:
+                            return Name(sid, name, "user" if d["nameSource"] == "user" else "tool")
+                        return Name(sid)
+            if not conv and resume and UUID_RE.match(resume):
+                conv = resume
+            if conv and cwd:
+                found = _transcript_name(transcript_dir(home, cwd) / f"{conv}.jsonl")
+                if found:
+                    return Name(conv, *found)
+            if conv:
+                return Name(conv)
+            if resume and NAME_RE.match(resume):
+                return Name(None, clean(resume), "user")
+            return Name()
+        return lookup
+
+
+def _transcript_name(path: Path) -> tuple[str, str] | None:
+    custom = ai = None
+    for r in tail_records(path, needle=b'Title"'):
+        if r.get("type") == "custom-title":
+            custom = clean(r.get("customTitle")) or custom
+        elif r.get("type") == "ai-title":
+            ai = clean(r.get("aiTitle")) or ai
+    if custom:
+        return custom, "user"
+    return (ai, "tool") if ai else None
 
 
 class Usage:

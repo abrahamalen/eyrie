@@ -1,4 +1,5 @@
 """Codex: `codex`, state in ~/.codex (config.toml, state_5.sqlite)."""
+import json
 import sqlite3
 import tomllib
 from contextlib import closing
@@ -6,12 +7,45 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.config import Settings
+from app.sessions.names import NAME_RE, UUID_RE, Name, clean
 from app.tools._mcp import entry
 from app.tools.base import Tool
 
 
 def _db(settings: Settings) -> Path:
     return settings.paths.codex_home / "state_5.sqlite"
+
+
+_index_cache: dict[Path, tuple[tuple[int, float], dict[str, str]]] = {}
+
+
+def thread_names(settings: Settings) -> dict[str, str]:
+    """~/.codex/session_index.jsonl: one line per rename, {id, thread_name, updated_at}; the
+    last line for an id wins. Cached on (size, mtime)."""
+    path = settings.paths.codex_home / "session_index.jsonl"
+    try:
+        st = path.stat()
+    except OSError:
+        return {}
+    key = (st.st_size, st.st_mtime)
+    hit = _index_cache.get(path)
+    if hit and hit[0] == key:
+        return hit[1]
+    names: dict[str, str] = {}
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError:
+        return {}
+    for line in lines:
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        name = clean(d.get("thread_name")) if isinstance(d, dict) else None
+        if name and isinstance(d.get("id"), str):
+            names[d["id"]] = name
+    _index_cache[path] = (key, names)
+    return names
 
 
 class Sessions:
@@ -49,6 +83,44 @@ class Sessions:
                 return {Path(r[0]) for r in con.execute("SELECT DISTINCT cwd FROM threads WHERE cwd IS NOT NULL")}
         except sqlite3.Error:
             return set()
+
+    def names(self, settings: Settings):
+        """Thread names from session_index.jsonl (Codex doesn't record whether you or it named
+        a thread, so they're all "tool"). Codex leaves no per-process trace, so without a
+        resume id the thread is a guess: the newest one in that directory touched since the
+        process started."""
+        names = thread_names(settings)
+        recent: list[tuple[str, str, int]] | None = None
+
+        def threads() -> list[tuple[str, str, int]]:
+            nonlocal recent
+            if recent is None:
+                recent = []
+                db = _db(settings)
+                if db.exists():
+                    try:
+                        with closing(sqlite3.connect(f"file:{db}?mode=ro", uri=True)) as con:
+                            recent = con.execute("SELECT id, cwd, updated_at FROM threads ORDER BY updated_at DESC LIMIT 500").fetchall()
+                    except sqlite3.Error:
+                        pass
+            return recent
+
+        def lookup(pid, cwd, conversation_id, resume, started):
+            conv, exact = conversation_id, True
+            if not conv and resume:
+                if UUID_RE.match(resume):
+                    conv = resume
+                elif NAME_RE.match(resume):
+                    conv = next((i for i, n in names.items() if n == resume), None)
+            if not conv and cwd and started:
+                since = started.timestamp() - 5
+                conv = next((i for i, c, upd in threads() if c == cwd and (upd or 0) >= since), None)
+                exact = False
+            if not conv:
+                return Name()
+            name = names.get(conv)
+            return Name(conv, name, "tool" if name else "id", exact)
+        return lookup
 
 
 def _usage_row(key: str, ts: str, state: dict, u: dict):

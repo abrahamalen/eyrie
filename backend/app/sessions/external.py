@@ -7,15 +7,20 @@ background pty hosts, app servers) are skipped. Sessions Eyrie started itself ar
 excluded here because they're listed (and controllable) as Eyrie sessions.
 
 Only the tool and a resume target are taken from each command line: arguments can contain a
-prompt, and Eyrie doesn't read or show those.
+prompt, and Eyrie doesn't read or show those. The parent processes are classified (which
+terminal hosts the session: sessions/focus.py) and only the classification is kept.
 """
 import os
 import re
 import subprocess
 import sys
+from collections import Counter
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 from app.config import Settings
+from app.sessions import focus
+from app.sessions.names import display
 from app.tools import TOOLS, enabled
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -33,14 +38,26 @@ def _etime_seconds(v: str) -> int:
     return int(days) * 86400 + h * 3600 + m * 60 + s
 
 
-def parse_ps(output: str, tools=None) -> list[dict]:
-    """Rows of `ps -axo pid=,tty=,etime=,command=` → interactive sessions of the known tools."""
-    found = []
+def _rows(output: str):
+    """`ps -axo pid=,ppid=,tty=,etime=,command=` rows (ppid optional) → (pid, ppid, tty, etime, command)."""
     for line in output.splitlines():
-        cols = line.split(None, 3)
-        if len(cols) < 4:
-            continue
-        pid, tty, etime, command = cols
+        cols = line.split(None, 4)
+        if len(cols) == 5 and cols[0].isdigit() and cols[1].isdigit():
+            yield cols[0], int(cols[1]), cols[2], cols[3], cols[4]
+        elif len(cols) >= 4:
+            cols = line.split(None, 3)
+            yield cols[0], 0, cols[1], cols[2], cols[3]
+
+
+def process_table(output: str) -> dict[int, tuple[int, str]]:
+    """pid → (ppid, command), to find which terminal a session runs in."""
+    return {int(pid): (ppid, command) for pid, ppid, _, _, command in _rows(output) if pid.isdigit()}
+
+
+def parse_ps(output: str, tools=None) -> list[dict]:
+    """Rows of `ps -axo pid=,ppid=,tty=,etime=,command=` → interactive sessions of the known tools."""
+    found = []
+    for pid, _, tty, etime, command in _rows(output):
         if tty in ("?", "??", "-"):
             continue  # no terminal: a daemon or helper
         args = command.split()
@@ -51,8 +68,9 @@ def parse_ps(output: str, tools=None) -> list[dict]:
         if tool is None or (len(args) > 1 and args[1] in tool.sessions.helpers):
             continue
         resume = None
-        for flag in ("--resume", "-r", "resume"):
-            if flag in args[1:]:
+        # `claude attach <id>` is a terminal on a background session: the id is its target too.
+        for flag in ("--resume", "-r", "resume", "attach"):
+            if flag in args[1:] and (flag != "attach" or args[1] == "attach"):
                 i = args.index(flag, 1)
                 target = args[i + 1] if i + 1 < len(args) else None
                 if target and (UUID_RE.match(target) or (NAME_RE.match(target) and not target.startswith("-"))):
@@ -67,7 +85,7 @@ def parse_ps(output: str, tools=None) -> list[dict]:
 
 def _ps() -> str:
     try:
-        return subprocess.run(["ps", "-axo", "pid=,tty=,etime=,command="], capture_output=True, text=True,
+        return subprocess.run(["ps", "-axo", "pid=,ppid=,tty=,etime=,command="], capture_output=True, text=True,
                               timeout=5, stdin=subprocess.DEVNULL).stdout
     except (OSError, subprocess.TimeoutExpired):
         return ""
@@ -98,35 +116,73 @@ def _cwds(pids: list[int]) -> dict[int, str]:
     return out
 
 
+def session_href(pid: int, tool: str, conversation_id: str | None) -> str:
+    """The app's link to an external session; tool + id let the page offer the resume command
+    if it has ended by the time the link is opened."""
+    q = {"ext": pid, "tool": tool, **({"id": conversation_id} if conversation_id else {})}
+    return "/sessions?" + urlencode(q)
+
+
 class ExternalSessions:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._cwd_cache: dict[int, str] = {}
+        # From the latest listing: each session's host, and the process table (for tmux clients).
+        self.hosts: dict[int, focus.Host] = {}
+        self.table: dict[int, tuple[int, str]] = {}
+
+    def find(self, pid: int, tty: str, exclude_pids: set[int] = frozenset()) -> dict | None:
+        """A fresh listing's session with this pid on this tty, or None."""
+        return next((s for s in self.list(exclude_pids) if s["pid"] == pid and s["tty"] == tty), None)
 
     def list(self, exclude_pids: set[int] = frozenset()) -> list[dict]:
         now = datetime.now(timezone.utc)
-        procs = [p for p in parse_ps(_ps(), enabled(self.settings)) if p["pid"] not in exclude_pids]
+        ps = _ps()
+        self.table = process_table(ps)
+        procs = [p for p in parse_ps(ps, enabled(self.settings)) if p["pid"] not in exclude_pids]
         missing = [p["pid"] for p in procs if p["pid"] not in self._cwd_cache]
         self._cwd_cache.update(_cwds(missing))
         live = {p["pid"] for p in procs}
         self._cwd_cache = {k: v for k, v in self._cwd_cache.items() if k in live}
-        lookups = {t: TOOLS[t].sessions.activity(self.settings) for t in {p["tool"] for p in procs}}
+        tools = {p["tool"] for p in procs}
+        lookups = {t: TOOLS[t].sessions.activity(self.settings) for t in tools}
+        namers = {t: TOOLS[t].sessions.names(self.settings) for t in tools}
+        hosts = {}
         out = []
         for p in procs:
             cwd = self._cwd_cache.get(p["pid"])
-            last, exact = lookups[p["tool"]](cwd, p["resume"])
+            started = now - timedelta(seconds=p["age_seconds"])
+            n = namers[p["tool"]](p["pid"], cwd, None, p["resume"], started)
+            # Once the conversation is known (Claude's pid file), its activity is exact too.
+            last, exact = lookups[p["tool"]](cwd, n.conversation_id if n.exact and n.conversation_id else p["resume"])
+            name, source = display(n, f"{TOOLS[p['tool']].title} · {p['tty']}")
+            host = hosts[p["pid"]] = focus.detect(self.table, p["pid"])
             out.append({
                 "pid": p["pid"],
                 "tool": p["tool"],
                 "tty": p["tty"],
                 "cwd": cwd,
                 "resume": p["resume"],
-                "started": (now - timedelta(seconds=p["age_seconds"])).isoformat(timespec="seconds"),
+                "started": started.isoformat(timespec="seconds"),
                 "last_activity": last.isoformat(timespec="seconds") if last else None,
                 "idle_minutes": int((now - last).total_seconds() // 60) if last else None,
                 # True when tied to this exact conversation (resumed by id); otherwise it's the
                 # newest activity of the same tool in the same directory.
                 "activity_exact": exact,
+                "conversation_id": n.conversation_id,
+                "display_name": name,
+                "name_source": source,
+                "name_exact": n.exact,
+                "terminal": host.label if host is not focus.UNKNOWN else None,
+                "focus": host.focus if focus.TTY_RE.match(p["tty"]) else "none",
+                "href": session_href(p["pid"], p["tool"], n.conversation_id if n.exact else None),
             })
+        self.hosts = hosts
+        # A guess shared by two processes (several sessions in one directory) is no guess at all.
+        guesses = Counter((s["tool"], s["conversation_id"]) for s in out if not s["name_exact"])
+        for s in out:
+            if not s["name_exact"] and guesses[(s["tool"], s["conversation_id"])] > 1:
+                s.update(conversation_id=None, display_name=f"{TOOLS[s['tool']].title} · {s['tty']}",
+                         name_source="none", name_exact=True)
         out.sort(key=lambda s: s["last_activity"] or s["started"], reverse=True)
         return out

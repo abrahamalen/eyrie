@@ -131,15 +131,14 @@ export function WidgetPanel() {
 
       <Section title="Sessions">
         {s.sessions.map((x) => {
-          const idle = s.attention.some((a) => a.kind === 'session_idle' && a.href === `/sessions?open=${x.name}`)
+          const idle = s.attention.some((a) => a.kind === 'session_idle' && a.href === x.href)
+          const named = x.name_source === 'user' || x.name_source === 'tool'
+          const state = !x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${x.idle_minutes} min ago` : 'running'
           return (
-            <Row key={x.pid ?? x.name} dot={!x.alive ? (x.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} mono title={x.name}
-              sub={`${toolTitle(x.tool)} · ${shortPath(x.project ?? '').split('/').pop() || '~'} · ${!x.alive ? 'exited' : idle ? `idle ${x.idle_minutes} min` : !x.managed && x.idle_minutes ? `active ${x.idle_minutes} min ago` : 'running'}`}>
-              {x.managed ? (
-                <button className={ghost} onClick={() => bridge.open(`/sessions?open=${x.name}`)}>Open</button>
-              ) : (
-                <span className="font-mono text-[11.5px] text-muted-foreground" title="Running in one of your terminals">{x.tty}</span>
-              )}
+            <Row key={x.pid ?? x.name} dot={!x.alive ? (x.exit_status ? 'problem' : 'ok') : idle ? 'attention' : 'ok'} mono={!named}
+              title={x.display_name} onClick={() => bridge.open(x.href)}
+              sub={`${toolTitle(x.tool)} · ${shortPath(x.project ?? '').split('/').pop() || '~'} · ${x.managed ? state : `${x.tty} · ${state}`}`}>
+              <span className="text-[12px] text-muted-foreground">Open</span>
             </Row>
           )
         })}
@@ -248,15 +247,25 @@ function Section({ title, accent, children }: { title: string; accent?: boolean;
   )
 }
 
-function Row({ dot, title, sub, mono, children }: { dot: string; title: string; sub?: string; mono?: boolean; children?: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 items-center gap-2.5 py-1">
+function Row({ dot, title, sub, mono, onClick, children }: {
+  dot: string; title: string; sub?: string; mono?: boolean; onClick?: () => void; children?: React.ReactNode
+}) {
+  const body = (
+    <>
       <Dot tone={dot} />
       <div className="min-w-0 flex-1">
         <div className={`truncate text-[13px] font-medium ${mono ? 'font-mono text-[12.5px]' : ''}`}>{title}</div>
         {sub && <div className="truncate text-[11.5px] text-muted-foreground">{sub}</div>}
       </div>
       {children}
-    </div>
+    </>
+  )
+  // A whole row is the click target when it opens something (a session in the app).
+  return onClick ? (
+    <button type="button" onClick={onClick} className="-mx-1.5 flex min-w-0 items-center gap-2.5 rounded-md px-1.5 py-1 text-left hover:bg-accent">
+      {body}
+    </button>
+  ) : (
+    <div className="flex min-w-0 items-center gap-2.5 py-1">{body}</div>
   )
 }

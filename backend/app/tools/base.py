@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from app.config import Settings
+    from app.sessions.names import Name
 
 # (last activity, exact): exact when tied to this very conversation, not just its directory.
 Activity = tuple[datetime | None, bool]
@@ -36,6 +37,11 @@ class SessionCaps(Protocol):
 
     def known_dirs(self, settings: "Settings") -> set[Path]:
         """Directories this tool has been used in (where sessions may start)."""
+
+    def names(self, settings: "Settings") -> Callable[..., "Name"]:
+        """A lookup (pid, cwd, conversation id, resume target, started) → Name, built once per
+        listing: the conversation and the name you (or the tool) gave it, from the tool's own
+        files (docs/session-names-and-jump.md §3)."""
 
 
 # A usage row as the index stores it, minus the tool column:

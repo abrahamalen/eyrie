@@ -78,16 +78,19 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
         idle = _minutes_since(s["last_output"], now) if s["alive"] else None
         sessions.append({"name": s["name"], "tool": s["tool"], "project": s["cwd"], "alive": s["alive"],
                          "exit_status": s["exit_status"], "idle_minutes": idle, "last_output": s["last_output"],
-                         "managed": True, "tty": None, "pid": None})
+                         "managed": True, "tty": None, "pid": None, "display_name": s["display_name"],
+                         "name_source": s["name_source"], "conversation_id": s["conversation_id"],
+                         "href": f"/sessions?open={s['name']}"})
+        label = s["display_name"] if s["name_source"] in ("user", "tool") else s["name"]
         tool = TOOLS[s["tool"]].title if s["tool"] in TOOLS else (s["tool"] or "Unknown tool")
         where = s["cwd"] or "unknown directory"
         if not s["alive"] and s["exit_status"] not in (None, 0):
             attention.append({"kind": "session_exited_error", "severity": "problem",
-                              "title": f"{s['name']} exited with code {s['exit_status']}", "detail": f"{tool} · {where}",
+                              "title": f"{label} exited with code {s['exit_status']}", "detail": f"{tool} · {where}",
                               "href": f"/sessions?open={s['name']}", "since": s["last_output"]})
         elif idle is not None and idle >= settings.sessions.idle_minutes:
             attention.append({"kind": "session_idle", "severity": "attention",
-                              "title": f"{s['name']} has been idle {idle} min",
+                              "title": f"{label} has been idle {idle} min",
                               "detail": f"Probably waiting for you · {tool} · {where}",
                               "href": f"/sessions?open={s['name']}", "since": s["last_output"]})
 
@@ -96,7 +99,8 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
     for e in snap.get("external", []):
         sessions.append({"name": f"{e['tool']} · {e['tty']}", "tool": e["tool"], "project": e["cwd"], "alive": True,
                          "exit_status": None, "idle_minutes": e["idle_minutes"], "last_output": e["last_activity"],
-                         "managed": False, "tty": e["tty"], "pid": e["pid"]})
+                         "managed": False, "tty": e["tty"], "pid": e["pid"], "display_name": e["display_name"],
+                         "name_source": e["name_source"], "conversation_id": e["conversation_id"], "href": e["href"]})
 
     # MCP: only servers you configured (hidden ones are already filtered by the source)
     mcp = registry.get("mcp")

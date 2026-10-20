@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -66,7 +67,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         s = app.state.settings
         features = {"tasks": s.paths.tasks is not None,
                     "agent_memory": "claude" in on and s.paths.memory.is_dir(),
-                    "mcp": any(TOOLS[t].mcp for t in on), "plugins": any(TOOLS[t].plugins for t in on)}
+                    "mcp": any(TOOLS[t].mcp for t in on), "plugins": any(TOOLS[t].plugins for t in on),
+                    "terminal_windows": sys.platform == "darwin"}
         return {"home": str(Path.home()), "version": __version__, "configured": active_config().exists(),
                 "features": features, "tools": tools}
 

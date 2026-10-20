@@ -17,9 +17,14 @@ CONF = """# Written by Eyrie; read when Eyrie's tmux server starts.
 set -g remain-on-exit on
 set -g history-limit 50000
 set -g mouse on
+# The default status-right is the pane title, which shows the machine's hostname.
+set -g status-left ""
+set -g status-right " #{session_name} · %H:%M "
+# Windows follow the newest client, so the status line spans the terminal you're looking at.
+set -g window-size latest
 """
 FIELDS = ["session_name", "@eyrie_tool", "@eyrie_cwd", "@eyrie_mode", "@eyrie_conv", "session_created",
-          "session_activity", "session_attached", "pane_dead", "pane_dead_status", "pane_current_command"]
+          "session_activity", "session_attached", "pane_dead", "pane_dead_status", "pane_current_command", "pane_pid"]
 
 
 def conf_path(settings: Settings) -> Path:
@@ -73,6 +78,7 @@ class Tmux:
                 "exit_status": int(v["pane_dead_status"]) if dead and v.get("pane_dead_status", "").lstrip("-").isdigit() else None,
                 "command": v.get("pane_current_command") or None,
                 "attach": attach_command(self.settings, v["session_name"]),
+                "pid": int(v["pane_pid"]) if v.get("pane_pid", "").isdigit() else None,
             })
         out.sort(key=lambda s: s["created"] or "", reverse=True)
         return out

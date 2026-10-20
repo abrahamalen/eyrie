@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import tomllib
 from pathlib import Path
 
@@ -100,8 +101,10 @@ def test_toml_writer_round_trips_awkward_values():
 
 def test_features_follow_what_the_machine_has(authed, home, fake_cli):
     f = authed.get("/api/v1/meta").json()["features"]
+    assert f.pop("terminal_windows") is (sys.platform == "darwin")
     assert f == {"tasks": True, "agent_memory": True, "mcp": True, "plugins": True}  # Claude used, memory folder there
     put(authed, {"tools_enabled": []})
     f = authed.get("/api/v1/meta").json()["features"]
+    f.pop("terminal_windows")
     assert f == {"tasks": False, "agent_memory": False, "mcp": False, "plugins": False}
     assert authed.get("/api/v1/summary").json()["tasks"] is None

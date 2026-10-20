@@ -7,7 +7,7 @@ import type { Meta, ToolInfo } from '@/api/types'
 type Features = Meta['features']
 
 let tools: ToolInfo[] = []
-let features: Features = { tasks: true, agent_memory: true, mcp: true, plugins: true }
+let features: Features = { tasks: true, agent_memory: true, mcp: true, plugins: true, terminal_windows: false }
 // Assume configured until /meta says otherwise, so a backend that's down never forces setup.
 let configured = true
 let version = 0

@@ -35,7 +35,7 @@ def screen(name: str, request: Request, lines: int = Query(80, ge=10, le=2000)):
 
 
 @router.websocket("/{name}/term")
-async def terminal(ws: WebSocket, name: str, readonly: bool = False):
+async def terminal(ws: WebSocket, name: str, readonly: bool = False, cols: int = 120, rows: int = 32):
     """Interactive terminal attached to an Eyrie session (auth: LocalOnlyMiddleware)."""
     state = ws.app.state
     sessions = state.registry.get("sessions")
@@ -49,7 +49,8 @@ async def terminal(ws: WebSocket, name: str, readonly: bool = False):
     await ws.accept(subprotocol=WS_PROTOCOL if WS_PROTOCOL in offered else None)
     started = time.perf_counter()
     try:
-        reason = await bridge(ws, state.settings, tmux_bin, name, readonly)
+        # Attach at the browser's size from the start, so tmux resizes the window once.
+        reason = await bridge(ws, state.settings, tmux_bin, name, readonly, (cols, rows))
     except TooManyTerminals:
         await ws.close(code=4429, reason="Too many open terminals")
         return

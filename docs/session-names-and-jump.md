@@ -47,7 +47,7 @@ Rules: the pid file wins when its `pid` matches and `kind` is `interactive`. `na
 | `~/.codex/session_index.jsonl` | Append-only, one line per change: `{"id":"01a13480-…","thread_name":"Understand repo for production","updated_at":"…"}`; last line per id wins | id → name (source `tool`: Codex doesn't record whether you or it named the thread) |
 | `state_5.sqlite` `threads` (read-only, as today) | `id, cwd, created_at, updated_at, title` where `title` is the **first prompt** | id ↔ cwd; never shown as a name (it's prompt text) |
 
-Codex writes no pid file and doesn't hold the rollout open, so a pid maps to a thread only by: the `resume <uuid>` argument (exact), Eyrie's `@eyrie_conv` (exact), else the newest thread in the same cwd updated since the process started (`exact: false`, shown with `~`).
+Codex writes no pid file and doesn't hold the rollout open, so a pid maps to a thread only by: the `resume <uuid>` argument (exact), Eyrie's `@eyrie_conv` (exact), else the newest thread in the same cwd updated since the process started (`exact: false`, shown with `~`). When two running sessions would get the same guess (several in one directory), neither does: they fall back to the label.
 
 ### 3.3 Gemini CLI
 
@@ -121,6 +121,7 @@ ExternalSession     + conversation_id: str | None, display_name: str, name_sourc
                       focus: "tab" | "pane" | "app" | "none"
                       href: str                       # /sessions?ext=…
 SummarySession      + display_name, name_source, conversation_id, href
+Features            + terminal_windows: bool          # macOS: offer "Open in Terminal / iTerm2"
 ```
 
 New actions in `actions/registry.py` (both non-destructive, token-protected like every action, audited):
