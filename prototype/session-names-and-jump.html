@@ -1,0 +1,494 @@
+<meta charset="utf-8">
+<title>Eyrie Session Names</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@1&display=swap">
+<style>
+/* Layout: one switcher over four stages (Sessions page, deep link to an ended session, widget panel, tray menu). Styles copied from home-and-widget.html so the two prototypes match. */
+:root {
+  --paper: hsl(40 25% 97%); --card: hsl(0 0% 100%); --ink: hsl(222 30% 14%); --sub: hsl(220 12% 40%);
+  --line: hsl(35 15% 85%); --tint: hsl(35 22% 91%); --soft: hsl(35 20% 93%); --hover: hsl(35 20% 94%);
+  --accent: hsl(192 82% 30%); --accent-ink: hsl(0 0% 100%);
+  --ok: hsl(150 55% 36%); --warn: hsl(36 90% 44%); --bad: hsl(4 70% 48%);
+  --code-bg: hsl(222 32% 13%); --code-fg: hsl(220 14% 90%);
+  --overlay: hsl(222 30% 14% / 40%); --pop: hsl(40 25% 98% / 94%);
+  --mac-bar: hsl(40 25% 97% / 70%); --mac-fg: hsl(222 30% 14%);
+  --wall-a: hsl(200 60% 80%); --wall-b: hsl(260 45% 78%); --wall-c: hsl(30 70% 86%);
+  --gnome-bar: hsl(0 0% 9%); --gnome-fg: hsl(0 0% 96%); --gnome-menu: hsl(300 4% 17%); --gnome-hover: hsl(300 5% 25%);
+  --ubu-a: hsl(320 45% 32%); --ubu-b: hsl(22 80% 48%);
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+}
+:root[data-accent="rust"] { --accent: hsl(18 84% 38%); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: hsl(222 28% 9%); --card: hsl(222 23% 12%); --ink: hsl(40 20% 94%); --sub: hsl(220 12% 70%);
+    --line: hsl(222 17% 25%); --tint: hsl(222 20% 16%); --soft: hsl(222 20% 15%); --hover: hsl(222 20% 17%);
+    --accent: hsl(190 75% 60%); --accent-ink: hsl(222 28% 9%);
+    --ok: hsl(150 50% 55%); --warn: hsl(40 90% 62%); --bad: hsl(4 80% 64%);
+    --code-bg: hsl(222 30% 7%); --overlay: hsl(0 0% 0% / 55%); --pop: hsl(222 23% 12% / 94%);
+    --mac-bar: hsl(222 28% 9% / 70%); --mac-fg: hsl(40 20% 94%);
+    --wall-a: hsl(215 45% 24%); --wall-b: hsl(265 35% 22%); --wall-c: hsl(25 40% 26%);
+    color-scheme: dark;
+  }
+  :root:not([data-theme="light"])[data-accent="rust"] { --accent: hsl(24 95% 65%); }
+}
+:root[data-theme="dark"] {
+  --paper: hsl(222 28% 9%); --card: hsl(222 23% 12%); --ink: hsl(40 20% 94%); --sub: hsl(220 12% 70%);
+  --line: hsl(222 17% 25%); --tint: hsl(222 20% 16%); --soft: hsl(222 20% 15%); --hover: hsl(222 20% 17%);
+  --accent: hsl(190 75% 60%); --accent-ink: hsl(222 28% 9%);
+  --ok: hsl(150 50% 55%); --warn: hsl(40 90% 62%); --bad: hsl(4 80% 64%);
+  --code-bg: hsl(222 30% 7%); --overlay: hsl(0 0% 0% / 55%); --pop: hsl(222 23% 12% / 94%);
+  --mac-bar: hsl(222 28% 9% / 70%); --mac-fg: hsl(40 20% 94%);
+  --wall-a: hsl(215 45% 24%); --wall-b: hsl(265 35% 22%); --wall-c: hsl(25 40% 26%);
+  color-scheme: dark;
+}
+:root[data-theme="dark"][data-accent="rust"] { --accent: hsl(24 95% 65%); }
+
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; margin: 0; -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+::selection { background: color-mix(in hsl, var(--accent) 20%, transparent); }
+.mono { font-family: var(--mono); }
+.sub { color: var(--sub); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sub); display: inline-flex; gap: 10px; align-items: center; }
+.eyebrow.acc { color: var(--accent); }
+.eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.serif { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--accent); letter-spacing: -0.01em; }
+
+/* proto chrome */
+.proto { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--paper); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 40; background: var(--paper); }
+.proto .in { max-width: 1240px; margin: 0 auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+.proto .label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sub); margin-right: auto; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--card); }
+.seg button { border: 0; background: none; padding: 5px 11px; cursor: pointer; font-size: 13px; color: var(--sub); }
+.seg button[aria-pressed="true"] { background: var(--soft); color: var(--ink); font-weight: 500; }
+.note { max-width: 1240px; margin: 14px auto 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: 13px; color: var(--sub); }
+
+/* shared controls */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--card); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; color: var(--ink); }
+.btn:hover { background: var(--hover); }
+.btn.ink { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.ink:hover { opacity: 0.9; }
+.btn.sm { padding: 4px 10px; font-size: 13px; border-radius: 7px; }
+.btn.ghost { border-color: transparent; background: none; }
+.link { color: var(--ink); text-decoration: none; font-weight: 500; font-size: 13.5px; display: inline-flex; gap: 4px; align-items: center; }
+.link:hover { color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.cmd { background: var(--tint); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: var(--ink); overflow-x: auto; white-space: pre; }
+.cmd-wrap { display: flex; flex-direction: column; gap: 8px; }
+.copy { align-self: flex-start; border: 0; background: none; color: var(--accent); font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; padding: 0; }
+.chip { display: inline-flex; border-radius: 6px; padding: 2px 8px; font-size: 12px; background: var(--soft); color: var(--sub); }
+.sev { width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block; }
+.sev.problem { background: var(--bad); } .sev.attention { background: var(--warn); } .sev.ok { background: var(--ok); }
+.ico { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- landing ---------- */
+.site { background: var(--paper); }
+.site-head { border-bottom: 1px solid var(--line); }
+.site-head .in, .section .in, .site-foot .in { max-width: 1200px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.site-head .in { display: flex; align-items: center; gap: 14px; padding-block: 16px; flex-wrap: wrap; }
+.logo { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; }
+.logo .tile { width: 30px; height: 30px; border-radius: 8px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; letter-spacing: -0.04em; }
+.logo .tile b { color: var(--accent); }
+.logo .name { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+.logo .tag { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--sub); border-left: 1px solid var(--line); padding-left: 12px; }
+.site-nav { display: flex; gap: 22px; margin: 0 auto; font-size: 14px; color: var(--sub); }
+.site-nav a { text-decoration: none; }
+.site-nav a:hover { color: var(--ink); }
+.section { padding-block: 72px; border-bottom: 1px solid var(--line); }
+.section:last-of-type { border-bottom: 0; }
+.hero .in { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 56px; align-items: center; }
+.hero h1 { font-size: clamp(42px, 6.2vw, 78px); line-height: 0.98; letter-spacing: -0.045em; font-weight: 700; margin-top: 22px; }
+.hero h1 .serif { font-size: 1.04em; }
+.hero .lede { font-size: 19px; color: var(--sub); max-width: 34em; margin-top: 26px; line-height: 1.55; }
+.hero .ctas { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+.hero .fine { font-family: var(--mono); font-size: 12px; color: var(--sub); margin-top: 22px; }
+.deal { padding: 28px 30px; }
+.deal-head { display: flex; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.deal-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 4px; padding-top: 22px; }
+.deal-row .n { font-family: var(--mono); font-size: 12px; color: var(--sub); padding-top: 3px; }
+.deal-row h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.deal-row p { color: var(--sub); font-size: 14.5px; margin-top: 4px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stats > div { padding: 22px 24px; border-left: 1px solid var(--line); }
+.stats > div:first-child { border-left: 0; padding-left: 0; }
+.stats .v { font-family: var(--mono); font-size: 26px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.stats .k { font-size: 13px; color: var(--sub); margin-top: 2px; }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; margin-bottom: 36px; }
+.sec-head h2 { font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -0.035em; line-height: 1.05; font-weight: 700; margin-top: 14px; }
+.sec-head p { color: var(--sub); font-size: 16px; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.feature { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.feature .top { display: flex; justify-content: space-between; align-items: center; }
+.feature .badge-ico { width: 38px; height: 38px; border-radius: 10px; background: var(--soft); border: 1px solid var(--line); display: grid; place-items: center; color: var(--accent); }
+.feature h3 { font-size: 19px; letter-spacing: -0.02em; font-weight: 600; }
+.feature p { color: var(--sub); font-size: 14.5px; flex: 1; }
+.feature .cmd { white-space: pre-wrap; word-break: break-word; }
+.feature .foot { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--sub); border-top: 1px solid var(--line); padding-top: 12px; }
+.steps { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); padding: 0; overflow: hidden; }
+.steps .left { padding: 36px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 18px; }
+.steps .right { padding: 36px; }
+.tl { display: flex; flex-direction: column; }
+.tl-item { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 16px; position: relative; padding-bottom: 26px; }
+.tl-item:last-child { padding-bottom: 0; }
+.tl-item::before { content: ""; position: absolute; left: 17.5px; top: 36px; bottom: 0; width: 1px; background: var(--line); }
+.tl-item:last-child::before { display: none; }
+.tl-ico { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--soft); display: grid; place-items: center; }
+.tl-item h3 { font-size: 16px; font-weight: 600; }
+.tl-item p { color: var(--sub); font-size: 14.5px; margin-top: 2px; }
+.tl-item .tags { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-top: 6px; }
+.safety { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+.safety > div { padding: 22px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; }
+.safety > div:nth-child(odd) { padding-right: 32px; }
+.safety > div:nth-child(even) { padding-left: 32px; border-left: 1px solid var(--line); }
+.safety h3 { font-size: 16px; font-weight: 600; }
+.safety p { color: var(--sub); font-size: 14.5px; margin-top: 2px; }
+.install { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.install .card { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
+.install h3 { font-size: 17px; font-weight: 600; }
+.soon { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; color: var(--sub); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.site-foot { padding-block: 28px; border-top: 1px solid var(--line); }
+.site-foot .in { display: flex; gap: 18px; font-size: 13px; color: var(--sub); flex-wrap: wrap; }
+
+/* ---------- app shell ---------- */
+.app { max-width: 1240px; margin: 16px auto 40px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper); }
+.wrapx { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.app-head { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--paper); flex-wrap: wrap; }
+.app-head .logo .name { font-size: 16px; }
+.app-head .logo .tile { width: 26px; height: 26px; font-size: 14px; border-radius: 7px; }
+.status-pill { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px; }
+.app-body { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 720px; }
+.app-side { border-right: 1px solid var(--line); padding: 18px 12px; display: flex; flex-direction: column; gap: 18px; }
+.app-side .grp { display: flex; flex-direction: column; gap: 1px; }
+.app-side .glabel { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sub); padding: 0 10px 6px; }
+.app-side a { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 8px; text-decoration: none; font-size: 14px; color: var(--ink); }
+.app-side a:hover { background: var(--hover); }
+.app-side a[aria-current] { background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-weight: 500; }
+.app-side a[aria-current] .ico { color: var(--accent); }
+.app-side .count { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--sub); }
+.app-main { padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.page-head { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
+.page-head h1 { font-size: 34px; letter-spacing: -0.035em; font-weight: 700; margin-top: 8px; line-height: 1.05; }
+.page-head p { color: var(--sub); margin-top: 6px; max-width: 60ch; }
+.page-head .act { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.panel-head .right { margin-left: auto; }
+.panel-body { padding: 8px 20px 16px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.lrow { display: flex; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.lrow:last-child { border-bottom: 0; }
+.lrow .grow { flex: 1; min-width: 0; }
+.lrow .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lrow .m { font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+.mstats > div { padding: 16px 20px; border-left: 1px solid var(--line); }
+.mstats > div:first-child { border-left: 0; }
+.mstats .v { font-family: var(--mono); font-size: 24px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.mstats .k { font-size: 13px; color: var(--sub); }
+.spark text { fill: var(--sub); font-size: 10px; font-family: var(--mono); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-top: 12px; }
+.pchip { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 3px 11px; font-size: 12.5px; font-family: var(--mono); cursor: pointer; }
+.pchip:hover { border-color: var(--accent); color: var(--accent); }
+.task { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.task input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+.add { display: flex; gap: 8px; padding-top: 12px; }
+.add input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--paper); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; padding: 12px 0; }
+.tools span { display: inline-flex; gap: 7px; align-items: center; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sub); font-weight: 500; padding: 12px 20px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 13px 20px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+tr[aria-selected="true"] td { background: var(--soft); }
+.table-wrap { overflow-x: auto; }
+.term { background: var(--code-bg); color: var(--code-fg); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); }
+.term .bar { display: flex; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid hsl(0 0% 100% / 8%); font-family: var(--mono); font-size: 12px; color: hsl(220 10% 65%); }
+.term pre { margin: 0; padding: 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.65; min-height: 220px; white-space: pre-wrap; }
+.term .acc { color: hsl(190 75% 65%); } .term .ok { color: hsl(150 50% 60%); } .term .d { color: hsl(220 10% 55%); }
+.term-foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--card); color: var(--sub); font-size: 13px; }
+
+/* ---------- desktop stages ---------- */
+.stage { position: relative; max-width: 1240px; margin: 16px auto 40px; border-radius: 14px; overflow: hidden; min-height: 640px; border: 1px solid var(--line); }
+.stage.mac { background: radial-gradient(110% 90% at 0% 100%, var(--wall-c), transparent 60%), linear-gradient(140deg, var(--wall-a), var(--wall-b)); }
+.stage.ubu { background: linear-gradient(140deg, var(--ubu-a), var(--ubu-b)); }
+.menubar { display: flex; align-items: center; gap: 14px; height: 30px; padding: 0 12px; font-size: 13px; position: relative; z-index: 3; }
+.mac .menubar { background: var(--mac-bar); color: var(--mac-fg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.ubu .menubar { background: var(--gnome-bar); color: var(--gnome-fg); height: 32px; justify-content: space-between; }
+.menubar .items { display: flex; gap: 14px; align-items: center; }
+.menubar .status { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+.ubu .menubar .status { margin-left: 0; }
+.tray { display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; padding: 2px 7px; border-radius: 5px; cursor: pointer; color: inherit; position: relative; font-variant-numeric: tabular-nums; font-family: var(--sans); }
+.tray:hover, .tray[aria-expanded="true"] { background: hsl(0 0% 50% / 22%); }
+.tray svg { width: 17px; height: 17px; }
+.badge { position: absolute; top: 1px; left: 17px; width: 7px; height: 7px; border-radius: 50%; }
+.badge.attention { background: var(--warn); } .badge.problem { background: var(--bad); }
+.fake { width: 15px; height: 15px; opacity: 0.85; }
+.desk-hint { position: absolute; left: 24px; bottom: 22px; color: hsl(0 0% 100% / 88%); font-size: 13px; max-width: 48ch; text-shadow: 0 1px 2px hsl(0 0% 0% / 40%); }
+.pop { position: absolute; top: 38px; right: 14px; width: 368px; max-width: calc(100% - 28px); background: var(--pop); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 60px hsl(222 30% 10% / 30%); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); z-index: 5; overflow: hidden; }
+.ubu .pop { top: 42px; }
+.pop-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; border-bottom: 1px solid var(--line); }
+.pop-head .tile { width: 22px; height: 22px; border-radius: 6px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+.pop-head .tile b { color: var(--accent); }
+.pop-head .st { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--sub); }
+.pop-sec { padding: 10px 16px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.pop-sec .eyebrow { font-size: 10.5px; margin-bottom: 4px; }
+.prow { display: flex; gap: 10px; align-items: center; padding: 5px 0; min-width: 0; }
+.prow .grow { flex: 1; min-width: 0; }
+.prow .t { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow .m { font-size: 12px; color: var(--sub); }
+.pop-foot { display: flex; gap: 6px; padding: 12px 16px; flex-wrap: wrap; }
+.pop-foot .btn:last-child { margin-left: auto; }
+.picker { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; }
+.picker button { text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 6px 9px; cursor: pointer; font-family: var(--mono); font-size: 12.5px; }
+.picker button:hover { border-color: var(--accent); }
+.ctx { position: absolute; top: 34px; right: 14px; min-width: 220px; background: var(--pop); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 10px 30px hsl(0 0% 0% / 25%); padding: 4px; z-index: 6; backdrop-filter: blur(24px); }
+.ctx button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.ctx button:hover { background: var(--accent); color: var(--accent-ink); }
+.ctx hr, .gmenu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+.gmenu { position: absolute; top: 38px; right: 10px; width: 310px; max-width: calc(100% - 20px); background: var(--gnome-menu); color: var(--gnome-fg); border-radius: 12px; box-shadow: 0 12px 34px hsl(0 0% 0% / 45%); padding: 8px; z-index: 6; font-size: 13.5px; }
+.gmenu hr { border-top-color: hsl(0 0% 100% / 12%); }
+.gmenu .item { display: flex; gap: 8px; align-items: center; width: 100%; text-align: left; border: 0; background: none; color: inherit; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+.gmenu .item:hover { background: var(--gnome-hover); }
+.gmenu .item[disabled] { cursor: default; opacity: 0.75; }
+.gmenu .item[disabled]:hover { background: none; }
+.gmenu .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; padding: 6px 10px 2px; }
+.below { max-width: 1240px; margin: -28px auto 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); font-size: 13.5px; }
+
+/* modal + toast */
+.overlay { position: fixed; inset: 0; background: var(--overlay); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.modal { background: var(--card); border: 1px solid var(--line); border-radius: 14px; width: min(500px, 100%); padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 24px 60px hsl(0 0% 0% / 25%); }
+.modal h3 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+.modal .foot { display: flex; justify-content: flex-end; gap: 8px; }
+.toasts { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: min(420px, calc(100vw - 32px)); }
+.toast { background: var(--ink); color: var(--paper); border-radius: 10px; padding: 10px 14px; font-size: 13px; box-shadow: 0 8px 24px hsl(0 0% 0% / 20%); }
+
+@media (max-width: 980px) {
+  .hero .in, .sec-head, .steps { grid-template-columns: minmax(0, 1fr); }
+  .steps .left { border-right: 0; border-bottom: 1px solid var(--line); }
+  .features, .install { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-nav { display: none; }
+}
+@media (max-width: 760px) {
+  .features, .install, .safety, .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .safety > div:nth-child(even) { padding-left: 0; border-left: 0; }
+  .safety > div:nth-child(odd) { padding-right: 0; }
+  .stats, .mstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats > div:nth-child(3) { border-left: 0; padding-left: 0; }
+  .mstats > div:nth-child(3) { border-left: 0; }
+  .app-body { grid-template-columns: minmax(0, 1fr); }
+  .app-side { display: none; }
+  .app-main { padding: 20px 16px; }
+  .section { padding-block: 48px; }
+  .logo .tag { display: none; }
+  .menubar .opt { display: none; }
+  .app { margin-left: 16px; margin-right: 16px; }
+  .stage { margin-left: 16px; margin-right: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* This prototype's additions */
+.name { font-weight: 600; font-size: 14.5px; }
+.name.id { font-family: var(--mono); font-weight: 500; font-size: 13.5px; }
+.src { display: inline-block; margin-left: 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--sub); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; vertical-align: 1px; }
+.host { display: inline-flex; gap: 6px; align-items: center; }
+.banner { border: 1px solid var(--line); border-left: 3px solid var(--warn); background: var(--card); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.banner .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inline-msg { font-size: 12.5px; color: var(--sub); margin-top: 4px; max-width: 34ch; white-space: normal; text-align: right; margin-left: auto; }
+.menu-wrap { position: relative; display: inline-block; }
+.menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--card); border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 10px 30px hsl(0 0% 0% / 18%); padding: 4px; z-index: 4; min-width: 200px; text-align: left; }
+.menu button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 7px 10px; border-radius: 6px; font: inherit; font-size: 13.5px; color: inherit; cursor: pointer; }
+.menu button:hover { background: var(--hover); }
+tr.hl td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.prow.click { cursor: pointer; border-radius: 8px; margin: 0 -6px; padding-left: 6px; padding-right: 6px; }
+.prow.click:hover { background: var(--hover); }
+</style>
+
+<div class="proto"><div class="in">
+  <span class="label">Eyrie prototype · session names and jump</span>
+  <div class="seg" role="group" aria-label="View" id="views">
+    <button type="button" data-view="sessions" aria-pressed="true">App · Sessions</button>
+    <button type="button" data-view="ended" aria-pressed="false">App · Deep link, ended</button>
+    <button type="button" data-view="mac" aria-pressed="false">Widget · panel</button>
+    <button type="button" data-view="tray" aria-pressed="false">Widget · tray menu</button>
+  </div>
+  <div class="seg" role="group" aria-label="Jump outcome" id="outcomes">
+    <button type="button" data-outcome="ok" aria-pressed="true">Jump works</button>
+    <button type="button" data-outcome="denied" aria-pressed="false">Automation denied</button>
+    <button type="button" data-outcome="closed" aria-pressed="false">Tab just closed</button>
+    <button type="button" data-outcome="gone" aria-pressed="false">Session ended</button>
+  </div>
+  <button class="btn sm" id="themeBtn" type="button">Theme: system</button>
+</div></div>
+<p class="note" id="viewNote"></p>
+<div id="stage"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s)
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const I = {
+    chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    cmd: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/>', plug: '<path d="M12 22v-5M9 8V2M15 8V2M18 8H6v4a6 6 0 0 0 12 0z"/>',
+    copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>', ext: '<path d="M7 17 17 7M8 7h9v9"/>',
+  }
+  const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${I[k]}</svg>`
+  const NEST = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3.5 13.5c1.4 4 4.6 6 8.5 6s7.1-2 8.5-6"/><path d="M5 14.2h14"/><path d="M6.5 16.6l11-1.6"/><circle cx="12" cy="7.2" r="2.6" fill="currentColor" stroke="none"/></svg>`
+  const logo = (tag) => `<a class="logo" href="#" aria-label="Eyrie"><span class="tile">e<b>.</b></span><span class="name">Eyrie</span>${tag ? `<span class="tag">${tag}</span>` : ''}</a>`
+
+  // ---------- example data, shaped like the API (docs/session-names-and-jump.md §6) ----------
+  // src = name_source: user (you named it) | tool (the tool named it) | id (short id) | none (no id known)
+  const EYRIE = [
+    { name: 'eyrie-7f3a', tool: 'Claude Code', display: 'build-eyrie', src: 'user', id: '6636c681-a73f-4aa7-a8cb-c8e1f313d9ee', cwd: '~/personal/projects/eyrie', alive: true, state: 'running', started: '42 min ago' },
+    { name: 'eyrie-2c91', tool: 'Codex', display: 'Refactor zsh prompt segments', src: 'tool', id: '01a13480-5390-7ed3-85c3-0e32b8d04c8e', cwd: '~/personal/projects/dotfiles', alive: true, state: 'idle 14 min', started: '3 h ago' },
+    { name: 'eyrie-b40e', tool: 'Claude Code', display: 'a98e1677', src: 'id', id: 'a98e1677-df83-4414-97c4-6ea3fdaf32b9', cwd: '~/personal/projects/blog', alive: false, state: 'exited (1)', started: '1 d ago', resume: 'cd ~/personal/projects/blog && claude --resume a98e1677-df83-4414-97c4-6ea3fdaf32b9' },
+    { name: 'eyrie-91d0', tool: 'Gemini CLI', display: 'eyrie-91d0', src: 'none', id: null, cwd: '~/personal/projects/homelab', alive: true, state: 'running', started: 'just now' },
+  ]
+  // focus: tab | pane | app | none
+  const EXT = [
+    { pid: 10351, tool: 'Claude Code', display: 'datadog', src: 'user', exact: true, id: '2ae5c091-e48d-4e7f-ba2d-1c16cfd46a0e', tty: 'ttys000', host: 'iTerm2', focus: 'tab', cwd: '~', last: '2 min ago' },
+    { pid: 9871, tool: 'Claude Code', display: 'qureai-f6', src: 'tool', exact: true, id: '516f62bf-361d-40b5-9698-9d33633899d1', tty: 'ttys004', host: 'iTerm2', focus: 'tab', cwd: '~/workspace/repos/qureai', last: '6 min ago' },
+    { pid: 33912, tool: 'Codex', display: 'Understand repo for production', src: 'tool', exact: false, id: '01a13480-5390-7ed3-85c3-0e32b8d04c8e', tty: 'ttys015', host: 'Warp', focus: 'app', cwd: '~/workspace/repos/fhir-api', last: '~25 min ago' },
+    { pid: 20387, tool: 'Codex', display: 'Codex · ttys001', src: 'none', exact: true, id: null, tty: 'ttys001', host: 'tmux in iTerm2', focus: 'pane', cwd: '~/workspace/repos/heartbeat', last: '1 h ago' },
+    { pid: 41994, tool: 'Claude Code', display: '5468bc74', src: 'id', exact: true, id: '5468bc74-1755-4f52-a51f-5db9173b0801', tty: 'ttys006', host: 'ssh session', focus: 'none', cwd: '~', last: '3 h ago' },
+  ]
+  const S = { view: 'sessions', outcome: 'ok', sel: null, menu: null, msgs: {}, ext: null }
+
+  function toast(m) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = m; $('#toasts').appendChild(el); setTimeout(() => el.remove(), 4800) }
+  const shortId = (x) => x.id ? (x.tool === 'Codex' ? x.id.slice(-8) : x.id.slice(0, 8)) : ''
+  const srcTag = (s) => s.src === 'tool' ? '<span class="src" title="Named by the tool, not by you">auto</span>' : ''
+  const nameCell = (s) => `<div class="name ${s.src === 'id' || s.src === 'none' ? 'id' : ''}" title="${s.id ? 'Conversation ' + esc(s.id) : 'No conversation id yet'}">${s.exact === false ? '<span title="Best guess: newest conversation in this directory">~</span>' : ''}${esc(s.display)}${srcTag(s)}</div>`
+
+  // What sessions.focus answers for each host, per the selected outcome.
+  function jump(x) {
+    if (S.outcome === 'gone') { S.ext = { pid: x.pid, tool: x.tool, id: x.id }; S.view = 'ended'; render(); return }
+    if (S.outcome === 'denied') {
+      const app = x.host.includes('iTerm') ? 'iTerm2' : x.host
+      S.msgs[x.pid] = `macOS blocked Eyrie from controlling ${app}. Allow it in System Settings → Privacy & Security → Automation, then try again.`
+      render(); return
+    }
+    if (S.outcome === 'closed' && x.focus === 'tab') { S.msgs[x.pid] = `Couldn’t find the ${x.host} tab on ${x.tty}. It may have just closed.`; render(); return }
+    delete S.msgs[x.pid]
+    if (x.focus === 'tab') toast(`Switched to the ${x.host} tab on ${x.tty}`)
+    else if (x.focus === 'pane') toast(`Selected the tmux pane on ${x.tty} and brought iTerm2 to the front`)
+    else if (x.focus === 'app') toast(`Brought ${x.host} to the front. Eyrie can’t pick its tab: look for ${x.tty}.`)
+    render()
+  }
+
+  const NAV = [['Work', [['home', 'Overview'], ['cmd', 'Sessions', 'sessions'], ['chart', 'Usage']]], ['Tools', [['plug', 'MCP servers']]]]
+  function shell(body) {
+    return `<div class="app"><header class="app-head">${logo('AGENT CONTROL PLANE')}<span class="status-pill"><span class="sev ok"></span>All fine</span></header>
+      <div class="app-body"><nav class="app-side" aria-label="Pages">${NAV.map(([g, items]) => `<div class="grp"><span class="glabel">${g}</span>${items.map(([k, label, v]) => `<a href="#" ${v ? `data-view="${v}"` : 'data-toast="Unchanged"'} ${v ? 'aria-current="page"' : ''}>${ico(k)}${label}${v ? `<span class="count">${EYRIE.length + EXT.length}</span>` : ''}</a>`).join('')}</div>`).join('')}</nav>
+        <main class="app-main">${body}</main></div></div>`
+  }
+
+  function eyrieTable() {
+    return `<section class="card"><div class="table-wrap"><table><thead><tr><th>Session</th><th>Directory</th><th>State</th><th>Started</th><th></th></tr></thead><tbody>
+      ${EYRIE.map((s) => `<tr class="${S.sel === s.name ? 'hl' : ''}"><td>${nameCell(s)}<div class="sub mono" style="font-size:12px">${s.name}${s.id && s.src !== 'id' ? ' · ' + shortId(s) : ''} · ${s.tool}</div></td>
+        <td class="mono" style="font-size:13px">${esc(s.cwd)}</td>
+        <td><span style="display:inline-flex;gap:7px;align-items:center"><span class="sev ${s.alive ? (s.state.startsWith('idle') ? 'attention' : 'ok') : 'problem'}"></span>${s.state}</span></td><td class="sub">${s.started}</td>
+        <td style="text-align:right;white-space:nowrap">${s.alive
+          ? `<button class="btn sm" data-toast="Opens the in-app terminal below (unchanged)" type="button">Open</button> <span class="menu-wrap"><button class="btn sm" data-menu="${s.name}" type="button" aria-haspopup="menu" aria-expanded="${S.menu === s.name}">Open in…</button>${S.menu === s.name ? `<div class="menu" role="menu"><button role="menuitem" data-term="Terminal" data-n="${s.name}" type="button">Terminal</button><button role="menuitem" data-term="iTerm2" data-n="${s.name}" type="button">iTerm2</button><button role="menuitem" data-copy="tmux -L eyrie attach -t ${s.name}" type="button">Copy attach command</button></div>` : ''}</span> <button class="btn sm ghost" style="color:var(--bad)" data-toast="Asks to confirm, then stops it" type="button">Stop</button>`
+          : `<button class="btn sm ink" data-toast="Opens Start session: Claude Code, resume a98e1677 in ~/personal/projects/blog" type="button">Resume</button> <button class="copy" data-copy="${esc(s.resume)}" type="button">${ico('copy')} Resume command</button> <button class="btn sm ghost" data-toast="Closes the exited session" type="button">Close</button>`}</td></tr>`).join('')}
+      </tbody></table></div></section>`
+  }
+
+  function extTable() {
+    return `<section class="card"><div class="panel-head"><span class="eyebrow">In your terminals</span><span class="sub" style="font-size:13px;margin-left:12px">Sessions you started yourself. Jump switches to their terminal where it can.</span></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Directory</th><th>Terminal</th><th>Last activity</th><th></th></tr></thead><tbody>
+      ${EXT.map((x) => { const msg = S.msgs[x.pid]; return `<tr class="${S.sel === 'ext:' + x.pid ? 'hl' : ''}"><td>${nameCell(x)}<div class="sub mono" style="font-size:12px">${x.id && x.src !== 'id' ? shortId(x) + ' · ' : ''}${x.tool} · pid ${x.pid}</div></td>
+        <td class="mono" style="font-size:13px">${esc(x.cwd)}</td>
+        <td><span class="host">${esc(x.host)} <span class="sub mono" style="font-size:12px">${x.tty}</span></span></td><td class="sub">${x.last}</td>
+        <td style="text-align:right;white-space:nowrap">${x.focus === 'none'
+          ? `<button class="btn sm" disabled type="button">Jump</button><div class="inline-msg">Running in an ${esc(x.host)} on ${x.tty}. Eyrie can’t switch to it; switch yourself.</div>`
+          : `<button class="btn sm" data-jump="${x.pid}" type="button" title="${x.focus === 'tab' ? `Selects the ${esc(x.host)} tab` : x.focus === 'pane' ? 'Selects the tmux pane' : `Brings ${esc(x.host)} to the front (can’t pick the tab)`}">Jump ${ico('ext')}</button>${msg ? `<div class="inline-msg" role="status" style="color:var(--bad)">${esc(msg)}</div>` : ''}`}</td></tr>` }).join('')}
+      </tbody></table></div></section>`
+  }
+
+  function sessions(banner = '') {
+    return shell(`<div class="page-head"><div><span class="eyebrow">Work</span><h1>Sessions</h1><p>Named the way you named them. Unnamed ones show a short id.</p></div>
+        <div class="act"><button class="btn ink" data-toast="Unchanged: the New session dialog" type="button">+ New session</button></div></div>
+      ${banner}${eyrieTable()}${extTable()}`)
+  }
+
+  function ended() {
+    const e = S.ext || { pid: 55555, tool: 'Claude Code', id: '917e2710-733c-4abe-aa3e-3b04ce76c0f6' }
+    const cmd = e.id ? (e.tool === 'Codex' ? `codex resume ${e.id}` : e.tool === 'Gemini CLI' ? `gemini --resume ${e.id}` : `claude --resume ${e.id}`) : null
+    return sessions(`<div class="banner" role="status"><div><b>That ${esc(e.tool)} session isn’t running any more.</b> <span class="sub">(pid ${e.pid})</span></div>
+      ${cmd ? `<div class="row"><span class="sub" style="font-size:13px">Resume it from its project directory:</span><span class="cmd" style="padding:3px 10px;font-size:12.5px">${esc(cmd)}</span><button class="copy" data-copy="${esc(cmd)}" type="button">${ico('copy')} Copy</button><button class="btn sm ink" data-toast="Opens Start session in resume mode" type="button">Resume in Eyrie</button></div>`
+        : '<div class="row"><span class="sub">Not running, and Eyrie doesn’t know its conversation. Start a new session.</span></div>'}
+      <div class="row"><button class="btn sm ghost" data-dismiss type="button">Dismiss</button></div></div>`)
+  }
+
+  // ---------- widget ----------
+  const toolId = (t) => (t === 'Codex' ? 'codex' : t === 'Gemini CLI' ? 'gemini' : 'claude')
+  function popover() {
+    const rows = [...EYRIE.filter((s) => s.alive).map((s) => ({ ...s, href: `/sessions?open=${s.name}`, sub: `${s.tool} · ${s.cwd.split('/').pop()} · ${s.state}` })),
+      ...EXT.map((x) => ({ ...x, href: `/sessions?ext=${x.pid}&tool=${toolId(x.tool)}${x.id ? '&id=' + x.id : ''}`, sub: `${x.tool} · ${x.cwd.split('/').pop() || '~'} · ${x.host} ${x.tty}` }))]
+    return `<div class="pop" role="dialog" aria-label="Eyrie">
+      <div class="pop-head"><span class="tile">e<b>.</b></span><b style="font-weight:600">Eyrie</b><span class="st"><span class="sev ok"></span>All fine</span></div>
+      <div class="pop-sec"><span class="eyebrow">Sessions</span>${rows.map((s) => `<div class="prow click" data-open="${esc(s.href)}" role="button" tabindex="0"><span class="sev ${s.state && s.state.startsWith('idle') ? 'attention' : 'ok'}"></span><div class="grow"><div class="t ${s.src === 'id' || s.src === 'none' ? 'mono' : ''}" style="font-size:13px">${s.exact === false ? '~' : ''}${esc(s.display)}</div><div class="m">${esc(s.sub)}</div></div><span class="sub" style="font-size:12px">Open</span></div>`).join('')}</div>
+      <div class="pop-foot"><button class="btn sm" data-toast="Unchanged" type="button">+ Session in…</button><button class="btn sm ink" data-open="/" type="button">Open Eyrie</button></div></div>`
+  }
+  const menubar = (inner) => `<div class="stage mac"><div class="menubar"><span class="items"><b style="font-weight:600">Finder</b></span><span class="status"><button class="tray" id="macTray" type="button" aria-expanded="true" aria-label="Eyrie">${NEST}<span>$8.42</span></button><span>Tue 20 Oct 18:20</span></span></div>${inner}</div>`
+  const mac = () => menubar(popover())
+  function tray() {
+    const items = [...EYRIE.map((s) => [`${s.display}  ·  ${s.alive ? s.state : 'exited'}`, `/sessions?open=${s.name}`]),
+      ...EXT.map((x) => [`${x.display}  ·  ${x.cwd.split('/').pop() || '~'}`, `/sessions?ext=${x.pid}&tool=${toolId(x.tool)}${x.id ? '&id=' + x.id : ''}`])]
+    return menubar(`<div class="ctx" role="menu" style="min-width:300px"><button role="menuitem" data-toast="Shows the panel" type="button">Show panel</button><hr><button disabled type="button" style="opacity:.6">All fine</button><hr>
+      ${items.map(([label, href]) => `<button role="menuitem" data-open="${esc(href)}" type="button">${esc(label)}</button>`).join('')}<hr>
+      <button disabled type="button" style="opacity:.6">Today $8.42 · +12% vs last week</button><hr><button role="menuitem" data-open="/" type="button">Open Eyrie</button><button role="menuitem" data-toast="Quits the widget" type="button">Quit widget</button></div>`)
+  }
+
+  const NOTES = {
+    sessions: 'Names from each tool (Claude /rename, Codex thread names, Gemini summaries). “auto” marks a name the tool chose; ~ marks a best guess (no id on the command line). Jump picks the terminal tab where the terminal allows it; use the outcome switch above for the failure messages.',
+    ended: 'Opened from the widget for a session that ended in the meantime: the link carries tool + id, so the page can offer the resume command.',
+    mac: 'Every row is clickable and opens the app on that session: ?open= for Eyrie sessions, ?ext=<pid> for ones in your terminals.',
+    tray: 'Tray menu (right-click on macOS, the only menu on Ubuntu): names instead of eyrie-xxxx / ttys, and external items open their own link instead of just /sessions.',
+  }
+  function render() {
+    $('#viewNote').textContent = NOTES[S.view]
+    $('#stage').innerHTML = { sessions: () => sessions(), ended, mac, tray }[S.view]()
+    document.querySelectorAll('#views button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === S.view)))
+    document.querySelectorAll('#outcomes button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.outcome === S.outcome)))
+  }
+  function follow(href) {
+    toast(`Opens http://127.0.0.1:8787${href}`)
+    const u = new URL(href, 'http://x')
+    if (u.pathname !== '/sessions') return
+    S.sel = u.searchParams.get('open') || (u.searchParams.get('ext') ? 'ext:' + u.searchParams.get('ext') : null)
+    S.view = 'sessions'; render(); window.scrollTo(0, 0)
+  }
+
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('button, a, [data-open]')
+    if (!t) { if (S.menu) { S.menu = null; render() } return }
+    if (t.matches('a[href="#"]')) e.preventDefault()
+    if (t.dataset.view) { S.view = t.dataset.view; S.sel = null; S.menu = null; if (t.dataset.view === 'ended') S.ext = null; render(); window.scrollTo(0, 0); return }
+    if (t.dataset.outcome) { S.outcome = t.dataset.outcome; S.msgs = {}; render(); return }
+    if (t.dataset.toast) { toast(t.dataset.toast); return }
+    if (t.dataset.copy) { try { await navigator.clipboard.writeText(t.dataset.copy); toast('Copied') } catch { toast('Copy isn’t allowed here; select the text instead') } S.menu = null; render(); return }
+    if (t.dataset.menu) { S.menu = S.menu === t.dataset.menu ? null : t.dataset.menu; render(); return }
+    if (t.dataset.term) { S.menu = null; render(); toast(S.outcome === 'denied' ? `macOS blocked Eyrie from controlling ${t.dataset.term}. Allow it in System Settings → Privacy & Security → Automation.` : `Opened a new ${t.dataset.term} window attached to ${t.dataset.n}`); return }
+    if (t.dataset.jump) { jump(EXT.find((x) => x.pid === +t.dataset.jump)); return }
+    if ('dismiss' in t.dataset) { S.view = 'sessions'; render(); return }
+    if (t.dataset.open) { follow(t.dataset.open); return }
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && S.menu) { S.menu = null; render() }
+    if (e.key === 'Enter' && e.target.dataset && e.target.dataset.open) follow(e.target.dataset.open)
+  })
+
+  const modes = ['system', 'light', 'dark']; let mode = 'system'
+  try { mode = localStorage.getItem('eyrie-proto-names-theme') || 'system' } catch {}
+  const applyTheme = () => { if (mode === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', mode); $('#themeBtn').textContent = 'Theme: ' + mode }
+  $('#themeBtn').addEventListener('click', () => { mode = modes[(modes.indexOf(mode) + 1) % 3]; try { localStorage.setItem('eyrie-proto-names-theme', mode) } catch {} applyTheme() })
+  applyTheme(); render()
+})()
+</script>

@@ -158,7 +158,7 @@ Widget (Rust): unit tests for the session-href check. Frontend: `make check` (ty
 ## 9. Delivery
 
 1. This design.
-2. Prototype (`prototype/session-names-and-jump.html`): Sessions page with names and fallbacks, Jump and every message, the widget panel and tray menu.
+2. Prototype ([`prototype/session-names-and-jump.html`](../prototype/session-names-and-jump.html)): Sessions page with names and fallbacks, Jump and every message, the widget panel and tray menu.
 3. Code: adapters' `names()`, schema fields, actions, Sessions page, widget panel, tray menu (Rust), tests.
 
 ## 10. Open questions
