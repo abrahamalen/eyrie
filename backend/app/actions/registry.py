@@ -279,7 +279,9 @@ def _session_start(p: SessionStart, ctx: Context) -> Planned:
     cmd = TOOLS[p.tool].sessions.argv(ctx.runner.binary(p.tool), p.mode, p.cwd, p.resume_id, p.conversation_id)
     tags = {"@eyrie_tool": p.tool, "@eyrie_cwd": p.cwd, "@eyrie_mode": p.mode,
             "@eyrie_conv": p.conversation_id or p.resume_id or ""}
-    args = [*base_args(ctx.settings), "new-session", "-d", "-s", p.name, "-x", "200", "-y", "50", "-c", p.cwd, *cmd]
+    # Small to start: a client attaching later grows the window (tmux pulls lines back from
+    # history), where shrinking a big one would push the first lines out of view.
+    args = [*base_args(ctx.settings), "new-session", "-d", "-s", p.name, "-x", "80", "-y", "24", "-c", p.cwd, *cmd]
     for k, v in tags.items():
         args += [";", "set-option", "-t", p.name, k, v]
     return Planned("tmux", args)

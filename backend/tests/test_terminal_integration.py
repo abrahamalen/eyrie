@@ -26,8 +26,8 @@ def screen_text(buf: bytes) -> bytes:
     return re.sub(rb"\s+", b" ", CSI.sub(b" ", buf))
 
 
-# Wait on the program's *last* startup line: after tmux shrinks the window from Eyrie's
-# 200x50 to the client's size, the first line isn't always in the redrawn region.
+# Wait on the program's *last* startup line: if tmux has to shrink the window from Eyrie's
+# initial 80x24 to a smaller client, the first line isn't always in the redrawn region.
 def read_until(ws, needle, timeout=4.0):
     buf = b""
     end = time.time() + timeout
@@ -68,6 +68,18 @@ def test_readonly_ignores_input(real):  # noqa: F811
     screen = c.get("/api/v1/sessions/eyrie-term2/screen").json()["text"]
     assert "should not arrive" not in screen
     assert c.get("/api/v1/sources/sessions").json()["sessions"][0]["alive"] is True
+
+
+def test_attach_at_the_browser_size_keeps_the_first_line(real):  # noqa: F811
+    c, proj, socket = real
+    start(c, proj, "eyrie-term5")
+    time.sleep(0.3)  # let the program print before anyone attaches
+    with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term5/term?cols=100&rows=30", subprotocols=proto(c)) as ws:
+        buf = read_until(ws, b"cwd:")
+        assert b"fake claude args" in screen_text(buf)
+        size = subprocess.run(["tmux", "-L", socket, "display-message", "-p", "-t", "eyrie-term5",
+                               "#{window_width}x#{window_height}"], capture_output=True, text=True).stdout.strip()
+        assert size == "100x29", size  # 30 rows less the status line
 
 
 def test_resize_reaches_tmux(real):  # noqa: F811

@@ -51,7 +51,7 @@ export function SessionTerminal({ session }: { session: Session }) {
         if (closed) return
         const proto = location.protocol === 'https:' ? 'wss' : 'ws'
         ws = new WebSocket(
-          `${proto}://${location.host}/api/v1/sessions/${session.name}/term${readonly ? '?readonly=true' : ''}`,
+          `${proto}://${location.host}/api/v1/sessions/${session.name}/term?cols=${term.cols}&rows=${term.rows}${readonly ? '&readonly=true' : ''}`,
           ['eyrie', `eyrie.token.${t}`],
         )
         ws.binaryType = 'arraybuffer'

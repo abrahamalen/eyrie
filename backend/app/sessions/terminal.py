@@ -43,7 +43,8 @@ def _write_all(fd: int, data: bytes) -> None:
             time.sleep(0.005)
 
 
-async def bridge(ws: WebSocket, settings: Settings, tmux_bin: str, name: str, readonly: bool) -> str:
+async def bridge(ws: WebSocket, settings: Settings, tmux_bin: str, name: str, readonly: bool,
+                 size: tuple[int, int] = (120, 32)) -> str:
     """Runs until either side closes. Returns why it ended."""
     global _open
     if _open >= MAX_TERMINALS:
@@ -52,7 +53,7 @@ async def bridge(ws: WebSocket, settings: Settings, tmux_bin: str, name: str, re
     env = {**os.environ, **settings.cli.env, "TERM": "xterm-256color"}
     env.pop("TMUX", None)  # in case Eyrie itself was started inside tmux
     master, slave = pty.openpty()
-    _set_size(master, 120, 32)
+    _set_size(master, *size)
     try:
         proc = subprocess.Popen(argv, stdin=slave, stdout=slave, stderr=slave, env=env,
                                 start_new_session=True, close_fds=True)
