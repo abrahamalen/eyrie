@@ -14,6 +14,23 @@ def test_token_survives_restart(settings):
     assert create_app(settings).state.token == create_app(settings).state.token
 
 
+@pytest.mark.parametrize("content", ["", "  \n"])
+def test_empty_token_file_is_replaced(settings, content):
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+    path = settings.paths.data_dir / "token"
+    path.parent.mkdir(parents=True)
+    path.write_text(content)
+    path.chmod(0o644)
+    client = TestClient(create_app(settings), base_url="http://localhost")
+    assert client.post("/api/v1/tasks", json={"text": "x"}).status_code == 401
+    assert client.post("/api/v1/tasks", json={"text": "x"}, headers={"X-Eyrie-Token": ""}).status_code == 401
+    token = path.read_text()
+    assert token.strip() and token == client.app.state.token
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
 @pytest.mark.parametrize("host", ["localhost:8000", "127.0.0.1:5173", "[::1]:8000"])
 def test_loopback_hosts_allowed(client, host):
     assert client.get("/api/v1/health", headers={"Host": host}).status_code == 200

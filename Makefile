@@ -6,7 +6,7 @@ INSTALL_PORT ?= 8787
 VERSION := $(shell cat VERSION)
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup journeys dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
+.PHONY: help setup journeys dev backend frontend test build lint lint-py clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -35,8 +35,15 @@ dev: setup ## Run API + UI together, then open http://localhost:5173
 	$(MAKE) --no-print-directory frontend & \
 	wait
 
-test: backend/.venv/.stamp ## Run backend tests
-	cd backend && .venv/bin/pytest -q
+# Coverage floor: today's figure rounded down. It counts the tmux integration tests, so run
+# them (have tmux installed) when checking it; raise it as coverage grows.
+COV_MIN = 91
+
+test: backend/.venv/.stamp ## Run backend tests with coverage
+	cd backend && .venv/bin/pytest -q --cov=app --cov-report=term-missing:skip-covered --cov-fail-under=$(COV_MIN)
+
+lint-py: backend/.venv/.stamp ## Lint the backend (ruff)
+	cd backend && .venv/bin/ruff check app tests
 
 # TypeScript types for the API, generated from the backend's response models. The generator
 # runs via npx in its own pinned environment (it needs TypeScript 5; the app uses 6).
@@ -69,7 +76,7 @@ version: ## Set the version everywhere: make version V=0.2.0
 	@test -n "$(V)" || { echo "usage: make version V=x.y.z"; exit 1; }
 	python3 scripts/version.py set $(V)
 
-check: version-check test types-check build lint landing-build ## Everything CI runs
+check: version-check lint-py test types-check build lint landing-build ## Everything CI runs
 
 build: frontend/node_modules/.stamp ## Typecheck + production build of the UI
 	cd frontend && npm run build

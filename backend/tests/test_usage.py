@@ -1,11 +1,9 @@
 import json
-import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings
 from app.main import create_app
 from app.usage.prices import ModelPrice, normalize_model
 

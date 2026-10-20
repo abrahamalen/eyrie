@@ -1,0 +1,26 @@
+# Lint only; the code isn't run through `ruff format`. Lines aim for ~120 and a few
+# run longer, so the limit is a ceiling rather than a target.
+line-length = 140
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = [
+  "S603",   # every subprocess call is an argv list with shell=False, by design (see app/actions/runner.py)
+  "S607",   # tools (tmux, ps, lsof, launchctl, ...) are found on PATH on purpose
+  "S110",   # best-effort cleanup and readers skip what fails on purpose
+  "S112",
+  "UP017",  # timezone.utc is fine; not worth churning every file for datetime.UTC
+]
+
+[lint.per-file-ignores]
+"tests/**" = [
+  "S101",   # pytest asserts
+  "S108",   # /tmp paths are fake arguments or tmux's own default socket dir
+]
+# Raising HTTPException inside except is the response itself; chaining adds nothing.
+"app/routers/**" = ["B904"]
+
+[lint.isort]
+combine-as-imports = true
+known-first-party = ["app", "tests"]

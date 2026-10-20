@@ -28,7 +28,6 @@ def _lock_for(tool: str):
         return contextlib.nullcontext()
     with _locks_guard:
         return _locks.setdefault(tool, threading.Lock())
-TAIL = 4000
 
 
 class CliNotFound(Exception):
@@ -76,7 +75,7 @@ class Runner:
                 code, out, err = p.returncode, p.stdout, p.stderr
             except subprocess.TimeoutExpired as e:
                 code, out, err = -1, _text(e.stdout), f"Timed out after {self.settings.cli.timeout_s:.0f}s"
-        return RunResult(code, out[-TAIL:], err[-TAIL:], (time.perf_counter() - started) * 1000)
+        return RunResult(code, out, err, (time.perf_counter() - started) * 1000)
 
 
 def _text(v: str | bytes | None) -> str:
