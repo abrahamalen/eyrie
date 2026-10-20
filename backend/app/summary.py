@@ -9,8 +9,7 @@ from pathlib import Path
 from app.actions.runner import CliNotFound, Runner
 from app.config import Settings
 from app.sessions.dirs import is_allowed
-from app.tools import TOOLS, enabled
-from app.tools import used as tool_used
+from app.tools import TOOLS, enabled, used as tool_used
 
 # tmux, then each tool: how to ask for its version.
 PROBES = {"tmux": ["-V"], **{t.id: list(t.version_args) for t in TOOLS.values()}}

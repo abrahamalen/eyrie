@@ -161,6 +161,7 @@ def test_tmux_calls_dont_wait_on_a_slow_claude_call(settings, monkeypatch):
     import subprocess
     import threading
     import time
+
     from app.actions import runner
 
     release = threading.Event()
@@ -191,6 +192,7 @@ def test_calls_to_one_tool_are_serialised_for_every_tool(settings, monkeypatch):
     import subprocess
     import threading
     import time
+
     from app.actions import runner
     from tests.conftest import REAL_BINARY, REAL_RUN
 

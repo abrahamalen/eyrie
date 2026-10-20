@@ -4,10 +4,11 @@ An adapter supplies data and argv; it never runs anything itself (the Runner doe
 capability is optional: a tool without MCP support has `mcp = None`, and the pages and
 actions for it simply don't offer that tool.
 """
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from app.config import Settings

@@ -58,15 +58,16 @@ macOS open it the first time with right-click → Open.
 
 ```bash
 make dev     # API on 127.0.0.1:8000 + UI with hot reload on http://localhost:5173
-make test    # backend tests (some use a real tmux on a throwaway socket)
+make test    # backend tests + coverage (some use a real tmux on a throwaway socket)
 make types   # regenerate frontend/src/api/generated.ts after changing backend/app/schemas.py
-make check   # tests + generated-types check + UI and landing builds + lint (what CI runs)
+make check   # backend lint + tests + generated-types check + UI and landing builds + lint (what CI runs)
 make landing-dev   # the public landing page (landing/) on http://localhost:5174/eyrie/
 ```
 
 `make help` lists every target. The API contract is `backend/app/schemas.py`; the
 frontend's types are generated from it, so change the schema and run `make types`
-instead of editing types by hand.
+instead of editing types by hand. Optionally, `pre-commit install` runs ruff on backend
+changes before each commit.
 
 ## Configuration
 

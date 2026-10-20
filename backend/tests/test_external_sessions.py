@@ -86,6 +86,7 @@ def test_eyrie_managed_panes_excluded(machine):
 
 def test_summary_lists_terminal_sessions_but_never_flags_them_idle(machine, monkeypatch):
     from fastapi.testclient import TestClient
+
     from app.actions import runner
     from app.actions.runner import RunResult
     from app.main import create_app
