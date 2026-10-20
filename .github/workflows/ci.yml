@@ -27,3 +27,43 @@ jobs:
         run: make setup
       - name: Backend tests, generated-types check, UI build and lint
         run: make check
+
+  # The recorded user-journey suite (make journeys), kept out of `check` so that stays fast.
+  journeys:
+    if: github.repository_owner != 'alenabraham-qure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install tmux (sessions journeys)
+        run: sudo apt-get update && sudo apt-get install -y tmux
+      - name: Install dependencies
+        run: make setup
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: Install Chromium and its OS dependencies
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run the journeys
+        run: make journeys
+      - name: Upload the journey report (HTML + videos)
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: journey-report
+          path: frontend/journeys/
+          retention-days: 14
+          if-no-files-found: warn
