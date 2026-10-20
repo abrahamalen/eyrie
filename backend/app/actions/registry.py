@@ -8,9 +8,10 @@ import re
 import secrets
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -378,7 +379,7 @@ def redact(tool: str, args: list[str]) -> list[str]:
     out = [tool]
     prev = None
     masked = mask_args(args)
-    for a, m in zip(args, masked):
+    for a, m in zip(args, masked, strict=True):
         if prev in ENV_FLAGS:
             out.append(a.partition("=")[0] + "=***")
         elif prev in HEADER_FLAGS:

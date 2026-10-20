@@ -3,18 +3,15 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from app import __version__
-
-from app.config import Settings, get_settings
+from app import __version__, tools as tool_registry
 from app.actions.audit import AuditLog
 from app.actions.runner import Runner
-from app.config import active_config
+from app.config import Settings, active_config, get_settings
 from app.routers import actions, auth, memory, sessions, setup, sources, tasks, usage
 from app.schemas import Meta, Status, Summary
-from app.summary import Versions, build_summary
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
-from app import tools as tool_registry
+from app.summary import Versions, build_summary
 from app.tools import TOOLS, enabled, used
 from app.ui import mount_ui
 

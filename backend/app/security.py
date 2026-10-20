@@ -12,24 +12,27 @@ import secrets
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+from app.fsutil import atomic_write
 
 LOOPBACK = {"localhost", "127.0.0.1", "::1"}
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
-TOKEN_HEADER = "x-eyrie-token"
-WS_TOKEN_PREFIX = "eyrie.token."
+TOKEN_HEADER = "x-eyrie-token"  # noqa: S105 (a header name)
+WS_TOKEN_PREFIX = "eyrie.token."  # noqa: S105 (a subprotocol prefix)
 WS_PROTOCOL = "eyrie"
 
 
 def load_or_create_token(data_dir: Path) -> str:
     path = data_dir / "token"
-    if path.exists():
-        return path.read_text().strip()
+    token = path.read_text().strip() if path.exists() else ""
+    # An empty token would match an empty header, turning auth off, so replace it.
+    if token:
+        return token
     data_dir.mkdir(parents=True, exist_ok=True)
     token = secrets.token_urlsafe(32)
-    path.touch(mode=0o600)
-    path.write_text(token)
+    atomic_write(path, token, mode=0o600)
     return token
 
 

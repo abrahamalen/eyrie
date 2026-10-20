@@ -25,6 +25,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
 type Meta = ReturnType<typeof useMeta>
@@ -73,6 +74,9 @@ const ACTIVE = 'data-active:bg-card data-active:ring-1 data-active:ring-border d
 export function AppSidebar() {
   const { pathname } = useLocation()
   const meta = useMeta()
+  // On a phone the sidebar is a sheet over the page, so picking a page closes it.
+  const { isMobile, setOpenMobile } = useSidebar()
+  const close = () => isMobile && setOpenMobile(false)
   const groups = GROUPS.map((g) => ({ ...g, items: g.items.filter((it) => !it.show || it.show(meta)) }))
     .filter((g) => g.items.length)
   return (
@@ -89,7 +93,7 @@ export function AppSidebar() {
                 {g.items.map((it) => (
                   <SidebarMenuItem key={it.to}>
                     <SidebarMenuButton
-                      render={<NavLink to={it.to} end={it.end} />}
+                      render={<NavLink to={it.to} end={it.end} onClick={close} />}
                       isActive={!!matchPath({ path: it.to, end: !!it.end }, pathname)}
                       className={ACTIVE}
                       tooltip={it.label}

@@ -15,7 +15,6 @@ services/chatRecordingService.ts):
 Older single-file .json sessions are skipped (newer CLIs convert them on load).
 """
 import hashlib
-import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path

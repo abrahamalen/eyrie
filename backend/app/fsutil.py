@@ -22,9 +22,11 @@ def read_text(path: Path) -> str | None:
         return None
 
 
-def atomic_write(path: Path, content: str) -> None:
-    """Write via a temp file + rename, keeping the file's mode; never leaves a partial file."""
-    mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
+def atomic_write(path: Path, content: str, mode: int | None = None) -> None:
+    """Write via a temp file + rename, keeping the file's mode unless one is given; never
+    leaves a partial file."""
+    if mode is None:
+        mode = path.stat().st_mode & 0o777 if path.exists() else 0o644
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", newline="") as f:

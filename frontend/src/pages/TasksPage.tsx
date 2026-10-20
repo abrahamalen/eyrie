@@ -75,7 +75,8 @@ export function TasksPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  // Revealed on hover with a mouse; always shown on phones and touch screens, which can't hover.
+                  className="size-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100 pointer-coarse:opacity-100"
                   aria-label={`Delete "${t.text}"`}
                   onClick={() => write((etag) => api.tasks.remove(etag, t.id))}
                 >

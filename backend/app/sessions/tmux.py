@@ -56,12 +56,12 @@ class Tmux:
         return self.runner.run("tmux", [*base_args(self.settings), *args])
 
     def list(self) -> list[dict]:
-        r = self._run("list-sessions", "-F", "\t".join("#{%s}" % f for f in FIELDS))
+        r = self._run("list-sessions", "-F", "\t".join(f"#{{{f}}}" for f in FIELDS))
         if not r.ok:
             return []  # no server yet means no sessions
         out = []
         for line in r.stdout.splitlines():
-            v = dict(zip(FIELDS, line.split("\t")))
+            v = dict(zip(FIELDS, line.split("\t"), strict=False))
             if not NAME_RE.match(v.get("session_name", "")):
                 continue
             dead = v.get("pane_dead") == "1"

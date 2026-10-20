@@ -125,6 +125,7 @@ def test_size_limit(authed, agent_dir):
 def test_memory_folder_may_itself_be_a_symlink(settings, home, tmp_path):
     """e.g. ~/.claude/agent-memory -> a folder in a notes vault."""
     from fastapi.testclient import TestClient
+
     from app.main import create_app
     real = tmp_path / "vault/agent-memory/Nexus"
     (real / "reviewer").mkdir(parents=True)

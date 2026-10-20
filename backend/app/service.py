@@ -11,7 +11,6 @@ checkout's venv Python with `-m app.cli`; `serve` always binds 127.0.0.1. Re-run
 after upgrading or pulling: it rewrites the service and restarts it. Uninstalling never
 touches running tmux sessions or ~/.eyrie.
 """
-import argparse
 import os
 import plistlib
 import re

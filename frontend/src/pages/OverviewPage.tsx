@@ -4,7 +4,7 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { api, StaleError } from '@/api/client'
 import type { Summary } from '@/api/types'
 import { usePoll } from '@/usePoll'
-import { fmtAgo, fmtUsd, shortPath, toolTitle } from '@/format'
+import { fmtAgo, fmtCount, fmtUsd, shortPath, toolTitle } from '@/format'
 import { PageHeader } from '@/components/PageHeader'
 import { Sparkline } from '@/components/Sparkline'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
@@ -285,8 +285,8 @@ export function OverviewPage() {
                 </div>
                 {data.health.usage_index && (
                   <div className="border-t pt-3 text-[13px] text-muted-foreground">
-                    Usage index: {data.health.usage_index.messages.toLocaleString('en-US')} responses from{' '}
-                    {data.health.usage_index.files} transcripts
+                    Usage index: {fmtCount(data.health.usage_index.messages, 'response')} from{' '}
+                    {fmtCount(data.health.usage_index.files, 'transcript')}
                     {data.health.usage_index.oldest &&
                       `, since ${new Date(data.health.usage_index.oldest).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
                   </div>

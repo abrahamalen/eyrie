@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import pytest
 from fastapi.testclient import TestClient
 
+from app.actions import runner as _runner
 from app.config import Paths, Settings
 from app.main import create_app
 
@@ -12,8 +13,6 @@ from app.main import create_app
 def _no_repo_config(monkeypatch, tmp_path):
     monkeypatch.setenv("EYRIE_CONFIG", str(tmp_path / "absent.toml"))
 
-
-from app.actions import runner as _runner
 
 REAL_RUN, REAL_BINARY = _runner.Runner.run, _runner.Runner.binary
 

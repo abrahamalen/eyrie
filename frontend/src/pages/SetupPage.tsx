@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import { api, StaleError } from '@/api/client'
 import type { SetupBody, SetupState } from '@/api/types'
-import { shortPath } from '@/format'
+import { fmtCount, shortPath } from '@/format'
 import { setMeta } from '@/tools'
 import { Logo } from '@/components/Logo'
 import { PageHeader } from '@/components/PageHeader'
@@ -94,7 +94,7 @@ function RootsStep({ state, draft, setDraft }: StepProps) {
           {suggestions.map((r) => (
             <button key={r.path} type="button" onClick={() => add(r.path)}
               className="rounded-full border border-dashed px-2.5 py-0.5 font-mono text-[12.5px] hover:border-brand hover:text-brand">
-              + {shortPath(r.path)} <span className="text-muted-foreground">· {r.projects} projects</span>
+              + {shortPath(r.path)} <span className="text-muted-foreground">· {fmtCount(r.projects, 'project')}</span>
             </button>
           ))}
         </div>

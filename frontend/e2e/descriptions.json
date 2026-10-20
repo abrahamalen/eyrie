@@ -1,0 +1,14 @@
+{
+  "Set up Eyrie for the first time": "With no config yet, every page leads to the setup wizard: pick the tools, the folders you work in and a tasks file, review, save. The config file is checked on disk afterwards.",
+  "See what needs me at a glance": "The home page: what needs attention, running sessions, the last week's spend, tasks and your setup.",
+  "See every running session, mine and Eyrie’s": "Sessions Eyrie runs in its own tmux, the Claude Code and Codex sessions open in your own terminals, and recent conversations you can resume.",
+  "Start a Claude Code session and type into it": "Starts a session from the New session dialog, opens its terminal in the browser, types a line and sees the reply, then stops it. Uses a stand-in claude script and a private tmux server; nothing real is launched.",
+  "Check what my agents cost": "Usage across Claude Code and Codex at list prices: totals, the daily chart, by model and by project, for 30 and then 7 days.",
+  "Switch to dark mode and read usage": "The theme toggle in the top bar, and the usage charts and tables in dark mode.",
+  "See which MCP servers each tool has": "MCP servers configured for Claude Code (user scope) and Codex, read from their own config files.",
+  "See my Claude Code plugins": "Installed plugins with their enabled state, from `claude plugin list`.",
+  "Read and edit what a subagent remembers": "Opens a subagent's memory file, appends a line, saves, and checks the file on disk changed by exactly that line.",
+  "Tick off a task": "Ticks a task on the Tasks page and checks only that line of the markdown file changed.",
+  "Review my settings": "The Settings page shows what setup chose, and saving writes the config file.",
+  "Glance at the top-bar widget": "The menu-bar widget's panel at its real size, reading the same summary as the home page. Desktop only."
+}

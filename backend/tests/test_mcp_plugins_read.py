@@ -14,7 +14,8 @@ def test_reads_all_claude_scopes_and_codex(client, home, tmp_path):
     d["projects"][str(proj)] = {"mcpServers": {"mine": {"command": "npx", "args": ["-y", "srv"]}}}
     (home / ".claude.json").write_text(json.dumps(d))
     (home / ".codex").mkdir()
-    (home / ".codex/config.toml").write_text('[mcp_servers.docs]\nurl = "https://d/mcp"\n\n[mcp_servers.fs]\ncommand = "fs"\nargs = ["--ro"]\n')
+    (home / ".codex/config.toml").write_text(
+        '[mcp_servers.docs]\nurl = "https://d/mcp"\n\n[mcp_servers.fs]\ncommand = "fs"\nargs = ["--ro"]\n')
     got = {(m["client"], m["scope"], m["name"]): (m["type"], m["target"], m["project"])
            for m in client.get("/api/v1/sources/mcp").json()["configured"]}
     assert got[("claude", "user", "obsidian")][0] == "stdio"
@@ -99,3 +100,25 @@ def test_toggling_uninstalled_plugin_refused(authed, fake_cli, monkeypatch):
 def test_plugin_cli_failure_reported(client, fake_cli):
     fake_cli.exit_code, fake_cli.stderr = 1, "boom"
     assert client.get("/api/v1/sources/plugins").json() == {"plugins": [], "error": "boom"}
+
+
+def test_large_plugin_list_parses_through_the_real_runner(settings, tmp_path, monkeypatch):
+    from app.actions import runner
+    from app.config import Cli
+    from tests.conftest import REAL_BINARY, REAL_RUN
+
+    monkeypatch.setattr(runner.Runner, "run", REAL_RUN)
+    monkeypatch.setattr(runner.Runner, "binary", REAL_BINARY)
+    plugins = [{"id": f"plugin{i}@market", "version": "1.0.0", "scope": "user", "enabled": True,
+                "description": "x" * 200} for i in range(60)]
+    out = tmp_path / "plugins.json"
+    out.write_text(json.dumps(plugins))
+    assert out.stat().st_size > 10_000
+    fake_claude = tmp_path / "claude"
+    fake_claude.write_text(f'#!/bin/sh\ncat "{out}"\n')
+    fake_claude.chmod(0o755)
+    c = TestClient(create_app(settings.model_copy(update={"cli": Cli(claude_bin=str(fake_claude))})),
+                   base_url="http://localhost")
+    body = c.get("/api/v1/sources/plugins").json()
+    assert "error" not in body or not body["error"], body.get("error")
+    assert len(body["plugins"]) == 60

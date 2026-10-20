@@ -6,7 +6,7 @@ INSTALL_PORT ?= 8787
 VERSION := $(shell cat VERSION)
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
+.PHONY: help setup journeys dev backend frontend test build lint lint-py clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -35,8 +35,15 @@ dev: setup ## Run API + UI together, then open http://localhost:5173
 	$(MAKE) --no-print-directory frontend & \
 	wait
 
-test: backend/.venv/.stamp ## Run backend tests
-	cd backend && .venv/bin/pytest -q
+# Coverage floor: today's figure rounded down. It counts the tmux integration tests, so run
+# them (have tmux installed) when checking it; raise it as coverage grows.
+COV_MIN = 91
+
+test: backend/.venv/.stamp ## Run backend tests with coverage
+	cd backend && .venv/bin/pytest -q --cov=app --cov-report=term-missing:skip-covered --cov-fail-under=$(COV_MIN)
+
+lint-py: backend/.venv/.stamp ## Lint the backend (ruff)
+	cd backend && .venv/bin/ruff check app tests
 
 # TypeScript types for the API, generated from the backend's response models. The generator
 # runs via npx in its own pinned environment (it needs TypeScript 5; the app uses 6).
@@ -56,6 +63,12 @@ types-check: backend/.venv/.stamp ## Fail if generated.ts is out of date with th
 	if diff -q "$$tmp/generated.ts" $(GENERATED) >/dev/null; then echo "generated.ts is up to date"; \
 	else echo "generated.ts is stale: run 'make types' and commit it"; diff -u $(GENERATED) "$$tmp/generated.ts" | head -40; exit 1; fi
 
+# Recorded user journeys against a throwaway HOME/config/tmux (never your real ~/.eyrie or
+# ~/.claude); report at frontend/journeys/index.html. ARGS go to Playwright, e.g. ARGS='-g Tasks'.
+journeys: setup ## Record the user-journey suite and build its report
+	cd frontend && npx playwright install chromium
+	scripts/journeys.sh $(ARGS)
+
 version-check: ## Fail if a version copy differs from VERSION
 	@python3 scripts/version.py check
 
@@ -63,7 +76,7 @@ version: ## Set the version everywhere: make version V=0.2.0
 	@test -n "$(V)" || { echo "usage: make version V=x.y.z"; exit 1; }
 	python3 scripts/version.py set $(V)
 
-check: version-check test types-check build lint landing-build ## Everything CI runs
+check: version-check lint-py test types-check build lint landing-build ## Everything CI runs
 
 build: frontend/node_modules/.stamp ## Typecheck + production build of the UI
 	cd frontend && npm run build

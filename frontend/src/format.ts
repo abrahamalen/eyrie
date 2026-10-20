@@ -10,6 +10,11 @@ export function fmtNum(n: number | null | undefined): string {
   return (n ?? 0).toLocaleString('en-US')
 }
 
+/** "1 session", "2 sessions"; pass `many` for irregular plurals. */
+export function fmtCount(n: number | null | undefined, one: string, many = `${one}s`): string {
+  return `${fmtNum(n)} ${(n ?? 0) === 1 ? one : many}`
+}
+
 export function fmtUsd(n: number | null | undefined): string {
   return '$' + (n ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }

@@ -30,12 +30,6 @@ def _lock_for(tool: str):
         return _locks.setdefault(tool, threading.Lock())
 
 
-TAIL = 4000
-# stdout is often JSON (`claude plugin list --json`) that's useless cut short, so it's only
-# capped against runaway output; stderr is for people, so its tail is enough.
-STDOUT_MAX = 4_000_000
-
-
 class CliNotFound(Exception):
     pass
 
@@ -81,7 +75,7 @@ class Runner:
                 code, out, err = p.returncode, p.stdout, p.stderr
             except subprocess.TimeoutExpired as e:
                 code, out, err = -1, _text(e.stdout), f"Timed out after {self.settings.cli.timeout_s:.0f}s"
-        return RunResult(code, out[-STDOUT_MAX:], err[-TAIL:], (time.perf_counter() - started) * 1000)
+        return RunResult(code, out, err, (time.perf_counter() - started) * 1000)
 
 
 def _text(v: str | bytes | None) -> str:

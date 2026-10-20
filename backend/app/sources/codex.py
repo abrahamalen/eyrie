@@ -35,7 +35,7 @@ class CodexSource:
                 ORDER BY updated_at DESC
                 LIMIT 200
             """)
-            for thread_id, cwd, model, tokens_used, created_at, updated_at, reasoning_effort, title in cur.fetchall():
+            for thread_id, cwd, model, tokens_used, _created_at, updated_at, reasoning_effort, title in cur.fetchall():
                 tokens_used = tokens_used or 0
                 totals["tokens_used"] += tokens_used
                 m = model or "unknown"
