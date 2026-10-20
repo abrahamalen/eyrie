@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Session jump: widget to app to terminal",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "widget", "label": "Your desktop" },
+    { "id": "app", "label": "Eyrie app" },
+    { "id": "api", "label": "Eyrie API" },
+    { "id": "fallback", "label": "Messages", "variant": "exception" }
+  ],
+  "mainPath": ["click", "deeplink", "jump", "validate", "focus", "front"],
+  "nodes": [
+    { "id": "click", "lane": "widget", "col": 0, "type": "frontend", "label": "Click a session", "sublabel": "panel or tray menu", "width": 140 },
+    { "id": "deeplink", "lane": "app", "col": 1, "type": "frontend", "label": "/sessions deep link", "sublabel": "?open= or ?ext=", "width": 140 },
+    { "id": "jump", "lane": "app", "col": 2, "type": "frontend", "label": "Jump to terminal", "sublabel": "name or short id", "width": 140 },
+    { "id": "validate", "lane": "api", "col": 3, "type": "security", "label": "sessions.focus", "sublabel": "pid listed, tty valid", "width": 140 },
+    { "id": "focus", "lane": "api", "col": 4, "type": "backend", "label": "Focus plan", "sublabel": "osascript / tmux argv", "width": 140 },
+    { "id": "front", "lane": "widget", "col": 5, "type": "external", "label": "Terminal tab", "sublabel": "brought to front", "width": 140 },
+    { "id": "ended", "lane": "fallback", "col": 2, "type": "messagebus", "label": "Not running", "sublabel": "copy resume command", "width": 140 },
+    { "id": "manual", "lane": "fallback", "col": 5, "type": "messagebus", "label": "Can't pick the tab", "sublabel": "says where it runs", "width": 140 }
+  ],
+  "edges": [
+    { "id": "open-link", "from": "click", "to": "deeplink", "label": "open URL" },
+    { "id": "row", "from": "deeplink", "to": "jump" },
+    { "id": "act", "from": "jump", "to": "validate", "label": "token action", "variant": "emphasis" },
+    { "id": "plan", "from": "validate", "to": "focus" },
+    { "id": "run", "from": "focus", "to": "front", "label": "argv, no shell", "variant": "emphasis" },
+    { "id": "gone", "from": "jump", "to": "ended", "label": "pid gone", "variant": "dashed", "role": "error" },
+    { "id": "unsupported", "from": "focus", "to": "manual", "label": "other terminal", "variant": "dashed", "role": "error" }
+  ]
+}
