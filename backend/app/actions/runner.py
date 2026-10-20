@@ -1,10 +1,10 @@
-"""Runs the claude / codex CLIs on Eyrie's behalf.
+"""Runs the AI tools' CLIs (claude, codex, gemini) and tmux on Eyrie's behalf.
 
 Always an argv list with shell=False, so no argument is ever interpreted by a shell;
 stdin is closed so a CLI can never block waiting on a prompt. Calls to the same CLI are
-serialised because claude and codex each rewrite whole config files; different CLIs, and
-tmux (whose server serialises commands itself), don't wait on each other, so a slow
-`claude mcp add` can't stall the session list or the summary.
+serialised because each tool rewrites whole config files; different CLIs, and tmux (whose
+server serialises commands itself), don't wait on each other, so a slow `claude mcp add`
+can't stall the session list or the summary.
 """
 import contextlib
 import os
@@ -17,7 +17,17 @@ from pathlib import Path
 
 from app.config import Settings
 
-_locks = {"claude": threading.Lock(), "codex": threading.Lock()}
+# One lock per AI tool's CLI (each rewrites its own config files), made on first use so a
+# new tool can't be missed. tmux gets none: its server serialises commands itself.
+_locks: dict[str, threading.Lock] = {}
+_locks_guard = threading.Lock()
+
+
+def _lock_for(tool: str):
+    if tool == "tmux":
+        return contextlib.nullcontext()
+    with _locks_guard:
+        return _locks.setdefault(tool, threading.Lock())
 TAIL = 4000
 
 
@@ -57,7 +67,7 @@ class Runner:
             cwd = self.settings.paths.data_dir
             cwd.mkdir(parents=True, exist_ok=True)
         started = time.perf_counter()
-        with _locks.get(tool) or contextlib.nullcontext():
+        with _lock_for(tool):
             try:
                 p = subprocess.run(
                     argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,

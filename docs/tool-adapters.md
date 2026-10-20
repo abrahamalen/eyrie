@@ -54,7 +54,7 @@ class Tool(Protocol):
 | Capability | What the adapter provides | Used by |
 |---|---|---|
 | `sessions` | `argv(mode, cwd, resume_id, new_id)` for new / continue / resume. `match(cmdline)` returns `(tool, resume_target)` for a terminal process, or None for helpers. `activity(cwd, resume_target)` gives the last-activity time and whether it's exact | `sessions.start`, `sessions/external.py`, Sessions page |
-| `usage` | `files()` lists transcript paths to index. `parse(line, path)` yields `UsageRow(key, ts, session_id, project, model, input, output, cache_read, cache_write, …)`. `conversations()` returns recent ones to resume. A price table | `usage/index.py`, Usage page, summary spend |
+| `usage` | `files()` lists transcript paths to index. `parse(line, path)` yields `UsageRow(key, ts, session_id, project, model, subagent, input, output, cache_read, cache_write_5m, cache_write_1h)`. `conversations()` returns recent ones to resume. A price table | `usage/index.py`, Usage page, summary spend |
 | `mcp` | `servers()` reads the configured servers (read-only). `add_argv(...)` / `remove_argv(...)` build CLI calls. Scopes and transports supported | MCP page, `mcp.*` actions |
 | `plugins` | `list()` plus `enable_argv` / `disable_argv` | Plugins page (Claude only today) |
 | `memory` | Folder of `<agent>/*.md` | Agent memory page (Claude only today) |
@@ -90,8 +90,8 @@ Two wins fall out of this:
 
 ## 4. Usage index changes
 
-- `messages` gets a `tool` column. Keys are prefixed `<tool>:` so tools can't collide. This needs schema version 2, with a migration: existing rows become `tool = 'claude'`, and the keys are rewritten once. It's a migration, not a rebuild, because Claude Code has already pruned transcripts the index still holds.
-- Cache columns are generalised: `cache_read` and `cache_write`, with Claude's 5m/1h split kept as `cache_write_1h` (zero for other tools). Each tool's price table says how its counters map to dollars.
+- `messages` and `files` get a `tool` column, and `files` a per-file parser `state`. This needs schema version 2, migrated in place (backup to `usage.db.v1`, totals checked): existing rows become `tool = 'claude'`. As built, Claude keys keep their old form (`<message.id>|<requestId>`) and only new tools' keys are prefixed (`codex:…`, `gemini:…`), so the migration never rewrites rows. It's a migration, not a rebuild, because Claude Code has already pruned transcripts the index still holds.
+- Cache columns stay `cache_read`, `cache_write_5m` and `cache_write_1h` (other tools put cache writes in `cache_write_5m`, and `cache_write_1h` stays zero). Each tool's price table says how its counters map to dollars.
 - `report()` groups by tool as well as by model, project and day. The Usage page gets a tool filter.
 
 ## 5. Config and first run
@@ -121,7 +121,7 @@ folder only, never a file name, since a vault can hold several task lists.
 
 ### 5.2 First-run flow
 
-`GET /api/v1/setup` reports what Eyrie detects; `POST /api/v1/setup` writes `~/.eyrie/eyrie.toml`, using the token, the etag check and the audit log as usual. The UI shows a setup screen whenever no config file exists.
+`GET /api/v1/setup` reports what Eyrie detects; `PUT /api/v1/setup` writes `~/.eyrie/eyrie.toml`, using the token, the etag check and the audit log as usual. The UI shows a setup screen whenever no config file exists.
 
 1. **Tools.** Each adapter's binary is found on the login PATH (the same capture `service.py` uses), with its version and whether its home folder exists. You untick what you don't want.
 2. **Where you work.** The session roots are suggested from the directories the tools already know, e.g. `~/personal/projects` when that holds 5 known projects. You confirm or edit them.
@@ -133,9 +133,10 @@ For me, first run writes what's implicit today (vault tasks file, roots), so not
 
 ## 6. API and UI
 
-- `Literal["claude", "codex"]` becomes `ToolId`, validated against the registry at request time. An unknown or disabled tool is a 422.
+- `Literal["claude", "codex"]` becomes `ToolId`, validated against the registry at request time. An unknown tool is a 422; a disabled one is refused by the action precheck with a 409 (on a real run; a dry run still previews).
 - **Sources:**
-  - `/api/v1/sources` lists per-tool sources (`claude`, `codex`, `gemini`) next to the shared ones (`sessions`, `usage`, `mcp`, `tasks`, `memory`).
+  - `/api/v1/sources` lists the per-tool sources that have pages (`claude`, `codex`; Gemini has no page of its own yet) next to the shared ones (`sessions`, `usage`, `mcp`, `tasks`, `memory`).
+  - Still Claude-only, as built: the Sessions page's resume list (`/sessions/conversations`), MCP connect-failure detection (from Claude transcripts), and the MCP source's availability check (`~/.claude.json`).
   - `/api/v1/meta` returns the enabled tools and their capabilities, so the UI can build itself from that.
 - **Sidebar, home page and widget:**
   - pages appear only for capabilities some enabled tool has (no Plugins page without a plugin-capable tool, no Tasks without a tasks file);

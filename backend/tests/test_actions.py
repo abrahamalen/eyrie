@@ -178,3 +178,34 @@ def test_tmux_calls_dont_wait_on_a_slow_claude_call(settings, monkeypatch):
     assert time.perf_counter() - started < 1
     release.set()
     slow.join()
+
+
+def test_calls_to_one_tool_are_serialised_for_every_tool(settings, monkeypatch):
+    # gemini (like claude and codex) rewrites its settings.json, so two calls must not overlap.
+    import subprocess
+    import threading
+    import time
+    from app.actions import runner
+    from tests.conftest import REAL_BINARY, REAL_RUN
+
+    active, peak = [0], [0]
+    gate = threading.Lock()
+
+    def fake_run(argv, **kw):
+        with gate:
+            active[0] += 1
+            peak[0] = max(peak[0], active[0])
+        time.sleep(0.05)
+        with gate:
+            active[0] -= 1
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner.Runner, "run", REAL_RUN)
+    monkeypatch.setattr(runner.Runner, "binary", REAL_BINARY)
+    s = settings.model_copy(update={"cli": settings.cli.model_copy(update={"gemini_bin": "/x/gemini"})})
+    r = runner.Runner(s)
+    threads = [threading.Thread(target=r.run, args=("gemini", ["mcp", "add"])) for _ in range(3)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    assert peak[0] == 1
