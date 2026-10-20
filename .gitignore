@@ -23,3 +23,6 @@ widget/src-tauri/gen/
 
 # Packaging builds (PyInstaller)
 build/
+
+# Journey suite output (make journeys)
+frontend/journeys/
