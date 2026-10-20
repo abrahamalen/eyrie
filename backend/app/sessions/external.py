@@ -13,8 +13,8 @@ terminal hosts the session: sessions/focus.py) and only the classification is ke
 import os
 import re
 import subprocess
-from collections import Counter
 import sys
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 

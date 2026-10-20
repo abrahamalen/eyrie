@@ -223,6 +223,7 @@ def test_long_json_stdout_is_not_cut(settings, monkeypatch):
     # `claude plugin list --json` with a dozen plugins is over 4 KB; cutting it broke parsing.
     import json
     import subprocess
+
     from app.actions import runner
     from tests.conftest import REAL_BINARY, REAL_RUN
 
