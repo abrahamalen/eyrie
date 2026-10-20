@@ -78,10 +78,11 @@ jobs:
           else
             cp "$b"/deb/*.deb "$b"/rpm/*.rpm out/
             cp "$b"/appimage/*.AppImage out/ 2>/dev/null || true
-            # Server only, for machines without a desktop (install.sh --server-only).
-            mkdir -p pkg/eyrie-server-$v && cp -R build/dist/eyrie-server pkg/eyrie-server-$v/ && cp -R frontend/dist pkg/eyrie-server-$v/ui
-            tar -C pkg -czf "out/eyrie-server-$v-${{ matrix.name }}.tar.gz" "eyrie-server-$v"
           fi
+          # Server only (no widget): install.sh --server-only on Linux, and the Homebrew
+          # formula on macOS and Linux.
+          mkdir -p pkg/eyrie-server-$v && cp -R build/dist/eyrie-server pkg/eyrie-server-$v/ && cp -R frontend/dist pkg/eyrie-server-$v/ui
+          tar -C pkg -czf "out/eyrie-server-$v-${{ matrix.name }}.tar.gz" "eyrie-server-$v"
           ls -la out
       - name: Smoke test (macOS)
         if: runner.os == 'macOS'
