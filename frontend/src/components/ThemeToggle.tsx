@@ -20,8 +20,9 @@ export function ThemeToggle() {
     }
   }, [dark])
 
+  const label = dark ? 'Switch to light mode' : 'Switch to dark mode'
   return (
-    <Button variant="ghost" size="icon" onClick={() => setDark((d) => !d)}>
+    <Button variant="ghost" size="icon" aria-label={label} title={label} onClick={() => setDark((d) => !d)}>
       {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </Button>
   )

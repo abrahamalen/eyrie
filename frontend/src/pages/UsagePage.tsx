@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '@/api/client'
 import { usePoll } from '@/usePoll'
-import { fmtCompact, fmtNum, fmtUsd, shortPath, toolTitle } from '@/format'
+import { fmtCompact, fmtCount, fmtNum, fmtUsd, shortPath, toolTitle } from '@/format'
 import { StatTile } from '@/components/StatTile'
 import { BarList } from '@/components/BarList'
 import { UsageChart, UsageLegend } from '@/components/UsageChart'
@@ -80,7 +80,7 @@ export function UsagePage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {data.by_tool.map((t) => (
                 <StatTile key={t.tool} value={metric === 'cost' ? fmtUsd(t.cost) : fmtCompact(t.tokens)}
-                  label={`${toolTitle(t.tool)} · ${fmtNum(t.sessions)} sessions`} />
+                  label={`${toolTitle(t.tool)} · ${fmtCount(t.sessions, 'session')}`} />
               ))}
             </div>
           )}
@@ -109,22 +109,23 @@ export function UsagePage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
+          <div className="grid gap-6 lg:grid-cols-5">
+            <Card className="lg:col-span-3">
               <CardHeader>
                 <CardTitle>By model</CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto">
+                {/* Tool sits under the model name and two-word headers wrap, so all six columns fit
+                    beside By project on a laptop; narrower screens scroll the table. */}
                 <table className="w-full whitespace-nowrap text-sm">
                   <thead className="eyebrow tracking-[0.06em]">
-                    <tr>
+                    <tr className="align-bottom">
                       <th className="py-1.5 text-left font-medium">Model</th>
-                      <th className="py-1.5 pl-4 text-left font-medium">Tool</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Cost</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Input</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Output</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Cache read</th>
-                      <th className="py-1.5 pl-4 text-right font-medium">Cache write</th>
+                      <th className="py-1.5 pl-3 text-right font-medium">Cost</th>
+                      <th className="py-1.5 pl-3 text-right font-medium">Input</th>
+                      <th className="py-1.5 pl-3 text-right font-medium">Output</th>
+                      <th className="py-1.5 pl-3 text-right font-medium whitespace-normal">Cache read</th>
+                      <th className="py-1.5 pl-3 text-right font-medium whitespace-normal">Cache write</th>
                     </tr>
                   </thead>
                   <tbody className="tabular-nums">
@@ -135,18 +136,18 @@ export function UsagePage() {
                             <span className="size-2.5 shrink-0 rounded-sm" style={{ background: seriesColor(m.tool) }} />
                             {m.model}
                           </span>
+                          <div className="pl-4.5 text-xs text-muted-foreground">{toolTitle(m.tool)}</div>
                         </td>
-                        <td className="py-1.5 pl-4 text-muted-foreground">{toolTitle(m.tool)}</td>
-                        <td className="py-1.5 pl-4 text-right">{m.priced ? fmtUsd(m.cost) : 'no price'}</td>
-                        <td className="py-1.5 pl-4 text-right">{fmtCompact(m.input)}</td>
-                        <td className="py-1.5 pl-4 text-right">{fmtCompact(m.output)}</td>
-                        <td className="py-1.5 pl-4 text-right">{fmtCompact(m.cache_read)}</td>
-                        <td className="py-1.5 pl-4 text-right">{fmtCompact(m.cache_write)}</td>
+                        <td className="py-1.5 pl-3 text-right">{m.priced ? fmtUsd(m.cost) : 'no price'}</td>
+                        <td className="py-1.5 pl-3 text-right">{fmtCompact(m.input)}</td>
+                        <td className="py-1.5 pl-3 text-right">{fmtCompact(m.output)}</td>
+                        <td className="py-1.5 pl-3 text-right">{fmtCompact(m.cache_read)}</td>
+                        <td className="py-1.5 pl-3 text-right">{fmtCompact(m.cache_write)}</td>
                       </tr>
                     ))}
                     {!data.by_model.length && (
                       <tr>
-                        <td colSpan={7} className="py-3 text-muted-foreground">No usage in this range.</td>
+                        <td colSpan={6} className="py-3 text-muted-foreground">No usage in this range.</td>
                       </tr>
                     )}
                   </tbody>
@@ -154,7 +155,7 @@ export function UsagePage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>By project</CardTitle>
                 <CardDescription>Each session counts toward the directory it started in</CardDescription>
@@ -170,8 +171,8 @@ export function UsagePage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            {data.note} Prices updated {data.pricing.updated}. Index: {fmtNum(data.index.messages)} responses from{' '}
-            {fmtNum(data.index.files)} transcripts
+            {data.note} Prices updated {data.pricing.updated}. Index: {fmtCount(data.index.messages, 'response')} from{' '}
+            {fmtCount(data.index.files, 'transcript')}
             {data.index.oldest ? `, since ${new Date(data.index.oldest).toLocaleDateString('en-GB')}` : ''}. Kept in
             ~/.eyrie/usage.db, so history stays after the tools prune old transcripts.
           </p>

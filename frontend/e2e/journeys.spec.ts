@@ -50,15 +50,24 @@ test.afterEach(async () => {
 
 /** Go to a page the way a person would: through the sidebar (the menu sheet on a phone). */
 async function nav(page: Page, label: string) {
-  if (phone()) await page.getByRole('button', { name: 'Toggle Sidebar' }).first().click()
-  await page.locator('[data-sidebar="menu-button"]', { hasText: label }).first().click()
-  // On a phone the menu sheet stays open after choosing a page; close it by hand.
+  const sheet = page.getByRole('dialog', { name: 'Sidebar' })
   if (phone()) {
-    await page.waitForTimeout(BEAT)
-    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Toggle Sidebar' }).first().click()
+    await expect(sheet).toBeVisible()
   }
+  await page.locator('[data-sidebar="menu-button"]', { hasText: label }).first().click()
+  // Choosing a page closes the phone's menu sheet by itself.
+  if (phone()) await expect(sheet).toBeHidden()
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await page.waitForTimeout(BEAT)
+}
+
+/** Nothing pushes the page sideways: the scrolling area is no wider than the screen. */
+async function fitsWidth(page: Page) {
+  // The layout nests two <main>s (the sidebar inset and the page's scroller); check both.
+  const overflow = await page.locator('main').evaluateAll((els) => Math.max(...els.map((el) => el.scrollWidth - el.clientWidth)))
+  expect(overflow, 'page content wider than the screen').toBeLessThanOrEqual(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
 }
 
 async function home(page: Page) {
@@ -207,6 +216,15 @@ test('Check what my agents cost', async ({ page }) => {
   await nav(page, 'Usage')
   await expect(page.getByText('By model')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('cell', { name: 'claude-opus-5-5' }).first()).toBeVisible()
+  // One session reads "1 session", not "1 sessions".
+  await expect(page.getByText(/· 1 session$/)).toBeVisible()
+  await expect(page.getByText(/\b1 sessions\b/)).toHaveCount(0)
+  await fitsWidth(page)
+  if (!phone()) {
+    // Every By model column fits beside By project, with nothing scrolled out of view.
+    const byModel = page.locator('table', { has: page.getByText('Cache write') })
+    expect(await byModel.evaluate((t) => t.parentElement!.scrollWidth - t.parentElement!.clientWidth)).toBeLessThanOrEqual(0)
+  }
   await shot(page, 'usage, 30 days')
   await page.getByRole('group', { name: 'Range' }).getByRole('button', { name: '7 days' }).click()
   await expect(page.getByText(/last 7 days/).first()).toBeVisible()
@@ -220,15 +238,14 @@ test('Check what my agents cost', async ({ page }) => {
 test('Switch to dark mode and read usage', async ({ page }) => {
   await page.addInitScript(() => localStorage.removeItem('theme'))
   await home(page)
-  // The toggle is the only button on the right of the top bar.
-  await page.locator('header button').last().click()
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.waitForTimeout(BEAT)
   await shot(page, 'overview, dark')
   await nav(page, 'Usage')
   await expect(page.getByText('By model')).toBeVisible({ timeout: 20_000 })
   await shot(page, 'usage, dark')
-  await page.locator('header button').last().click()
+  await page.getByRole('button', { name: 'Switch to light mode' }).click()
   await expect(page.locator('html')).not.toHaveClass(/dark/)
   await page.waitForTimeout(BEAT)
 })
@@ -236,7 +253,14 @@ test('Switch to dark mode and read usage', async ({ page }) => {
 test('See which MCP servers each tool has', async ({ page }) => {
   await home(page)
   await nav(page, 'MCP servers')
-  for (const name of ['obsidian', 'linear', 'docs']) await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
+  for (const name of ['obsidian', 'linear', 'docs']) {
+    await expect(page.getByText(name, { exact: true }).filter({ visible: true }).first()).toBeVisible()
+  }
+  // Each server's Remove is on screen, not scrolled off to the right on a phone.
+  const remove = page.getByRole('button', { name: 'Remove' }).filter({ visible: true })
+  await expect(remove).toHaveCount(3)
+  for (const b of await remove.all()) await expect(b).toBeInViewport()
+  await fitsWidth(page)
   await shot(page, 'mcp servers')
 })
 
@@ -277,6 +301,9 @@ test('Tick off a task', async ({ page }) => {
     await nav(page, 'Tasks')
     const row = page.locator('div.group', { hasText: 'Write release notes for 0.3.0' })
     await expect(row).toBeVisible()
+    // A phone can't hover, so the delete button is always shown there.
+    if (phone()) await expect(row.getByRole('button', { name: /^Delete/ })).toHaveCSS('opacity', '1')
+    await fitsWidth(page)
     await shot(page, 'tasks')
     await row.getByRole('checkbox').click()
     await expect(row.getByRole('checkbox')).toBeChecked()

@@ -34,11 +34,55 @@ export function McpPage() {
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
 
       <Card>
-        <CardContent className="overflow-x-auto">
+        <CardContent>
           {!data && !error ? (
             <Skeleton className="h-32" />
           ) : (
-            <Table>
+            <>
+            {/* A phone is too narrow for the table's five columns: one stacked entry per server. */}
+            <ul className="flex flex-col divide-y sm:hidden" aria-label="MCP servers">
+              {data?.configured.map((m) => {
+                const f = failure(m.name)
+                return (
+                  <li key={`${m.client}:${m.scope}:${m.project}:${m.name}`} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate font-medium">{m.name}</span>
+                      <Button variant="ghost" size="sm" className="-mr-2 text-destructive" onClick={() => setRemoving(m)}>
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="break-all font-mono text-xs text-muted-foreground">
+                      <span className="mr-1.5 rounded bg-muted px-1">{m.type}</span>
+                      {tildify(m.target)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {toolTitle(m.client)} · {m.scope}
+                      {m.project && <> · {shortPath(m.project)}</>}
+                    </div>
+                    <div>
+                      {f ? (
+                        <Badge variant="destructive">failed ({f.detail})</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">no recent failure</span>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+              {pluginOnly.map((f) => (
+                <li key={`plugin:${f.name}`} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+                  <span className="font-medium">{f.name}</span>
+                  <div className="text-xs text-muted-foreground">Claude Code · from a plugin · manage on Plugins</div>
+                  <div>
+                    <Badge variant="destructive">failed ({f.detail})</Badge>
+                  </div>
+                </li>
+              ))}
+              {data && !data.configured.length && !pluginOnly.length && (
+                <li className="text-center text-sm text-muted-foreground">No servers configured. Add one above.</li>
+              )}
+            </ul>
+            <Table className="max-sm:hidden">
               <TableHeader>
                 <TableRow>
                   <TableHead>Server</TableHead>
@@ -100,6 +144,7 @@ export function McpPage() {
                 )}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
       </Card>
