@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Stop an idle session: suggestion to signal",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    { "id": "app", "label": "Eyrie app" },
+    { "id": "api", "label": "Eyrie API" },
+    { "id": "os", "label": "Your session" },
+    { "id": "fallback", "label": "Messages", "variant": "exception" }
+  ],
+  "mainPath": ["suggest", "confirm", "check", "reverify", "term", "done"],
+  "nodes": [
+    { "id": "suggest", "lane": "app", "col": 0, "type": "frontend", "label": "Idle suggestion", "sublabel": "idle ≥ 24h, RAM, children", "width": 150 },
+    { "id": "confirm", "lane": "app", "col": 1, "type": "frontend", "label": "Confirm dialog", "sublabel": "name, folder, resume cmd", "width": 150 },
+    { "id": "check", "lane": "api", "col": 2, "type": "security", "label": "Check the request", "sublabel": "listed, your uid, a tool", "width": 150 },
+    { "id": "reverify", "lane": "api", "col": 3, "type": "security", "label": "Re-verify pid", "sublabel": "start time + command", "width": 150 },
+    { "id": "term", "lane": "os", "col": 4, "type": "backend", "label": "SIGTERM one pid", "sublabel": "wait up to 5 s", "width": 150 },
+    { "id": "done", "lane": "app", "col": 5, "type": "frontend", "label": "Stopped", "sublabel": "resume command kept", "width": 150 },
+    { "id": "refused", "lane": "fallback", "col": 3, "type": "messagebus", "label": "Not stopped", "sublabel": "gone or pid reused", "width": 150 },
+    { "id": "force", "lane": "fallback", "col": 5, "type": "messagebus", "label": "Still running", "sublabel": "offer Force (SIGKILL)", "width": 150 }
+  ],
+  "edges": [
+    { "id": "review", "from": "suggest", "to": "confirm", "label": "Stop…" },
+    { "id": "post", "from": "confirm", "to": "check", "label": "confirm: true", "variant": "emphasis" },
+    { "id": "ok", "from": "check", "to": "reverify" },
+    { "id": "signal", "from": "reverify", "to": "term", "label": "kill(pid)", "variant": "emphasis" },
+    { "id": "exited", "from": "term", "to": "done", "label": "exited" },
+    { "id": "mismatch", "from": "reverify", "to": "refused", "label": "mismatch", "variant": "dashed", "role": "error" },
+    { "id": "alive", "from": "term", "to": "force", "label": "after 5 s", "variant": "dashed", "role": "error" }
+  ]
+}
