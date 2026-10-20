@@ -114,7 +114,7 @@ browser downloads are how most people install.
 | Job | Runner | Produces |
 |---|---|---|
 | macOS arm64 | `macos-14` | `Eyrie_X.Y.Z_aarch64.dmg` |
-| macOS x86_64 | `macos-13` | `Eyrie_X.Y.Z_x64.dmg` (PyInstaller can't build universal binaries from one runner) |
+| macOS x86_64 | `macos-15-intel` (macos-13 was retired Dec 2025; Intel runners end fall 2027) | `Eyrie_X.Y.Z_x64.dmg` (PyInstaller can't build universal binaries from one runner) |
 | Linux x86_64 | `ubuntu-22.04` (older glibc, so the binary runs on newer distros) | `.deb` (Debian, Ubuntu), `.rpm` (Fedora), `.AppImage`, `eyrie-server-X.Y.Z-linux-x86_64.tar.gz` |
 | Linux arm64 | `ubuntu-22.04-arm` | `.deb`, `.rpm`, `eyrie-server-X.Y.Z-linux-aarch64.tar.gz` |
 | Landing page | `ubuntu-24.04` | `eyrie-landing-X.Y.Z.tar.gz` for alenabraham.me/eyrie (once `landing/` exists) |
@@ -182,7 +182,7 @@ apt and dnf **repositories** (`apt install eyrie` with no download step) are def
    (tag = `v$(cat VERSION)`, `make check`) → build (macOS arm64/x64, Linux x64/arm64; the macOS
    dmg is smoke-tested in the job) → install-test (`.deb` on debian:12 and ubuntu:24.04, `.rpm`
    on fedora:41; each `serve` + `/health`, `/meta`, `/`) → publish (`SHA256SUMS`, notes,
-   pre-release for tags with `-`). Lints clean with actionlint 1.7.7. First real run: a
+   pre-release for tags with `-`). Lints clean with actionlint 1.7.9 (1.7.7 doesn't know `macos-15-intel`). First real run: a
    `v0.2.0-rc1` tag on the personal repo. Watch: RPM versions can't contain `-`.
 6. **Code:** `scripts/install.sh` (tested in debian, ubuntu and fedora containers and on macOS),
    the Homebrew tap, and the website serving `/eyrie/install.sh`.
