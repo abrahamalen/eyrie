@@ -1,0 +1,175 @@
+name: Release
+
+# A tag vX.Y.Z (or vX.Y.Z-rc1) builds every installer, installs each one on a clean machine of
+# its kind and checks Eyrie answers, then publishes a GitHub release with SHA256SUMS
+# (docs/packaging.md §7). Tags with a "-" publish as pre-releases.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    # Skipped on the work-account fork, like ci.yml; releases come from the personal repo.
+    if: github.repository_owner != 'alenabraham-qure'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Tag must equal VERSION
+        run: |
+          set -euo pipefail
+          want="v$(cat VERSION)"
+          [[ "$GITHUB_REF_NAME" == "$want" ]] || { echo "tag $GITHUB_REF_NAME != $want (run make version)"; exit 1; }
+          echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y tmux
+      - run: make setup
+      - run: make check
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, name: macos-aarch64 }
+          - { os: macos-13, name: macos-x86_64 }
+          # 22.04: the oldest glibc we support (2.35), so binaries run on newer distros.
+          - { os: ubuntu-22.04, name: linux-x86_64 }
+          - { os: ubuntu-22.04-arm, name: linux-aarch64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux build dependencies (Tauri)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf rpm
+      - name: Build server, UI and app
+        run: make widget-dist
+      - name: Collect artifacts
+        run: |
+          set -euo pipefail
+          v="${{ needs.verify.outputs.version }}"
+          mkdir -p out
+          b=widget/src-tauri/target/release/bundle
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            cp "$b"/dmg/*.dmg out/
+          else
+            cp "$b"/deb/*.deb "$b"/rpm/*.rpm out/
+            cp "$b"/appimage/*.AppImage out/ 2>/dev/null || true
+            # Server only, for machines without a desktop (install.sh --server-only).
+            mkdir -p pkg/eyrie-server-$v && cp -R build/dist/eyrie-server pkg/eyrie-server-$v/ && cp -R frontend/dist pkg/eyrie-server-$v/ui
+            tar -C pkg -czf "out/eyrie-server-$v-${{ matrix.name }}.tar.gz" "eyrie-server-$v"
+          fi
+          ls -la out
+      - name: Smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          hdiutil attach out/*.dmg -mountpoint /tmp/eyrie-dmg -nobrowse
+          app=/tmp/eyrie-dmg/Eyrie.app/Contents/Resources
+          "$app/eyrie-server/eyrie-server" --version
+          EYRIE_CONFIG=/tmp/eyrie.toml EYRIE_SERVER__UI_DIR="$app/ui" "$app/eyrie-server/eyrie-server" serve --port 8799 &
+          for _ in $(seq 60); do curl -sf http://127.0.0.1:8799/api/v1/health && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8799/api/v1/meta
+          curl -sf http://127.0.0.1:8799/ | grep -q '<div id="root">'
+          kill %1
+          hdiutil detach /tmp/eyrie-dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+
+  # Install each Linux package on a clean distro and check Eyrie answers.
+  install-test:
+    needs: [verify, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: "debian:12", pkg: deb }
+          - { image: "ubuntu:24.04", pkg: deb }
+          - { image: "fedora:41", pkg: rpm }
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-x86_64
+          path: out
+      - name: Install
+        run: |
+          set -eu
+          if [ "${{ matrix.pkg }}" = deb ]; then
+            apt-get update && apt-get install -y curl ./out/*.deb
+          else
+            dnf install -y curl ./out/*.rpm
+          fi
+      - name: Eyrie answers
+        run: |
+          set -eu
+          exe=$(find /usr -path '*eyrie-server/eyrie-server' -type f | head -1)
+          ui=$(dirname "$(dirname "$exe")")/ui
+          test -x "$exe" && test -f "$ui/index.html"
+          "$exe" --version
+          HOME=/tmp EYRIE_CONFIG=/tmp/eyrie.toml EYRIE_SERVER__UI_DIR="$ui" "$exe" serve --port 8799 &
+          for _ in $(seq 60); do curl -sf http://127.0.0.1:8799/api/v1/health && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8799/api/v1/meta
+          curl -sf http://127.0.0.1:8799/ | grep -q '<div id="root">'
+
+  publish:
+    needs: [verify, build, install-test]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          pre=()
+          [[ "$tag" == *-* ]] && pre=(--prerelease)
+          cat > notes.md <<'EOF'
+          Install from the terminal (macOS and Linux) once the install script ships, or download
+          the package for your system below and check it against `SHA256SUMS`.
+
+          - **macOS:** open the `.dmg` and drag Eyrie to Applications. This build isn't signed,
+            so the first time, right-click Eyrie → **Open** (needed only for browser downloads).
+          - **Debian / Ubuntu:** `sudo apt install ./eyrie_*.deb`
+          - **Fedora:** `sudo dnf install ./eyrie-*.rpm`
+          - **Server only (no desktop):** unpack `eyrie-server-*.tar.gz`, then
+            `eyrie-server/eyrie-server service install --ui-dir ui`
+
+          Your data in `~/.eyrie` and running sessions are kept across upgrades.
+          EOF
+          gh release create "$tag" dist/* --repo "$GITHUB_REPOSITORY" --title "Eyrie $tag" \
+            --notes-file notes.md --generate-notes "${pre[@]}"
