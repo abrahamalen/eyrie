@@ -209,3 +209,20 @@ def test_calls_to_one_tool_are_serialised_for_every_tool(settings, monkeypatch):
     [t.start() for t in threads]
     [t.join() for t in threads]
     assert peak[0] == 1
+
+
+def test_long_json_stdout_is_not_cut(settings, monkeypatch):
+    # `claude plugin list --json` with a dozen plugins is over 4 KB; cutting it broke parsing.
+    import json
+    import subprocess
+    from app.actions import runner
+    from tests.conftest import REAL_BINARY, REAL_RUN
+
+    big = json.dumps([{"id": f"plugin-{i}@market", "enabled": True, "description": "x" * 200} for i in range(40)])
+    monkeypatch.setattr(runner.subprocess, "run", lambda argv, **kw: subprocess.CompletedProcess(argv, 0, big, "e" * 9000))
+    monkeypatch.setattr(runner.Runner, "run", REAL_RUN)
+    monkeypatch.setattr(runner.Runner, "binary", REAL_BINARY)
+    s = settings.model_copy(update={"cli": settings.cli.model_copy(update={"claude_bin": "/x/claude"})})
+    r = runner.Runner(s).run("claude", ["plugin", "list", "--json"])
+    assert len(big) > 4000 and json.loads(r.stdout) == json.loads(big)
+    assert len(r.stderr) == runner.TAIL

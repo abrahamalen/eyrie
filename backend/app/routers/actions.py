@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, ValidationError
 
 from app.actions.registry import ACTIONS, Blocked, Context, redact
-from app.actions.runner import CliNotFound
+from app.actions.runner import TAIL, CliNotFound
 from app.masking import mask_args, mask_url, mask_value
 from app.schemas import ActionPreview, ActionResult, AuditEntry
 from app.sessions.dirs import is_allowed
@@ -65,7 +65,7 @@ def run_action(action_id: str, body: ActionRequest, request: Request):
         if step.explain:
             ok, said = step.explain(result)
         else:
-            ok, said = result.ok, "\n".join(x for x in (result.stdout.strip(), result.stderr.strip()) if x)
+            ok, said = result.ok, "\n".join(x for x in (result.stdout.strip()[-TAIL:], result.stderr.strip()) if x)
         messages.append(said)
         if not ok:
             break
