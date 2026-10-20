@@ -11,6 +11,7 @@ from app.tools.base import Tool
 from app.usage.prices import normalize_model
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+SHORT_ID = re.compile(r"^[0-9a-f]{8}$")
 
 
 def transcript_dir(claude_home: Path, cwd: str) -> Path:
@@ -63,6 +64,16 @@ class Sessions:
                     name = clean(d.get("name"))
                     if name and d.get("nameSource") and name != sid[:8]:
                         return Name(sid, name, "user" if d["nameSource"] == "user" else "tool")
+            if not conv and resume and SHORT_ID.match(resume):
+                # `claude attach <id8>`: a terminal on a background session, which has its own pid file.
+                for f in (home / "sessions").glob("*.json"):
+                    d = safe_read_json(f)
+                    sid = d.get("sessionId") if isinstance(d, dict) else None
+                    if isinstance(sid, str) and UUID_RE.match(sid) and sid.startswith(resume):
+                        name = clean(d.get("name"))
+                        if name and d.get("nameSource") and name != sid[:8]:
+                            return Name(sid, name, "user" if d["nameSource"] == "user" else "tool")
+                        return Name(sid)
             if not conv and resume and UUID_RE.match(resume):
                 conv = resume
             if conv and cwd:

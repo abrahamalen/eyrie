@@ -68,8 +68,9 @@ def parse_ps(output: str, tools=None) -> list[dict]:
         if tool is None or (len(args) > 1 and args[1] in tool.sessions.helpers):
             continue
         resume = None
-        for flag in ("--resume", "-r", "resume"):
-            if flag in args[1:]:
+        # `claude attach <id>` is a terminal on a background session: the id is its target too.
+        for flag in ("--resume", "-r", "resume", "attach"):
+            if flag in args[1:] and (flag != "attach" or args[1] == "attach"):
                 i = args.index(flag, 1)
                 target = args[i + 1] if i + 1 < len(args) else None
                 if target and (UUID_RE.match(target) or (NAME_RE.match(target) and not target.startswith("-"))):
@@ -150,9 +151,10 @@ class ExternalSessions:
         out = []
         for p in procs:
             cwd = self._cwd_cache.get(p["pid"])
-            last, exact = lookups[p["tool"]](cwd, p["resume"])
             started = now - timedelta(seconds=p["age_seconds"])
             n = namers[p["tool"]](p["pid"], cwd, None, p["resume"], started)
+            # Once the conversation is known (Claude's pid file), its activity is exact too.
+            last, exact = lookups[p["tool"]](cwd, n.conversation_id if n.exact and n.conversation_id else p["resume"])
             name, source = display(n, f"{TOOLS[p['tool']].title} · {p['tty']}")
             host = hosts[p["pid"]] = focus.detect(self.table, p["pid"])
             out.append({

@@ -247,3 +247,25 @@ def test_names_are_read_only(settings, tmp_path):
     os.chmod(path, 0o444)
     claude_names(settings)(None, PROJ, CLAUDE_ID, None, NOW)
     assert (path.stat().st_mtime_ns, path.read_bytes()) == before
+
+
+def test_claude_attach_is_named_after_its_background_session(settings):
+    # `claude attach <id8>` is a terminal on a background session (kind "bg", its own pid file).
+    write_pid_file(settings, 21017, name="workflow-setups", nameSource="user", kind="bg")
+    got = external.parse_ps("90639 16383 ttys011 01:00 /Users/me/.local/bin/claude attach 6636c681\n"
+                            "90640 16383 ttys012 01:00 claude -p please attach this file\n")
+    assert [(p["pid"], p["resume"]) for p in got] == [(90639, "6636c681"), (90640, None)]
+    assert claude_names(settings)(90639, "/Users/me", None, "6636c681", NOW) == Name(CLAUDE_ID, "workflow-setups", "user")
+
+
+def test_claude_activity_is_exact_once_the_pid_file_names_the_conversation(settings, monkeypatch, home):
+    write_pid_file(settings, 4242, name="build-eyrie", nameSource="user")
+    path = write_transcript(settings, [{"type": "user"}])
+    newer = transcript_dir(settings.paths.claude_home, PROJ) / "zzzz.jsonl"
+    newer.write_text("{}\n")
+    old = time.time() - 3600
+    os.utime(path, (old, old))
+    monkeypatch.setattr(external, "_ps", lambda: " 4242 1 ttys004 01:00:00 claude\n")
+    monkeypatch.setattr(external, "_cwds", lambda pids: {4242: PROJ})
+    s = ExternalSessions(settings).list()[0]
+    assert s["activity_exact"] is True and 59 <= s["idle_minutes"] <= 61
