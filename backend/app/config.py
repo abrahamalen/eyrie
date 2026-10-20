@@ -6,7 +6,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -87,6 +87,14 @@ class Sessions(BaseModel):
     socket: str = "eyrie"
     # A live session that has printed nothing for this long is flagged as probably waiting for you.
     idle_minutes: int = 10
+    # Suggest stopping a live session after this long without activity (docs/stop-and-idle.md).
+    idle_hours: int = Field(24, ge=1, le=720)
+    # The "/compact first" hint's threshold: the last turn's context, in tokens.
+    large_context_tokens: int = Field(100_000, ge=1)
+    # Only suggest sessions with no client attached, where that's known.
+    idle_requires_detached: bool = False
+    # How long a stop waits for the process to exit after SIGTERM.
+    stop_wait_seconds: float = Field(5, ge=0.5, le=30)
 
     @field_validator("roots")
     @classmethod

@@ -7,7 +7,7 @@ from app import __version__, tools as tool_registry
 from app.actions.audit import AuditLog
 from app.actions.runner import Runner
 from app.config import Settings, active_config, get_settings
-from app.routers import actions, auth, memory, sessions, setup, sources, tasks, usage
+from app.routers import actions, auth, memory, sessions, setup, sources, suggestions, tasks, usage
 from app.schemas import Meta, Status, Summary
 from app.security import LocalOnlyMiddleware, load_or_create_token
 from app.sources.base import build_registry
@@ -37,6 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(sessions.router)
     app.include_router(memory.router)
     app.include_router(setup.router)
+    app.include_router(suggestions.router)
 
     @app.get("/api/v1/health", response_model=Status)
     def health():

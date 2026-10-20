@@ -34,7 +34,7 @@ A **live** session is **idle** when its last activity is at least `sessions.idle
 |---|---|---|
 | Eyrie (tmux) with a known conversation | The tool's own last activity for that conversation (transcript / rollout / chat file mtime, as external sessions use) | tmux `session_attached` (the in-app terminal counts) |
 | Eyrie without one | tmux `session_activity` (last output in the pane) | same |
-| External, Claude Code | Transcript mtime for the conversation in `~/.claude/sessions/<pid>.json` (exact), else newest transcript in the cwd (approximate, `~`) | Only when it runs in your own tmux: that session's `session_attached`. Otherwise unknown |
+| External, Claude Code | Transcript mtime for the conversation in `~/.claude/sessions/<pid>.json` (exact), else newest transcript in the cwd (approximate, `~`) | Unknown for now (your own tmux's `session_attached` could tell; open question 6) |
 | External, Codex | Rollout mtime for the `resume` id (exact), else newest thread in the cwd (`~`) | same |
 | External, Gemini CLI | Chat file mtime for the session id (exact), else newest in the project (`~`) | same |
 | Any, activity unknown | not idle: Eyrie never suggests what it can't measure | — |
@@ -226,7 +226,7 @@ Stored in `<data_dir>/suggestions.json` (default `~/.eyrie/`), written atomicall
 | `<tool>:<conversation id>` | external, conversation known exactly (survives a restart of the same conversation) |
 | `pid:<pid>:<start epoch>` | external, conversation unknown |
 
-`until` set → snoozed until then. `until: null` → dismissed until the session's activity is newer than the stored `activity`. Entries not matched by a live session for 30 days are dropped on write. Nothing is written to the tools' files.
+`until` set → snoozed until then. `until: null` → dismissed until the session's activity is newer than the stored `activity`. Expired snoozes set more than 30 days ago are dropped on write (at most 500 entries are kept). Nothing is written to the tools' files.
 
 ## 8. Config
 
@@ -282,3 +282,4 @@ Manual: macOS and Ubuntu, a real `claude` in Terminal/iTerm and in a tmux pane, 
 3. Gemini CLI: show the context size without the cache wording?
 4. Stop all idle runs stops one after another (up to 5 s each when a session lingers). Run them in parallel?
 5. Should a snoozed session still show its badge in the Idle filter (default: yes, grey), or be hidden there?
+6. External sessions in your own tmux: read `session_attached` from your server so `idle_requires_detached` can apply to them too? (Not done: it means running your tmux on every listing.)

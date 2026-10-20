@@ -102,6 +102,22 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
                          "managed": False, "tty": e["tty"], "pid": e["pid"], "display_name": e["display_name"],
                          "name_source": e["name_source"], "conversation_id": e["conversation_id"], "href": e["href"]})
 
+    # Sessions worth stopping (docs/stop-and-idle.md §6): idle long enough and not snoozed.
+    items = []
+    for s, managed in [(s, True) for s in snap["sessions"]] + [(e, False) for e in snap.get("external", [])]:
+        i = s.get("idle")
+        if not i or not i["suggested"]:
+            continue
+        items.append({"key": i["key"], "managed": managed, "name": s["name"] if managed else None,
+                      "pid": None if managed else s["pid"], "tool": s["tool"], "display_name": s["display_name"],
+                      "project": s["cwd"], "idle_minutes": i["minutes"], "idle_exact": i["exact"],
+                      "rss_bytes": s["resources"]["rss_bytes"], "child_processes": s["resources"]["child_processes"],
+                      "context_tokens": i["context_tokens"], "compact_command": i["compact_command"],
+                      "href": f"/sessions?open={s['name']}" if managed else s["href"]})
+    items.sort(key=lambda x: x["idle_minutes"], reverse=True)
+    suggestions = {"idle_hours": settings.sessions.idle_hours, "count": len(items),
+                   "rss_bytes": sum(x["rss_bytes"] or 0 for x in items), "items": items}
+
     # MCP: only servers you configured (hidden ones are already filtered by the source)
     mcp = registry.get("mcp")
     if mcp:
@@ -167,5 +183,6 @@ def build_summary(settings: Settings, registry: dict, versions: Versions) -> dic
         "tasks": tasks,
         "recent_projects": recent_projects,
         "health": {**health, "usage_index": usage_stats},
+        "suggestions": suggestions,
         "generated_at": now.isoformat(),
     }

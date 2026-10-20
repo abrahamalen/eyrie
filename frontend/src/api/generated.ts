@@ -328,6 +328,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/suggestions/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Snooze */
+        put: operations["snooze_api_v1_suggestions__key__put"];
+        post?: never;
+        /** Unsnooze */
+        delete: operations["unsnooze_api_v1_suggestions__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/summary": {
         parameters: {
             query?: never;
@@ -453,6 +471,8 @@ export interface components {
             message: string;
             /** Ok */
             ok: boolean;
+            /** State */
+            state?: string | null;
         };
         /** AgentMemoryInfo */
         AgentMemoryInfo: {
@@ -676,6 +696,7 @@ export interface components {
             focus: "tab" | "pane" | "app" | "none";
             /** Href */
             href: string;
+            idle: components["schemas"]["Idle"] | null;
             /** Idle Minutes */
             idle_minutes: number | null;
             /** Last Activity */
@@ -689,8 +710,13 @@ export interface components {
             name_source: "user" | "tool" | "id" | "none";
             /** Pid */
             pid: number;
+            /** Process Started */
+            process_started: string | null;
+            resources: components["schemas"]["Resources"];
             /** Resume */
             resume: string | null;
+            /** Resume Command */
+            resume_command: string | null;
             /** Started */
             started: string;
             /** Terminal */
@@ -702,6 +728,8 @@ export interface components {
             tool: "claude" | "codex" | "gemini";
             /** Tty */
             tty: string;
+            /** Uid Ok */
+            uid_ok: boolean;
         };
         /**
          * Features
@@ -736,6 +764,36 @@ export interface components {
             gemini: components["schemas"]["ToolHealth"] | null;
             tmux: components["schemas"]["ToolHealth"];
             usage_index: components["schemas"]["IndexStats"] | null;
+        };
+        /**
+         * Idle
+         * @description How long a live session has gone without activity, and the suggestion about it (§3).
+         */
+        Idle: {
+            /** Attached */
+            attached: boolean | null;
+            /** Cache Expired */
+            cache_expired: boolean | null;
+            /** Compact Command */
+            compact_command: string | null;
+            /** Context Tokens */
+            context_tokens: number | null;
+            /** Dismissed */
+            dismissed: boolean;
+            /** Exact */
+            exact: boolean;
+            /** Idle */
+            idle: boolean;
+            /** Key */
+            key: string;
+            /** Minutes */
+            minutes: number;
+            /** Since */
+            since: string;
+            /** Snoozed Until */
+            snoozed_until: string | null;
+            /** Suggested */
+            suggested: boolean;
         };
         /** IndexStats */
         IndexStats: {
@@ -909,6 +967,16 @@ export interface components {
              */
             tool: "claude" | "codex" | "gemini";
         };
+        /**
+         * Resources
+         * @description What keeping a session costs (docs/stop-and-idle.md §3.2).
+         */
+        Resources: {
+            /** Child Processes */
+            child_processes: number | null;
+            /** Rss Bytes */
+            rss_bytes: number | null;
+        };
         /** Screen */
         Screen: {
             /** Name */
@@ -936,6 +1004,7 @@ export interface components {
             display_name: string;
             /** Exit Status */
             exit_status: number | null;
+            idle: components["schemas"]["Idle"] | null;
             /** Last Output */
             last_output: string | null;
             /** Mode */
@@ -947,6 +1016,7 @@ export interface components {
              * @enum {string}
              */
             name_source: "user" | "tool" | "id" | "none";
+            resources: components["schemas"]["Resources"];
             /** Resume Command */
             resume_command: string | null;
             /** Tool */
@@ -960,11 +1030,15 @@ export interface components {
             error: string | null;
             /** External */
             external: components["schemas"]["ExternalSession"][];
+            /** Idle Hours */
+            idle_hours: number;
             /** Sessions */
             sessions: components["schemas"]["Session"][];
         };
         /** SetupBody */
         SetupBody: {
+            /** Idle Hours */
+            idle_hours?: number | null;
             /**
              * Roots
              * @default []
@@ -979,6 +1053,8 @@ export interface components {
         SetupState: {
             agent_memory: components["schemas"]["AgentMemoryInfo"];
             config: components["schemas"]["ConfigFile"];
+            /** Idle Hours */
+            idle_hours: number;
             /** Obsidian Vaults */
             obsidian_vaults: string[];
             /** Roots */
@@ -991,6 +1067,25 @@ export interface components {
             tools: components["schemas"]["DetectedTool"][];
             /** Tools Enabled */
             tools_enabled: "auto" | ("claude" | "codex" | "gemini")[];
+        };
+        /** Snooze */
+        Snooze: {
+            /** Activity */
+            activity: string | null;
+            /** At */
+            at: string;
+            /** Key */
+            key: string;
+            /** Until */
+            until: string | null;
+        };
+        /** SnoozeBody */
+        SnoozeBody: {
+            /**
+             * Snooze
+             * @enum {string}
+             */
+            snooze: "1d" | "7d" | "dismiss";
         };
         /** SourceInfo */
         SourceInfo: {
@@ -1028,6 +1123,54 @@ export interface components {
             /** Projects */
             projects: number;
         };
+        /**
+         * SuggestionItem
+         * @description A session Eyrie suggests stopping (docs/stop-and-idle.md §6.1).
+         */
+        SuggestionItem: {
+            /** Child Processes */
+            child_processes: number | null;
+            /** Compact Command */
+            compact_command: string | null;
+            /** Context Tokens */
+            context_tokens: number | null;
+            /** Display Name */
+            display_name: string;
+            /** Href */
+            href: string;
+            /** Idle Exact */
+            idle_exact: boolean;
+            /** Idle Minutes */
+            idle_minutes: number;
+            /** Key */
+            key: string;
+            /** Managed */
+            managed: boolean;
+            /** Name */
+            name: string | null;
+            /** Pid */
+            pid: number | null;
+            /** Project */
+            project: string | null;
+            /** Rss Bytes */
+            rss_bytes: number | null;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex" | "gemini";
+        };
+        /** Suggestions */
+        Suggestions: {
+            /** Count */
+            count: number;
+            /** Idle Hours */
+            idle_hours: number;
+            /** Items */
+            items: components["schemas"]["SuggestionItem"][];
+            /** Rss Bytes */
+            rss_bytes: number;
+        };
         /** Summary */
         Summary: {
             /** Attention */
@@ -1045,6 +1188,7 @@ export interface components {
              * @enum {string}
              */
             state: "ok" | "attention" | "problem";
+            suggestions: components["schemas"]["Suggestions"];
             tasks: components["schemas"]["SummaryTasks"] | null;
         };
         /** SummarySession */
@@ -1806,6 +1950,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsageReport"];
+                };
+            };
+        };
+    };
+    snooze_api_v1_suggestions__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnoozeBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snooze"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unsnooze_api_v1_suggestions__key__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Status"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

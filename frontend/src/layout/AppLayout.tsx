@@ -7,7 +7,7 @@ export function AppLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="bg-background">
+      <SidebarInset className="min-w-0 bg-background">
         <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
           <SidebarTrigger />
           <span className="eyebrow hidden sm:inline">Agent control plane · 127.0.0.1</span>

@@ -4,12 +4,15 @@ is destructive (needs an explicit confirm after the user has seen the command).
 
 There is deliberately no generic "run a command" action.
 """
+import os
 import re
 import secrets
 import sys
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -210,6 +213,33 @@ class SessionFocus(BaseModel):
         return v
 
 
+class SessionStopExternal(BaseModel):
+    """Stop one of your own sessions running in a terminal (docs/stop-and-idle.md §4)."""
+    pid: int = Field(ge=2, le=99_999_999)
+    tool: ToolId
+    tty: str
+    # The process's exact start time as the listing showed it (process_started): a reused pid can't match.
+    started: datetime
+    # SIGKILL instead of SIGTERM. Only ever sent when asked for, after its own confirm.
+    force: bool = False
+
+    @field_validator("tty")
+    @classmethod
+    def _tty(cls, v: str) -> str:
+        from app.sessions.focus import TTY_RE
+
+        if not TTY_RE.match(v):
+            raise ValueError("tty must look like ttys004 or pts/3")
+        return v
+
+    @field_validator("started")
+    @classmethod
+    def _aware(cls, v: datetime) -> datetime:
+        if v.tzinfo is None:
+            raise ValueError("started needs a time zone")
+        return v
+
+
 class SessionOpenTerminal(BaseModel):
     """A new Terminal/iTerm2 window attached to an Eyrie session (macOS)."""
     name: str
@@ -243,6 +273,10 @@ class Planned:
     then: list["Planned"] = field(default_factory=list)
     # The run's result → (ok, message for people), when exit code + output aren't enough.
     explain: Callable[["RunResult"], tuple[bool, str]] | None = None
+    # Done in-process instead of running `tool args` (which is then only what's shown and audited).
+    call: Callable[[], "RunResult"] | None = None
+    # A machine-readable outcome for the UI, read after the run.
+    state: Callable[[], str | None] | None = None
 
 
 @dataclass
@@ -350,6 +384,56 @@ def _session_focus(p: SessionFocus, ctx: Context) -> Planned:
     return _focus_host(host, p.tty, ctx)
 
 
+NOT_LISTED = "That session isn't running any more, or isn't one of your Claude Code, Codex or Gemini sessions."
+STOP_MESSAGES = {
+    "already_exited": "That session had already exited; nothing was signalled.",
+    "reused": "pid {pid} is a different process now; nothing was signalled. Refresh the list.",
+    "denied": "The system refused to signal pid {pid} (permission denied). Nothing was stopped.",
+    "still_running": "Still running {wait:g} s after SIGTERM. It may be finishing something, or ignoring the signal.",
+    "stuck": "Still running after SIGKILL. The process is stuck in the kernel; it will go when that call returns.",
+}
+
+
+def _session_stop_external(p: SessionStopExternal, ctx: Context) -> Planned:
+    """One signal to one listed pid, re-verified just before it's sent (procs.stop)."""
+    import signal
+
+    from app.actions.runner import RunResult
+    from app.sessions import external, procs
+
+    src = ctx.registry["sessions"].external if ctx.registry else None
+    listed = src.last.get(p.pid) if src else None  # the precheck has just listed it
+    if listed is None or listed["tool"] != p.tool:
+        raise Blocked(NOT_LISTED)
+    title = TOOLS[p.tool].title
+    sig, name = (signal.SIGKILL, "KILL") if p.force else (signal.SIGTERM, "TERM")
+    expect = procs.Expect(p.pid, os.getuid(), int(p.started.timestamp()), lambda cmd: external.tool_of(cmd) == p.tool)
+    children = {c: src.stats[c].started for c in procs.descendants(src.stats, p.pid)}
+    wait = ctx.settings.sessions.stop_wait_seconds
+    box: dict = {}
+
+    def call() -> RunResult:
+        started = time.perf_counter()
+        o = procs.stop(expect, sig, wait, children)
+        state = "stuck" if o.state == "still_running" and p.force else o.state
+        box.update(outcome=o, state=state)
+        code = {"exited": 0, "already_exited": 0, "still_running": 1, "stuck": 1}.get(state, 2)
+        return RunResult(code, "", "", (time.perf_counter() - started) * 1000)
+
+    def explain(r: RunResult) -> tuple[bool, str]:
+        o, state = box["outcome"], box["state"]
+        if state == "exited":
+            said = f"Stopped. {title} (pid {p.pid}) exited {o.seconds:.1f} s after SIG{name}."
+            if o.survivors:
+                n = len(o.survivors)
+                said += (f" {n} process{'es' if n > 1 else ''} it started {'are' if n > 1 else 'is'} still running "
+                         f"(pid{'s' if n > 1 else ''} {', '.join(map(str, o.survivors))}). Eyrie leaves them alone.")
+            return True, said
+        return state == "already_exited", STOP_MESSAGES[state].format(pid=p.pid, wait=wait)
+
+    return Planned("kill", [f"-{name}", str(p.pid)], call=call, explain=explain, state=lambda: box.get("state"))
+
+
 def _session_open_terminal(p: SessionOpenTerminal, ctx: Context) -> Planned:
     from app.sessions import focus
 
@@ -368,6 +452,8 @@ ACTIONS: dict[str, Action] = {a.id: a for a in [
     Action("plugins.disable", PluginToggle, _plugin("disable"), invalidates="plugins"),
     Action("sessions.start", SessionStart, _session_start),
     Action("sessions.stop", SessionStop, _session_stop, destructive=True),
+    Action("sessions.stop_external", SessionStopExternal, _session_stop_external, destructive=True,
+           precheck_first=True),
     Action("sessions.focus", SessionFocus, _session_focus, precheck_first=True),
     Action("sessions.open_terminal", SessionOpenTerminal, _session_open_terminal, precheck_first=True),
 ]}

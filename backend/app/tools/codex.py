@@ -51,6 +51,9 @@ def thread_names(settings: Settings) -> dict[str, str]:
 class Sessions:
     modes = ("new", "continue", "resume")
     resume_requires_cwd = False
+    compact_command = "/compact"
+    # OpenAI's longest prompt-cache retention: a conservative upper bound (docs/stop-and-idle.md §3.2).
+    cache_minutes = (24 * 60, 24 * 60)
     helpers = frozenset({"app-server", "mcp", "mcp-server", "exec-server", "login", "logout", "--version", "-v",
                          "proto", "code-mode-host"})
 

@@ -10,6 +10,7 @@ import type {
   MemoryFile,
   PluginList,
   Screen,
+  Snooze,
   Trashed,
   Meta,
   SetupBody,
@@ -19,6 +20,8 @@ import type {
   TasksSnapshot,
   UsageReport,
 } from './types'
+
+export type SnoozeFor = '1d' | '7d' | 'dismiss'
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path)
@@ -90,6 +93,10 @@ export const api = {
     screen: (name: string, lines = 200) =>
       get<Screen>(`/api/v1/sessions/${name}/screen?lines=${lines}`),
     conversations: (limit = 15) => get<Conversation[]>(`/api/v1/sessions/conversations?limit=${limit}`),
+  },
+  suggestions: {
+    snooze: (key: string, snooze: SnoozeFor) => send<Snooze>('PUT', `/api/v1/suggestions/${enc(key)}`, { snooze }),
+    clear: (key: string) => send<{ status: string }>('DELETE', `/api/v1/suggestions/${enc(key)}`),
   },
   audit: (limit = 200) => get<AuditEntry[]>(`/api/v1/audit?limit=${limit}`),
   actions: {

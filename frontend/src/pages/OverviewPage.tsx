@@ -2,9 +2,13 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { api, StaleError } from '@/api/client'
-import type { Summary } from '@/api/types'
+import type { ExternalSession, Session, SessionsSnapshot, Summary } from '@/api/types'
 import { usePoll } from '@/usePoll'
-import { fmtAgo, fmtCount, fmtUsd, shortPath, toolTitle } from '@/format'
+import { fmtAgo, fmtBytes, fmtCount, fmtIdle, fmtTokens, fmtUsd, shortPath, toolTitle } from '@/format'
+import { SnoozeSelect } from '@/components/IdleBits'
+import { StopAllDialog } from '@/components/StopAllDialog'
+import { StopExternalDialog } from '@/components/StopExternalDialog'
+import { StopSessionDialog } from '@/components/StopSessionDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { Sparkline } from '@/components/Sparkline'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
@@ -48,6 +52,32 @@ export function OverviewPage() {
   const [start, setStart] = useState<StartRequest | null>(null)
   const [newTask, setNewTask] = useState('')
   const [taskNote, setTaskNote] = useState<string | null>(null)
+  // The stop dialogs need the full session rows, so they're fetched when one opens.
+  const [snap, setSnap] = useState<SessionsSnapshot | null>(null)
+  const [stopEyrie, setStopEyrie] = useState<Session | null>(null)
+  const [stopExt, setStopExt] = useState<ExternalSession | null>(null)
+  const [stopAll, setStopAll] = useState(false)
+  const [suggestNote, setSuggestNote] = useState<string | null>(null)
+  const openStop = async (key: string | null) => {
+    try {
+      const fresh = await api.sessions.list()
+      setSnap(fresh)
+      if (key === null) return setStopAll(true)
+      const m = fresh.sessions.find((x) => x.idle?.key === key)
+      const x = fresh.external.find((e) => e.idle?.key === key)
+      if (m) setStopEyrie(m)
+      else if (x) setStopExt(x)
+      else setSuggestNote("That session isn't running any more.")
+    } catch (e) {
+      setSuggestNote(`Couldn't load sessions: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  const closeStop = () => {
+    setStopEyrie(null)
+    setStopExt(null)
+    setStopAll(false)
+    refresh()
+  }
 
   // Task edits re-read the file first, so they carry its current etag and never clobber an
   // edit made in Obsidian (the same rule as the Tasks page).
@@ -130,6 +160,53 @@ export function OverviewPage() {
             </CardContent>
           </Card>
 
+          {data.suggestions.count > 0 && (
+            <Card>
+              <CardHeader className="flex items-center">
+                <CardTitle className="flex items-center gap-2 text-brand">
+                  <span className="size-1.5 rounded-full bg-brand" />
+                  Suggestions · {data.suggestions.count}
+                </CardTitle>
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => openStop(null)}>
+                  Stop all idle…
+                </Button>
+              </CardHeader>
+              <CardContent className="flex flex-col">
+                {data.suggestions.items.map((s) => (
+                  <div key={s.key} className="flex flex-wrap items-start gap-3 border-b py-3 sm:flex-nowrap">
+                    <span className="mt-2"><Dot tone="attention" /></span>
+                    <div className="min-w-0 flex-1 basis-[calc(100%-2rem)] sm:basis-0">
+                      <div className="truncate font-medium">{s.display_name}</div>
+                      <div className="truncate text-[13px] text-muted-foreground">
+                        {toolTitle(s.tool)} · {s.project ? shortPath(s.project) : '—'} · idle {s.idle_exact ? '' : '~'}{fmtIdle(s.idle_minutes)}
+                      </div>
+                      <div className="text-[13px] text-muted-foreground">
+                        {[s.rss_bytes ? fmtBytes(s.rss_bytes) : null,
+                          s.child_processes ? `${s.child_processes} child process${s.child_processes === 1 ? '' : 'es'}` : null,
+                          s.context_tokens ? `${fmtTokens(s.context_tokens)} of context` : null].filter(Boolean).join(' · ')}
+                      </div>
+                      {s.compact_command && s.context_tokens && (
+                        <div className="mt-1.5 max-w-[62ch] border-l-2 border-brand pl-2 text-xs text-muted-foreground">
+                          Idle sessions don't use tokens. Its prompt cache has expired, so your next message re-reads{' '}
+                          {fmtTokens(s.context_tokens)} of context. Run <code className="rounded bg-muted px-1 font-mono">{s.compact_command}</code> first, or start fresh.
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5 pl-5 sm:pl-0">
+                      <Button variant="outline" size="sm" onClick={() => openStop(s.key)}>Stop…</Button>
+                      <SnoozeSelect idle={{ idle: true, key: s.key, snoozed_until: null, dismissed: false }} name={s.display_name}
+                        onDone={(n) => { setSuggestNote(n); refresh() }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="pt-3 text-[13px] text-muted-foreground">
+                  Idle = no activity for {data.suggestions.idle_hours} h (<Link to="/settings" className="underline">change</Link>). Idle sessions don't use tokens; they hold memory.
+                </p>
+                {suggestNote && <p role="status" className="pt-1 text-[13px] text-muted-foreground">{suggestNote}</p>}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-2 divide-border overflow-hidden rounded-xl bg-card ring-1 ring-border sm:grid-cols-4 sm:divide-x">
             {[
               [String(data.sessions.filter((s) => s.alive).length), 'Live sessions'],
@@ -162,7 +239,7 @@ export function OverviewPage() {
                       <div className="truncate text-[13px] text-muted-foreground">
                         {toolTitle(s.tool)} · {s.project ? shortPath(s.project) : '—'} ·{' '}
                         {!s.managed && s.tty ? `${s.tty} · ` : ''}
-                        {!s.alive ? `exited${s.exit_status ? ` (${s.exit_status})` : ''}` : idle ? `idle ${s.idle_minutes} min` : !s.managed && s.idle_minutes ? `active ${s.idle_minutes} min ago` : 'running'}
+                        {!s.alive ? `exited${s.exit_status ? ` (${s.exit_status})` : ''}` : idle ? `idle ${s.idle_minutes} min` : !s.managed && s.idle_minutes ? `active ${fmtIdle(s.idle_minutes)} ago` : 'running'}
                       </div>
                     </div>
                     <Button variant="outline" size="sm" render={<Link to={s.href} />}>
@@ -297,6 +374,10 @@ export function OverviewPage() {
         </>
       )}
 
+      <StopSessionDialog session={stopEyrie} onClose={closeStop} />
+      <StopExternalDialog session={stopExt} onClose={closeStop} />
+      <StopAllDialog open={stopAll} sessions={snap?.sessions ?? []} external={snap?.external ?? []}
+        threshold={snap?.idle_hours ?? 24} onClose={closeStop} />
       <StartSessionDialog
         request={start}
         dirs={data?.recent_projects.map((p) => p.path) ?? []}

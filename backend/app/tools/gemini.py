@@ -59,6 +59,9 @@ def data_dir(settings: Settings, root: str) -> Path | None:
 class Sessions:
     modes = ("new", "continue", "resume")
     resume_requires_cwd = True
+    compact_command = "/compress"
+    # Gemini's implicit-cache lifetime isn't documented, so no resume-cost hint.
+    cache_minutes = None
     helpers = frozenset({"mcp", "extensions", "--version", "-v", "-h", "--help", "--list-sessions",
                          "--delete-session"})
 

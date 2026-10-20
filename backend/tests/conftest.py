@@ -45,6 +45,50 @@ def _no_real_processes(monkeypatch):
     from app.sessions import external
     monkeypatch.setattr(external, "_ps", lambda: "")
     monkeypatch.setattr(external, "_cwds", lambda pids: {})
+    from app.sessions import procs
+    monkeypatch.setattr(procs, "_stats", lambda: "")
+
+
+# Pids a test spawned itself; the only ones any test may signal.
+SPAWNED: set[int] = set()
+
+
+@pytest.fixture(autouse=True)
+def _signal_guard(monkeypatch):
+    """Tests must never signal a real process: only ones they spawned (see `spawn`)."""
+    from app.sessions import procs
+
+    real = procs._kill
+
+    def guarded(pid, sig, pidfd=None):
+        if pid not in SPAWNED:
+            raise AssertionError(f"test tried to signal pid {pid}, which it didn't spawn")
+        return real(pid, sig, pidfd)
+
+    monkeypatch.setattr(procs, "_kill", guarded)
+
+
+@pytest.fixture
+def spawn():
+    """Start throwaway processes (argv lists), registered so they may be signalled; all are
+    killed and reaped afterwards."""
+    import subprocess
+
+    procs_ = []
+
+    def start(argv, **kw):
+        p = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True, **kw)
+        SPAWNED.add(p.pid)
+        procs_.append(p)
+        return p
+
+    yield start
+    for p in procs_:
+        if p.poll() is None:
+            p.kill()
+        p.wait(timeout=5)
+        SPAWNED.discard(p.pid)
 
 
 @dataclass

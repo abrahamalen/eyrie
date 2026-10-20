@@ -9,6 +9,10 @@ import { sessionTools, toolInfo, useMeta } from '@/tools'
 import { CopyButton } from '@/components/CopyButton'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
 import { StopSessionDialog } from '@/components/StopSessionDialog'
+import { StopExternalDialog } from '@/components/StopExternalDialog'
+import { StopAllDialog } from '@/components/StopAllDialog'
+import { ContextHint, IdleBadge, SnoozeSelect } from '@/components/IdleBits'
+import { costLine } from '@/lib/stop'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -88,6 +92,17 @@ export function SessionsPage() {
   const [open, setOpen] = useState<string | null>(params.get('open'))
   const ext = parseExtLink(params, tools.map((t) => t.id))
   const [stopping, setStopping] = useState<Session | null>(null)
+  const [stoppingExt, setStoppingExt] = useState<ExternalSession | null>(null)
+  const [stopAll, setStopAll] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  // ?filter=idle (from the widget's "idle sessions" line) shows only idle sessions.
+  const filter = params.get('filter') === 'idle' ? 'idle' : 'all'
+  const setFilter = (f: 'all' | 'idle') => {
+    const next = new URLSearchParams(params)
+    if (f === 'idle') next.set('filter', 'idle')
+    else next.delete('filter')
+    setParams(next, { replace: true })
+  }
   const [said, setSaid] = useState<Record<string, Said>>({})
   const [termApp, setTermApp] = useState<TermApp>(() => {
     try {
@@ -98,10 +113,19 @@ export function SessionsPage() {
   })
   const dirs = data?.dirs ?? []
   const allowed = (cwd: string | null) => !!cwd && dirs.includes(cwd)
-  const sessions = data?.sessions ?? []
-  const external = data?.external ?? []
-  const openSession = sessions.find((s) => s.name === open)
-  const extGone = !!data && !!ext && !external.some((x) => x.pid === ext.pid)
+  const allSessions = data?.sessions ?? []
+  const allExternal = data?.external ?? []
+  const shown = (i: { idle: Session['idle'] }) => filter === 'all' || !!i.idle?.idle
+  const sessions = allSessions.filter(shown)
+  const external = allExternal.filter(shown)
+  const idleCount = [...allSessions, ...allExternal].filter((x) => x.idle?.idle).length
+  const suggestedCount = [...allSessions, ...allExternal].filter((x) => x.idle?.suggested).length
+  const snoozed = (n: string) => {
+    setNote(n)
+    refresh()
+  }
+  const openSession = allSessions.find((s) => s.name === open)
+  const extGone = !!data && !!ext && !allExternal.some((x) => x.pid === ext.pid)
 
   // Bring the linked row into view when the link or the list first arrives, not on every poll.
   const scrollTo = ext && data ? ext.pid : null
@@ -156,6 +180,22 @@ export function SessionsPage() {
       />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div role="group" aria-label="Filter sessions" className="inline-flex overflow-hidden rounded-lg border bg-card text-sm">
+          {(['all', 'idle'] as const).map((f) => (
+            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}
+              className={`px-3 py-1 ${filter === f ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-accent'}`}>
+              {f === 'all' ? `All · ${allSessions.length + allExternal.length}` : `Idle · ${idleCount}`}
+            </button>
+          ))}
+        </div>
+        {data && <span className="text-xs text-muted-foreground">Idle = no activity for {data.idle_hours} h. Idle sessions don't use tokens; they hold memory.</span>}
+        {note && <span role="status" className="text-xs text-muted-foreground">{note}</span>}
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setStopAll(true)} disabled={!data || !suggestedCount}>
+          Stop all idle…
+        </Button>
+      </div>
       {data?.error && <p className="text-sm text-destructive">{data.error}</p>}
 
       {extGone && ext && (
@@ -203,13 +243,15 @@ export function SessionsPage() {
               <TableBody>
                 {sessions.map((s) => (
                   <TableRow key={s.name} data-state={open === s.name ? 'selected' : undefined}>
-                    <TableCell>
+                    <TableCell className="min-w-[13rem] whitespace-normal">
                       <SessionName name={s.display_name} source={s.name_source} id={s.conversation_id} />
                       <div className="font-mono text-xs text-muted-foreground">
                         {s.display_name !== s.name ? `${s.name} · ` : ''}
                         {toolTitle(s.tool)}
                         {s.mode && s.mode !== 'new' ? ` · ${s.mode}` : ''}
                       </div>
+                      {s.alive && costLine(s.resources, s.idle) && <div className="text-xs text-muted-foreground">{costLine(s.resources, s.idle)}</div>}
+                      <ContextHint idle={s.idle} />
                     </TableCell>
                     <TableCell className="max-w-xs truncate font-mono text-xs" title={s.cwd ?? undefined}>
                       {s.cwd ? shortPath(s.cwd) : '—'}
@@ -218,7 +260,7 @@ export function SessionsPage() {
                       <State s={s} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{fmtAgo(s.created)}</TableCell>
-                    <TableCell className="text-muted-foreground">{fmtAgo(s.last_output)}</TableCell>
+                    <TableCell className="text-muted-foreground">{s.idle?.idle ? <IdleBadge idle={s.idle} /> : fmtAgo(s.last_output)}</TableCell>
                     <TableCell className="whitespace-nowrap text-right">
                       {s.alive ? (
                         <>
@@ -243,6 +285,7 @@ export function SessionsPage() {
                             </span>
                           )}
                           <CopyButton text={s.attach} label="Attach" />
+                          <SnoozeSelect idle={s.idle} name={s.display_name} onDone={snoozed} />
                         </>
                       ) : (
                         <>
@@ -270,7 +313,7 @@ export function SessionsPage() {
                 {data && !sessions.length && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                      No Eyrie sessions yet. Start one, or resume a conversation below.
+                      {filter === 'idle' ? 'No idle Eyrie sessions.' : 'No Eyrie sessions yet. Start one, or resume a conversation below.'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -280,12 +323,12 @@ export function SessionsPage() {
         </CardContent>
       </Card>
 
-      {!!external.length && (
+      {!!allExternal.length && (
         <Card>
           <CardHeader>
             <CardTitle>In your terminals</CardTitle>
             <CardDescription>
-              Sessions you started yourself. Eyrie can't attach to them; Jump switches to their terminal where the terminal allows it.
+              Sessions you started yourself. Jump switches to their terminal where the terminal allows it; Stop sends SIGTERM to that one process, after you confirm.
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
@@ -306,12 +349,14 @@ export function SessionsPage() {
                   const where = `${x.terminal ?? 'an unknown terminal'} on ${x.tty}`
                   return (
                     <TableRow key={x.pid} id={`ext-${x.pid}`} data-state={ext?.pid === x.pid ? 'selected' : undefined}>
-                      <TableCell>
+                      <TableCell className="min-w-[13rem] whitespace-normal">
                         <SessionName name={x.display_name} source={x.name_source} exact={x.name_exact} id={x.conversation_id} />
                         <div className="font-mono text-xs text-muted-foreground">
                           {toolTitle(x.tool)} · pid {x.pid}
                           {x.resume ? ` · resume ${x.resume.slice(0, 12)}` : ''}
                         </div>
+                        {costLine(x.resources, x.idle) && <div className="text-xs text-muted-foreground">{costLine(x.resources, x.idle)}</div>}
+                        <ContextHint idle={x.idle} />
                       </TableCell>
                       <TableCell className="max-w-xs truncate font-mono text-xs" title={x.cwd ?? undefined}>
                         {x.cwd ? shortPath(x.cwd) : '—'}
@@ -324,9 +369,10 @@ export function SessionsPage() {
                         className="text-muted-foreground"
                         title={x.activity_exact ? undefined : 'Approximate: newest conversation in this directory'}
                       >
-                        {x.last_activity ? `${x.activity_exact ? '' : '~'}${fmtAgo(x.last_activity)}` : '—'}
+                        {x.idle?.idle ? <IdleBadge idle={x.idle} /> : x.last_activity ? `${x.activity_exact ? '' : '~'}${fmtAgo(x.last_activity)}` : '—'}
                       </TableCell>
                       <TableCell className="text-right">
+                        <div className="ml-auto flex max-w-[11rem] flex-wrap items-center justify-end gap-1">
                         <Button
                           variant="outline"
                           size="sm"
@@ -337,8 +383,15 @@ export function SessionsPage() {
                         >
                           Jump <ArrowUpRight className="size-3.5" />
                         </Button>
+                        <SnoozeSelect idle={x.idle} name={x.display_name} onDone={snoozed} />
+                        <Button variant="ghost" size="sm" className="text-destructive" disabled={!x.uid_ok || !x.process_started}
+                          title={x.uid_ok ? 'Send SIGTERM to this one process, after you confirm' : 'Runs as another user'}
+                          onClick={() => setStoppingExt(x)}>
+                          Stop
+                        </Button>
+                        </div>
                         {x.focus === 'none' && !msg && (
-                          <div className="mt-1 max-w-[34ch] text-xs text-muted-foreground">
+                          <div className="mt-1 ml-auto max-w-[26ch] text-xs text-muted-foreground">
                             Running in {where}. Eyrie can't switch to it; switch to it yourself.
                           </div>
                         )}
@@ -351,6 +404,11 @@ export function SessionsPage() {
                     </TableRow>
                   )
                 })}
+                {!external.length && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No idle sessions in your terminals.</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -430,6 +488,23 @@ export function SessionsPage() {
         onClose={(stopped) => {
           if (stopped && open === stopping?.name) setOpen(null)
           setStopping(null)
+          refresh()
+        }}
+      />
+      <StopExternalDialog
+        session={stoppingExt}
+        onClose={() => {
+          setStoppingExt(null)
+          refresh()
+        }}
+      />
+      <StopAllDialog
+        open={stopAll}
+        sessions={allSessions}
+        external={allExternal}
+        threshold={data?.idle_hours ?? 24}
+        onClose={() => {
+          setStopAll(false)
           refresh()
         }}
       />
