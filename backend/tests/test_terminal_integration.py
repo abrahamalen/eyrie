@@ -1,5 +1,7 @@
 """Browser terminal against real tmux on a throwaway socket, with a stand-in program."""
 import json
+import re
+import shutil
 import subprocess
 import time
 
@@ -7,8 +9,7 @@ import pytest
 
 from tests.test_sessions_tmux_integration import real  # noqa: F401  (fixture)
 
-pytestmark = pytest.mark.skipif(subprocess.run(["which", "tmux"], capture_output=True).returncode != 0,
-                                reason="tmux not installed")
+pytestmark = pytest.mark.skipif(shutil.which("tmux") is None, reason="tmux not installed")
 
 
 def start(c, proj, name):
@@ -16,14 +17,25 @@ def start(c, proj, name):
     assert r["ok"], r
 
 
+CSI = re.compile(rb"\x1b\[[0-9;?]*[ -/]*[@-~]")
+
+
+def screen_text(buf: bytes) -> bytes:
+    """What the terminal shows, roughly: tmux redraws can move the cursor instead of writing
+    spaces (so "a b" may arrive as "a<ESC>[1Cb"), so match on text with escapes as spaces."""
+    return re.sub(rb"\s+", b" ", CSI.sub(b" ", buf))
+
+
+# Wait on the program's *last* startup line: after tmux shrinks the window from Eyrie's
+# 200x50 to the client's size, the first line isn't always in the redrawn region.
 def read_until(ws, needle, timeout=4.0):
     buf = b""
     end = time.time() + timeout
     while time.time() < end:
         buf += ws.receive_bytes()
-        if needle in buf:
+        if needle in screen_text(buf):
             return buf
-    raise AssertionError(f"{needle!r} not seen; got {buf[-400:]!r}")
+    raise AssertionError(f"{needle!r} not seen; screen: {screen_text(buf)[-700:]!r}")
 
 
 def proto(c):
@@ -35,7 +47,7 @@ def test_type_into_session_and_detach_keeps_it_running(real):  # noqa: F811
     start(c, proj, "eyrie-term1")
     with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term1/term", subprotocols=proto(c)) as ws:
         assert ws.accepted_subprotocol == "eyrie"
-        read_until(ws, b"fake claude args")
+        read_until(ws, b"cwd:")
         ws.send_bytes(b"hello from the browser\r")
         read_until(ws, b"got: hello from the browser")
     time.sleep(0.3)
@@ -50,7 +62,7 @@ def test_readonly_ignores_input(real):  # noqa: F811
     c, proj, socket = real
     start(c, proj, "eyrie-term2")
     with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term2/term?readonly=true", subprotocols=proto(c)) as ws:
-        read_until(ws, b"fake claude args")
+        read_until(ws, b"cwd:")
         ws.send_bytes(b"should not arrive\r")
         time.sleep(0.5)
     screen = c.get("/api/v1/sessions/eyrie-term2/screen").json()["text"]
@@ -62,7 +74,7 @@ def test_resize_reaches_tmux(real):  # noqa: F811
     c, proj, socket = real
     start(c, proj, "eyrie-term3")
     with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term3/term", subprotocols=proto(c)) as ws:
-        read_until(ws, b"fake claude args")
+        read_until(ws, b"cwd:")
         ws.send_text(json.dumps({"type": "resize", "cols": 97, "rows": 29}))
         size = ""
         for _ in range(30):
@@ -78,7 +90,7 @@ def test_session_kill_closes_terminal(real):  # noqa: F811
     c, proj, socket = real
     start(c, proj, "eyrie-term4")
     with c.websocket_connect("ws://localhost/api/v1/sessions/eyrie-term4/term", subprotocols=proto(c)) as ws:
-        read_until(ws, b"fake claude args")
+        read_until(ws, b"cwd:")
         subprocess.run(["tmux", "-L", socket, "kill-session", "-t", "eyrie-term4"], check=True)
         from starlette.websockets import WebSocketDisconnect
         with pytest.raises(WebSocketDisconnect):

@@ -1,22 +1,22 @@
-"""Usage history: Claude Code cost and tokens per day, model and project, plus Codex totals.
+"""Usage history: cost and tokens per day, tool, model and project, for every tool with a
+usage reader (Claude Code transcripts, Codex rollouts).
 
-Claude numbers come from the transcript index and are priced at query time, so fixing a
-price corrects all history. Codex only stores a lifetime token total per thread, so it's
-reported per thread and model, never spread across days.
+Numbers come from the transcript index and are priced at query time, so fixing a price
+corrects all history.
 """
-import sqlite3
 from collections import defaultdict
-from contextlib import closing
 from datetime import date, datetime, time, timedelta, timezone
 
 from app.config import Settings
-from app.sources.base import Availability, path_availability
+from app.sources.base import Availability
+from app.tools import enabled
 from app.usage.index import UsageIndex
 from app.usage.prices import DEFAULT_PRICES, PRICES_UPDATED, ModelPrice
 
 COVERAGE_NOTE = (
-    "Claude cost is computed from session transcripts. Claude Code makes a few background "
-    "calls it doesn't write there (titles, compaction), so this can read slightly low."
+    "Cost is computed from session transcripts at list prices. Claude Code makes a few background "
+    "calls it doesn't write there (titles, compaction), so its cost can read slightly low; "
+    "subscription plans aren't billed per token at all."
 )
 
 
@@ -38,13 +38,16 @@ class UsageSource:
     title = "Usage"
 
     def __init__(self, settings: Settings) -> None:
-        self.projects_dir = settings.paths.claude_home / "projects"
-        self.codex_db = settings.paths.codex_home / "state_5.sqlite"
-        self.index = UsageIndex(settings.paths.data_dir / "usage.db", self.projects_dir)
+        # Resolved per scan, so a tool installed or enabled later starts being indexed.
+        readers = lambda: {t.id: t.usage for t in enabled(settings).values() if t.usage}  # noqa: E731
+        self.index = UsageIndex(settings.paths.data_dir / "usage.db", readers, settings)
+        self.settings = settings
         self.prices = {**DEFAULT_PRICES, **settings.pricing}
 
     def available(self) -> Availability:
-        return path_availability(self.projects_dir, "Claude Code transcripts")
+        if self.index.transcript_files():
+            return Availability(True)
+        return Availability(False, "No session transcripts found for any tool")
 
     def snapshot(self) -> dict:
         return self.report(30)
@@ -57,15 +60,16 @@ class UsageSource:
         since = start_local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
         per_day: dict[date, dict[str, dict]] = defaultdict(lambda: defaultdict(lambda: {"cost": 0.0, "tokens": 0}))
-        models: dict[str, dict] = defaultdict(lambda: {"cost": 0.0, "input": 0, "output": 0, "cache_read": 0,
+        models: dict[tuple[str, str], dict] = defaultdict(lambda: {"cost": 0.0, "input": 0, "output": 0, "cache_read": 0,
                                                        "cache_write": 0, "tokens": 0, "messages": 0})
         projects: dict[str, dict] = defaultdict(lambda: {"cost": 0.0, "tokens": 0, "sessions": set()})
         unpriced: set[str] = set()
         sessions: set[str] = set()
+        tools: dict[str, dict] = defaultdict(lambda: {"cost": 0.0, "tokens": 0, "sessions": set()})
         # A session belongs to the directory it started in, even if it later cd's elsewhere.
-        session_project: dict[str, str] = {}
+        session_project: dict[tuple[str, str], str] = {}
 
-        for r in self.index.rows_since(since):
+        for r in self.index.rows_since(since, list(enabled(self.settings))):
             day = _local_day(r["ts"])
             if day < start:
                 continue
@@ -77,7 +81,7 @@ class UsageSource:
             d = per_day[day][r["model"]]
             d["cost"] += cost
             d["tokens"] += tokens
-            m = models[r["model"]]
+            m = models[(r["tool"], r["model"])]
             m["cost"] += cost
             m["tokens"] += tokens
             m["messages"] += 1
@@ -86,14 +90,19 @@ class UsageSource:
             m["cache_read"] += r["cache_read"]
             m["cache_write"] += r["cache_write_5m"] + r["cache_write_1h"]
             project = r["project"] or "(unknown)"
-            if r["session_id"]:
-                project = session_project.setdefault(r["session_id"], project)
+            sid = (r["tool"], r["session_id"]) if r["session_id"] else None
+            if sid:
+                project = session_project.setdefault(sid, project)
             p = projects[project]
             p["cost"] += cost
             p["tokens"] += tokens
-            if r["session_id"]:
-                p["sessions"].add(r["session_id"])
-                sessions.add(r["session_id"])
+            t = tools[r["tool"]]
+            t["cost"] += cost
+            t["tokens"] += tokens
+            if sid:
+                p["sessions"].add(sid)
+                t["sessions"].add(sid)
+                sessions.add(sid)
 
         day_list = []
         for i in range(days):
@@ -101,8 +110,11 @@ class UsageSource:
             day_list.append({"day": day.isoformat(), "models": {
                 k: {"cost": round(v["cost"], 4), "tokens": v["tokens"]} for k, v in per_day.get(day, {}).items()}})
 
-        by_model = sorted(({"model": k, "priced": k not in unpriced, **v, "cost": round(v["cost"], 4)}
-                           for k, v in models.items()), key=lambda x: (-x["cost"], -x["tokens"]))
+        by_model = sorted(({"model": model, "tool": tool, "priced": model not in unpriced, **v,
+                            "cost": round(v["cost"], 4)} for (tool, model), v in models.items()),
+                          key=lambda x: (-x["cost"], -x["tokens"]))
+        by_tool = sorted(({"tool": k, "cost": round(v["cost"], 4), "tokens": v["tokens"], "sessions": len(v["sessions"])}
+                          for k, v in tools.items()), key=lambda x: (-x["cost"], -x["tokens"]))
         by_project = sorted(({"project": k, "cost": round(v["cost"], 4), "tokens": v["tokens"],
                               "sessions": len(v["sessions"])} for k, v in projects.items()),
                             key=lambda x: (-x["cost"], -x["tokens"]))
@@ -111,31 +123,12 @@ class UsageSource:
             "days": day_list,
             "by_model": by_model,
             "by_project": by_project,
+            "by_tool": by_tool,
             "totals": {"cost": round(sum(m["cost"] for m in models.values()), 4),
                        "tokens": sum(m["tokens"] for m in models.values()),
                        "messages": sum(m["messages"] for m in models.values()),
                        "sessions": len(sessions)},
-            "codex": self._codex(start_local),
             "index": self.index.stats(),
             "pricing": {"updated": PRICES_UPDATED, "unpriced_models": sorted(unpriced)},
             "note": COVERAGE_NOTE,
-        }
-
-    def _codex(self, start_local: datetime) -> dict:
-        if not self.codex_db.exists():
-            return {"available": False, "threads": 0, "tokens": 0, "by_model": []}
-        try:
-            with closing(sqlite3.connect(f"file:{self.codex_db}?mode=ro", uri=True)) as con:
-                rows = con.execute(
-                    "SELECT coalesce(model, 'unknown'), count(*), coalesce(sum(tokens_used), 0) FROM threads "
-                    "WHERE archived = 0 AND updated_at >= ? GROUP BY 1 ORDER BY 3 DESC",
-                    (int(start_local.timestamp()),),
-                ).fetchall()
-        except sqlite3.Error as e:
-            return {"available": False, "error": str(e), "threads": 0, "tokens": 0, "by_model": []}
-        return {
-            "available": True,
-            "threads": sum(r[1] for r in rows),
-            "tokens": sum(r[2] for r in rows),
-            "by_model": [{"model": m, "threads": n, "tokens": t} for m, n, t in rows],
         }

@@ -6,13 +6,16 @@ import type {
   Conversation,
   CodexUsage,
   McpStatus,
-  NexusAgent,
-  NexusFile,
+  MemoryAgent,
+  MemoryFile,
   PluginList,
   Screen,
   Trashed,
   Meta,
+  SetupBody,
+  SetupState,
   SessionsSnapshot,
+  Summary,
   TasksSnapshot,
   UsageReport,
 } from './types'
@@ -66,17 +69,22 @@ export const api = {
   claude: source<ClaudeUsage>('claude'),
   codex: source<CodexUsage>('codex'),
   mcp: source<McpStatus>('mcp'),
-  nexus: source<{ agents: NexusAgent[] }>('nexus'),
-  nexusFile: {
-    read: (agent: string, name: string) => get<NexusFile>(`/api/v1/nexus/${enc(agent)}/${enc(name)}`),
+  memory: source<{ agents: MemoryAgent[] }>('memory'),
+  memoryFile: {
+    read: (agent: string, name: string) => get<MemoryFile>(`/api/v1/memory/${enc(agent)}/${enc(name)}`),
     write: (agent: string, name: string, content: string, etag: string) =>
-      send<NexusFile>('PUT', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, { content }, { 'If-Match': etag }),
+      send<MemoryFile>('PUT', `/api/v1/memory/${enc(agent)}/${enc(name)}`, { content }, { 'If-Match': etag }),
     remove: (agent: string, name: string, etag: string) =>
-      send<Trashed>('DELETE', `/api/v1/nexus/${enc(agent)}/${enc(name)}`, undefined, { 'If-Match': etag }),
+      send<Trashed>('DELETE', `/api/v1/memory/${enc(agent)}/${enc(name)}`, undefined, { 'If-Match': etag }),
   },
   usage: (days: number) => get<UsageReport>(`/api/v1/usage?days=${days}`),
   plugins: source<PluginList>('plugins'),
   meta: () => get<Meta>('/api/v1/meta'),
+  setup: {
+    get: () => get<SetupState>('/api/v1/setup'),
+    write: (body: SetupBody, etag: string) => send<SetupState>('PUT', '/api/v1/setup', body, { 'If-Match': etag }),
+  },
+  summary: () => get<Summary>('/api/v1/summary'),
   sessions: {
     list: source<SessionsSnapshot>('sessions'),
     screen: (name: string, lines = 200) =>

@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import { api } from '@/api/client'
 import { setHome } from '@/format'
+import { setMeta } from '@/tools'
 
 function ThemeInit() {
   useEffect(() => {
@@ -31,6 +32,9 @@ function render() {
 // Learn the home directory first so paths render as ~/...; render anyway if the backend is down.
 api
   .meta()
-  .then((m) => setHome(m.home))
+  .then((m) => {
+    setHome(m.home)
+    setMeta(m)
+  })
   .catch(() => {})
   .finally(render)

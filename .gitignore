@@ -12,3 +12,14 @@ frontend/dist/
 
 # Local config
 eyrie.toml
+
+# Widget (Tauri)
+widget/node_modules/
+widget/src-tauri/target/
+widget/src-tauri/gen/
+
+# Agent worktrees and local Claude Code state
+.claude/
+
+# Packaging builds (PyInstaller)
+build/

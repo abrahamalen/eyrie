@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { toolTitle } from '@/format'
 
 /** Page-level so polling can drop the session's row without closing this dialog. */
 export function StopSessionDialog({ session, onClose }: { session: Session | null; onClose: (stopped: boolean) => void }) {
@@ -41,7 +42,7 @@ export function StopSessionDialog({ session, onClose }: { session: Session | nul
           </AlertDialogTitle>
           <AlertDialogDescription>
             {s?.alive
-              ? `Ends the ${s.tool === 'codex' ? 'Codex' : 'Claude Code'} process and its tmux session. The conversation stays on disk and can be resumed.`
+              ? `Ends the ${toolTitle(s.tool)} process and its tmux session. The conversation stays on disk and can be resumed.`
               : 'The process has already exited. This removes the finished tmux session and its scrollback.'}
           </AlertDialogDescription>
         </AlertDialogHeader>

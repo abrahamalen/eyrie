@@ -1,23 +1,13 @@
 """Where sessions may start: under a configured sessions.roots entry, or in a directory
-Claude Code or Codex has already been used in."""
-import sqlite3
-from contextlib import closing
+one of the tools has already been used in."""
 from pathlib import Path
 
 from app.config import Settings
-from app.sources.claude import safe_read_json
+from app.tools import enabled
 
 
 def _known(settings: Settings) -> set[Path]:
-    known = {Path(p) for p in ((safe_read_json(settings.paths.claude_json) or {}).get("projects") or {})}
-    db = settings.paths.codex_home / "state_5.sqlite"
-    if db.exists():
-        try:
-            with closing(sqlite3.connect(f"file:{db}?mode=ro", uri=True)) as con:
-                known |= {Path(r[0]) for r in con.execute("SELECT DISTINCT cwd FROM threads WHERE cwd IS NOT NULL")}
-        except sqlite3.Error:
-            pass
-    return known
+    return {d for t in enabled(settings).values() if t.sessions for d in t.sessions.known_dirs(settings)}
 
 
 def allowed_dirs(settings: Settings) -> list[str]:

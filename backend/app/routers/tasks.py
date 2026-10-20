@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -26,9 +28,10 @@ def _tasks(request: Request) -> TasksSource:
     return source
 
 
-def _run(source: TasksSource, fn):
+def _run(request: Request, source: TasksSource, action: str, params: dict, fn):
+    started = time.perf_counter()
     try:
-        return fn()
+        result = fn()
     except Conflict:
         # Hand back the current state so the client can refresh without another round trip.
         return JSONResponse(
@@ -42,6 +45,10 @@ def _run(source: TasksSource, fn):
         )
     except ValueError as e:
         raise HTTPException(422, str(e))
+    # Which task and what changed, never the task's text: the audit log is about actions.
+    request.app.state.audit.record(action, ["edit", str(source.file)], params, True, 0,
+                                   (time.perf_counter() - started) * 1000, "")
+    return result
 
 
 @router.get("", response_model=TasksSnapshot)
@@ -52,16 +59,18 @@ def list_tasks(request: Request):
 @router.post("", response_model=TasksSnapshot)
 def add_task(body: NewTask, request: Request, if_match: str = Header()):
     source = _tasks(request)
-    return _run(source, lambda: source.add(body.text, if_match))
+    return _run(request, source, "tasks.add", {}, lambda: source.add(body.text, if_match))
 
 
 @router.patch("/{task_id}", response_model=TasksSnapshot)
 def update_task(task_id: str, body: TaskPatch, request: Request, if_match: str = Header()):
     source = _tasks(request)
-    return _run(source, lambda: source.update(task_id, if_match, done=body.done, text=body.text))
+    params = {"id": task_id, "done": body.done, "text_changed": body.text is not None}
+    return _run(request, source, "tasks.update", params,
+                lambda: source.update(task_id, if_match, done=body.done, text=body.text))
 
 
 @router.delete("/{task_id}", response_model=TasksSnapshot)
 def delete_task(task_id: str, request: Request, if_match: str = Header()):
     source = _tasks(request)
-    return _run(source, lambda: source.delete(task_id, if_match))
+    return _run(request, source, "tasks.delete", {"id": task_id}, lambda: source.delete(task_id, if_match))

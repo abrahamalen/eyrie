@@ -1,3 +1,5 @@
+import { toolInfo } from '@/tools'
+
 // Set from /api/v1/meta at startup; until then paths are shown in full.
 let home = ''
 export function setHome(h: string) {
@@ -34,4 +36,11 @@ export function fmtAgo(iso: string | null | undefined): string {
   if (s < 3600) return `${Math.round(s / 60)} min ago`
   if (s < 86400) return `${Math.round(s / 3600)} h ago`
   return `${Math.round(s / 86400)} d ago`
+}
+
+// Display names for tool ids: from /meta once loaded, else these; unknown ids show as themselves.
+const TOOL_TITLES: Record<string, string> = { claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini CLI' }
+
+export function toolTitle(tool: string | null | undefined): string {
+  return tool ? (toolInfo(tool)?.title ?? TOOL_TITLES[tool] ?? tool) : 'Unknown tool'
 }

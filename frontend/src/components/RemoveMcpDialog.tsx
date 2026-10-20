@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { toolTitle } from '@/format'
 
 function paramsOf(m: McpServer) {
   return { client: m.client, name: m.name, scope: m.scope, ...(m.project ? { project_dir: m.project } : {}) }
@@ -45,7 +46,7 @@ export function RemoveMcpDialog({ server, onClose }: { server: McpServer | null;
         <AlertDialogHeader>
           <AlertDialogTitle>Remove {m?.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Removes it from {m?.client === 'codex' ? 'Codex' : 'Claude Code'} ({m?.scope} scope). Running sessions keep
+            Removes it from {toolTitle(m?.client)} ({m?.scope} scope). Running sessions keep
             their connection until they restart. You can add it back later.
           </AlertDialogDescription>
         </AlertDialogHeader>

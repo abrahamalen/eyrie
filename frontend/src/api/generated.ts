@@ -72,6 +72,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/memory/{agent}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read File */
+        get: operations["read_file_api_v1_memory__agent___name__get"];
+        /**
+         * Write File
+         * @description Create (If-Match: absent) or replace a memory file.
+         */
+        put: operations["write_file_api_v1_memory__agent___name__put"];
+        post?: never;
+        /**
+         * Delete File
+         * @description Moves the file to ~/.eyrie/trash (recoverable).
+         */
+        delete: operations["delete_file_api_v1_memory__agent___name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta": {
         parameters: {
             query?: never;
@@ -84,31 +109,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/nexus/{agent}/{name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read File */
-        get: operations["read_file_api_v1_nexus__agent___name__get"];
-        /**
-         * Write File
-         * @description Create (If-Match: absent) or replace a memory file.
-         */
-        put: operations["write_file_api_v1_nexus__agent___name__put"];
-        post?: never;
-        /**
-         * Delete File
-         * @description Moves the file to the vault's .trash folder (recoverable).
-         */
-        delete: operations["delete_file_api_v1_nexus__agent___name__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -147,6 +147,27 @@ export interface paths {
          */
         get: operations["screen_api_v1_sessions__name__screen_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Setup */
+        get: operations["read_setup_api_v1_setup_get"];
+        /**
+         * Write Setup
+         * @description Write ~/.eyrie/eyrie.toml (If-Match: absent on first run) and apply it at once.
+         */
+        put: operations["write_setup_api_v1_setup_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -222,15 +243,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/sources/nexus": {
+    "/api/v1/sources/memory": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Source Nexus */
-        get: operations["source_nexus"];
+        /** Source Memory */
+        get: operations["source_memory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -299,6 +320,26 @@ export interface paths {
         };
         /** Source Usage */
         get: operations["source_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Summary
+         * @description What needs you and what's going on: the home page and the widget both read this.
+         */
+        get: operations["summary_api_v1_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -413,6 +454,34 @@ export interface components {
             /** Ok */
             ok: boolean;
         };
+        /** AgentMemoryInfo */
+        AgentMemoryInfo: {
+            /** Exists */
+            exists: boolean;
+            /** Path */
+            path: string;
+        };
+        /** AttentionItem */
+        AttentionItem: {
+            /** Detail */
+            detail: string;
+            /** Href */
+            href: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "cli_missing" | "session_exited_error" | "session_idle" | "mcp_failed" | "unpriced_model";
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "problem" | "attention";
+            /** Since */
+            since: string | null;
+            /** Title */
+            title: string;
+        };
         /** AuditEntry */
         AuditEntry: {
             /** Action */
@@ -489,28 +558,6 @@ export interface components {
             projects: components["schemas"]["ClaudeProject"][];
             totals: components["schemas"]["ClaudeTotals"];
         };
-        /** CodexModelUsage */
-        CodexModelUsage: {
-            /** Model */
-            model: string;
-            /** Threads */
-            threads: number;
-            /** Tokens */
-            tokens: number;
-        };
-        /** CodexSummary */
-        CodexSummary: {
-            /** Available */
-            available: boolean;
-            /** By Model */
-            by_model: components["schemas"]["CodexModelUsage"][];
-            /** Error */
-            error?: string | null;
-            /** Threads */
-            threads: number;
-            /** Tokens */
-            tokens: number;
-        };
         /** CodexThread */
         CodexThread: {
             /** Cwd */
@@ -551,6 +598,15 @@ export interface components {
             threads: components["schemas"]["CodexThread"][];
             totals: components["schemas"]["CodexTotals"];
         };
+        /** ConfigFile */
+        ConfigFile: {
+            /** Etag */
+            etag: string;
+            /** Exists */
+            exists: boolean;
+            /** Path */
+            path: string;
+        };
         /** Conversation */
         Conversation: {
             /** Id */
@@ -564,12 +620,82 @@ export interface components {
             /** Started */
             started: string;
         };
+        /** DayCost */
+        DayCost: {
+            /** Cost */
+            cost: number;
+            /** Day */
+            day: string;
+        };
         /** DayModel */
         DayModel: {
             /** Cost */
             cost: number;
             /** Tokens */
             tokens: number;
+        };
+        /** DetectedTool */
+        DetectedTool: {
+            /** Enabled */
+            enabled: boolean;
+            /** Home */
+            home: string | null;
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "claude" | "codex" | "gemini";
+            /** Installed */
+            installed: boolean;
+            /** Path */
+            path: string | null;
+            /** Title */
+            title: string;
+            /** Used */
+            used: boolean;
+            /** Version */
+            version: string | null;
+        };
+        /**
+         * ExternalSession
+         * @description A Claude Code / Codex session running in one of your own terminals (not started by Eyrie).
+         */
+        ExternalSession: {
+            /** Activity Exact */
+            activity_exact: boolean;
+            /** Cwd */
+            cwd: string | null;
+            /** Idle Minutes */
+            idle_minutes: number | null;
+            /** Last Activity */
+            last_activity: string | null;
+            /** Pid */
+            pid: number;
+            /** Resume */
+            resume: string | null;
+            /** Started */
+            started: string;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex" | "gemini";
+            /** Tty */
+            tty: string;
+        };
+        /**
+         * Features
+         * @description What this machine has, so pages for missing things aren't shown.
+         */
+        Features: {
+            /** Agent Memory */
+            agent_memory: boolean;
+            /** Mcp */
+            mcp: boolean;
+            /** Plugins */
+            plugins: boolean;
+            /** Tasks */
+            tasks: boolean;
         };
         /** FileBody */
         FileBody: {
@@ -583,8 +709,11 @@ export interface components {
         };
         /** Health */
         Health: {
-            /** Status */
-            status: string;
+            claude: components["schemas"]["ToolHealth"] | null;
+            codex: components["schemas"]["ToolHealth"] | null;
+            gemini: components["schemas"]["ToolHealth"] | null;
+            tmux: components["schemas"]["ToolHealth"];
+            usage_index: components["schemas"]["IndexStats"] | null;
         };
         /** IndexStats */
         IndexStats: {
@@ -615,13 +744,24 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** McpInfo */
+        McpInfo: {
+            /** Bearer Token Env Var */
+            bearer_token_env_var: boolean;
+            /** Headers */
+            headers: boolean;
+            /** Scopes */
+            scopes: ("user" | "local" | "project")[];
+            /** Transports */
+            transports: ("stdio" | "http" | "sse")[];
+        };
         /** McpServer */
         McpServer: {
             /**
              * Client
              * @enum {string}
              */
-            client: "claude" | "codex";
+            client: "claude" | "codex" | "gemini";
             /** Name */
             name: string;
             /** Project */
@@ -643,36 +783,24 @@ export interface components {
             /** Last Known Failures */
             last_known_failures: components["schemas"]["McpFailure"][];
         };
-        /** Meta */
-        Meta: {
-            /** Home */
-            home: string;
-            /** Version */
-            version: string;
-        };
-        /** NewTask */
-        NewTask: {
-            /** Text */
-            text: string;
-        };
-        /** NexusAgent */
-        NexusAgent: {
+        /** MemoryAgent */
+        MemoryAgent: {
             /** Agent */
             agent: string;
             /** File Count */
             file_count: number;
             /** Files */
-            files: components["schemas"]["NexusFileInfo"][];
+            files: components["schemas"]["MemoryFileInfo"][];
             /** Last Used */
             last_used: string;
         };
-        /** NexusAgents */
-        NexusAgents: {
+        /** MemoryAgents */
+        MemoryAgents: {
             /** Agents */
-            agents: components["schemas"]["NexusAgent"][];
+            agents: components["schemas"]["MemoryAgent"][];
         };
-        /** NexusFile */
-        NexusFile: {
+        /** MemoryFile */
+        MemoryFile: {
             /** Agent */
             agent: string;
             /** Content */
@@ -686,14 +814,31 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** NexusFileInfo */
-        NexusFileInfo: {
+        /** MemoryFileInfo */
+        MemoryFileInfo: {
             /** Modified */
             modified: string;
             /** Name */
             name: string;
             /** Size */
             size: number;
+        };
+        /** Meta */
+        Meta: {
+            /** Configured */
+            configured: boolean;
+            features: components["schemas"]["Features"];
+            /** Home */
+            home: string;
+            /** Tools */
+            tools: components["schemas"]["ToolInfo"][];
+            /** Version */
+            version: string;
+        };
+        /** NewTask */
+        NewTask: {
+            /** Text */
+            text: string;
         };
         /** Plugin */
         Plugin: {
@@ -730,6 +875,18 @@ export interface components {
             /** Updated */
             updated: string;
         };
+        /** RecentProject */
+        RecentProject: {
+            /** Last Used */
+            last_used: string;
+            /** Path */
+            path: string;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex" | "gemini";
+        };
         /** Screen */
         Screen: {
             /** Name */
@@ -762,7 +919,7 @@ export interface components {
             /** Name */
             name: string;
             /** Tool */
-            tool: ("claude" | "codex") | null;
+            tool: ("claude" | "codex" | "gemini") | null;
         };
         /** SessionsSnapshot */
         SessionsSnapshot: {
@@ -770,8 +927,39 @@ export interface components {
             dirs: string[];
             /** Error */
             error: string | null;
+            /** External */
+            external: components["schemas"]["ExternalSession"][];
             /** Sessions */
             sessions: components["schemas"]["Session"][];
+        };
+        /** SetupBody */
+        SetupBody: {
+            /**
+             * Roots
+             * @default []
+             */
+            roots: string[];
+            /** Tasks */
+            tasks?: string | null;
+            /** Tools Enabled */
+            tools_enabled: "auto" | ("claude" | "codex" | "gemini")[];
+        };
+        /** SetupState */
+        SetupState: {
+            agent_memory: components["schemas"]["AgentMemoryInfo"];
+            config: components["schemas"]["ConfigFile"];
+            /** Obsidian Vaults */
+            obsidian_vaults: string[];
+            /** Roots */
+            roots: string[];
+            /** Suggested Roots */
+            suggested_roots: components["schemas"]["SuggestedRoot"][];
+            /** Tasks */
+            tasks: string | null;
+            /** Tools */
+            tools: components["schemas"]["DetectedTool"][];
+            /** Tools Enabled */
+            tools_enabled: "auto" | ("claude" | "codex" | "gemini")[];
         };
         /** SourceInfo */
         SourceInfo: {
@@ -783,6 +971,80 @@ export interface components {
             reason: string | null;
             /** Title */
             title: string;
+        };
+        /** Spend */
+        Spend: {
+            /** Change Vs Prev 7 Pct */
+            change_vs_prev_7_pct: number | null;
+            /** Last 7 Days */
+            last_7_days: components["schemas"]["DayCost"][];
+            /** Today */
+            today: number;
+            /** Top Project Today */
+            top_project_today: string | null;
+            /** Yesterday */
+            yesterday: number;
+        };
+        /** Status */
+        Status: {
+            /** Status */
+            status: string;
+        };
+        /** SuggestedRoot */
+        SuggestedRoot: {
+            /** Path */
+            path: string;
+            /** Projects */
+            projects: number;
+        };
+        /** Summary */
+        Summary: {
+            /** Attention */
+            attention: components["schemas"]["AttentionItem"][];
+            /** Generated At */
+            generated_at: string;
+            health: components["schemas"]["Health"];
+            /** Recent Projects */
+            recent_projects: components["schemas"]["RecentProject"][];
+            /** Sessions */
+            sessions: components["schemas"]["SummarySession"][];
+            spend: components["schemas"]["Spend"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "attention" | "problem";
+            tasks: components["schemas"]["SummaryTasks"] | null;
+        };
+        /** SummarySession */
+        SummarySession: {
+            /** Alive */
+            alive: boolean;
+            /** Exit Status */
+            exit_status: number | null;
+            /** Idle Minutes */
+            idle_minutes: number | null;
+            /** Last Output */
+            last_output: string | null;
+            /** Managed */
+            managed: boolean;
+            /** Name */
+            name: string;
+            /** Pid */
+            pid: number | null;
+            /** Project */
+            project: string | null;
+            /** Tool */
+            tool: ("claude" | "codex" | "gemini") | null;
+            /** Tty */
+            tty: string | null;
+        };
+        /** SummaryTasks */
+        SummaryTasks: {
+            /** Next */
+            next: components["schemas"]["Task"][];
+            /** Open Count */
+            open_count: number;
         };
         /** Task */
         Task: {
@@ -813,6 +1075,45 @@ export interface components {
         Token: {
             /** Token */
             token: string;
+        };
+        /** ToolHealth */
+        ToolHealth: {
+            /** Found */
+            found: boolean;
+            /** Path */
+            path: string | null;
+            /** Used */
+            used: boolean;
+            /** Version */
+            version: string | null;
+        };
+        /**
+         * ToolInfo
+         * @description What one tool can do here, so the UI offers only that.
+         */
+        ToolInfo: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "claude" | "codex" | "gemini";
+            /** Installed */
+            installed: boolean;
+            mcp: components["schemas"]["McpInfo"] | null;
+            /** Picks Conversation Id */
+            picks_conversation_id: boolean;
+            /** Plugins */
+            plugins: boolean;
+            /** Resume Requires Cwd */
+            resume_requires_cwd: boolean;
+            /** Session Modes */
+            session_modes: ("new" | "continue" | "resume")[];
+            /** Title */
+            title: string;
+            /** Used */
+            used: boolean;
         };
         /** Trashed */
         Trashed: {
@@ -848,6 +1149,11 @@ export interface components {
             priced: boolean;
             /** Tokens */
             tokens: number;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex" | "gemini";
         };
         /** UsageProject */
         UsageProject: {
@@ -875,7 +1181,8 @@ export interface components {
             by_model: components["schemas"]["UsageModel"][];
             /** By Project */
             by_project: components["schemas"]["UsageProject"][];
-            codex: components["schemas"]["CodexSummary"];
+            /** By Tool */
+            by_tool: components["schemas"]["UsageTool"][];
             /** Days */
             days: components["schemas"]["UsageDay"][];
             index: components["schemas"]["IndexStats"];
@@ -884,6 +1191,20 @@ export interface components {
             pricing: components["schemas"]["Pricing"];
             range: components["schemas"]["UsageRange"];
             totals: components["schemas"]["UsageTotals"];
+        };
+        /** UsageTool */
+        UsageTool: {
+            /** Cost */
+            cost: number;
+            /** Sessions */
+            sessions: number;
+            /** Tokens */
+            tokens: number;
+            /**
+             * Tool
+             * @enum {string}
+             */
+            tool: "claude" | "codex" | "gemini";
         };
         /** UsageTotals */
         UsageTotals: {
@@ -1019,32 +1340,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Health"];
+                    "application/json": components["schemas"]["Status"];
                 };
             };
         };
     };
-    meta_api_v1_meta_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Meta"];
-                };
-            };
-        };
-    };
-    read_file_api_v1_nexus__agent___name__get: {
+    read_file_api_v1_memory__agent___name__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1062,7 +1363,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NexusFile"];
+                    "application/json": components["schemas"]["MemoryFile"];
                 };
             };
             /** @description Validation Error */
@@ -1076,7 +1377,7 @@ export interface operations {
             };
         };
     };
-    write_file_api_v1_nexus__agent___name__put: {
+    write_file_api_v1_memory__agent___name__put: {
         parameters: {
             query?: never;
             header: {
@@ -1100,7 +1401,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NexusFile"];
+                    "application/json": components["schemas"]["MemoryFile"];
                 };
             };
             /** @description Validation Error */
@@ -1114,7 +1415,7 @@ export interface operations {
             };
         };
     };
-    delete_file_api_v1_nexus__agent___name__delete: {
+    delete_file_api_v1_memory__agent___name__delete: {
         parameters: {
             query?: never;
             header: {
@@ -1144,6 +1445,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meta_api_v1_meta_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
                 };
             };
         };
@@ -1199,6 +1520,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Screen"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_setup_api_v1_setup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupState"];
+                };
+            };
+        };
+    };
+    write_setup_api_v1_setup_put: {
+        parameters: {
+            query?: never;
+            header: {
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupState"];
                 };
             };
             /** @description Validation Error */
@@ -1292,7 +1668,7 @@ export interface operations {
             };
         };
     };
-    source_nexus: {
+    source_memory: {
         parameters: {
             query?: never;
             header?: never;
@@ -1307,7 +1683,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["NexusAgents"];
+                    "application/json": components["schemas"]["MemoryAgents"];
                 };
             };
         };
@@ -1388,6 +1764,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsageReport"];
+                };
+            };
+        };
+    };
+    summary_api_v1_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Summary"];
                 };
             };
         };

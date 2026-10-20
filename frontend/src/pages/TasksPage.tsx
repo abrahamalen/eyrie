@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/PageHeader'
 
 export function TasksPage() {
   const { data, set } = usePoll(api.tasks.list, 15_000)
@@ -41,13 +42,7 @@ export function TasksPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-        <p className="text-sm text-muted-foreground">
-          Stored as a plain checklist in your vault at Personal/Tasks.md, so you can edit it in Obsidian too.
-          Eyrie only changes the task lines you touch.
-        </p>
-      </div>
+      <PageHeader eyebrow="You" title="Tasks" description={<>A plain markdown checklist (choose the file in Settings), so you can keep editing it anywhere, e.g. in Obsidian. Eyrie only changes the task lines you touch.</>} />
 
       {notice && (
         <div

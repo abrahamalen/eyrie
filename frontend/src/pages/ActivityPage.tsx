@@ -4,18 +4,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageHeader } from '@/components/PageHeader'
 
 export function ActivityPage() {
   const { data, error } = usePoll(() => api.audit(200), 10_000)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
-        <p className="text-sm text-muted-foreground">
-          Every change Eyrie has made, from ~/.eyrie/audit.jsonl. Secret values are masked.
-        </p>
-      </div>
+      <PageHeader eyebrow="You" title="Activity" description={<>Every change Eyrie has made, from ~/.eyrie/audit.jsonl. Secret values are masked.</>} />
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
       <Card>
         <CardContent className="overflow-x-auto">

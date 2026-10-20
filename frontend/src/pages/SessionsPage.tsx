@@ -1,9 +1,11 @@
 import { lazy, Suspense, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { api } from '@/api/client'
 import type { Session } from '@/api/types'
 import { usePoll } from '@/usePoll'
-import { fmtAgo, fmtNum, shortPath } from '@/format'
+import { fmtAgo, fmtNum, shortPath, toolTitle } from '@/format'
+import { sessionTools } from '@/tools'
 import { CopyButton } from '@/components/CopyButton'
 import { StartSessionDialog, type StartRequest } from '@/components/StartSessionDialog'
 import { StopSessionDialog } from '@/components/StopSessionDialog'
@@ -11,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { PageHeader } from '@/components/PageHeader'
 
 // xterm is large and only needed once a terminal opens.
 const SessionTerminal = lazy(() => import('@/components/SessionTerminal').then((m) => ({ default: m.SessionTerminal })))
@@ -37,26 +40,30 @@ export function SessionsPage() {
   const convs = usePoll(() => api.sessions.conversations(10), 30_000)
   const codex = usePoll(api.codex, 30_000)
   const [start, setStart] = useState<StartRequest | null>(null)
-  const [open, setOpen] = useState<string | null>(null)
+  // ?open=<name> (from the home page or the widget) opens that session's terminal.
+  const [params] = useSearchParams()
+  const [open, setOpen] = useState<string | null>(params.get('open'))
   const [stopping, setStopping] = useState<Session | null>(null)
   const dirs = data?.dirs ?? []
   const allowed = (cwd: string | null) => !!cwd && dirs.includes(cwd)
   const sessions = data?.sessions ?? []
+  const external = data?.external ?? []
   const openSession = sessions.find((s) => s.name === open)
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="mr-auto">
-          <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
-          <p className="text-sm text-muted-foreground">
-            Claude Code and Codex running in Eyrie's own tmux server. They keep running if Eyrie restarts.
-          </p>
-        </div>
-        <Button onClick={() => setStart({ tool: 'claude' })} disabled={!data || !!data.error}>
+      <PageHeader
+        eyebrow="Work"
+        title="Sessions"
+        description={<>Claude Code and Codex running in Eyrie's own tmux server. They keep running if Eyrie restarts.</>}
+        actions={
+          <>
+        <Button onClick={() => setStart({ tool: sessionTools()[0]?.id ?? 'claude' })} disabled={!data || !!data.error || !sessionTools().length}>
           <Plus className="size-4" /> New session
         </Button>
-      </div>
+          </>
+        }
+      />
 
       {error && <p className="text-sm text-destructive">Couldn't reach backend: {error}</p>}
       {data?.error && <p className="text-sm text-destructive">{data.error}</p>}
@@ -83,7 +90,7 @@ export function SessionsPage() {
                     <TableCell>
                       <div className="font-mono text-xs">{s.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {s.tool === 'codex' ? 'Codex' : 'Claude Code'}
+                        {toolTitle(s.tool)}
                         {s.mode && s.mode !== 'new' ? ` · ${s.mode}` : ''}
                       </div>
                     </TableCell>
@@ -109,7 +116,7 @@ export function SessionsPage() {
                 {data && !sessions.length && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                      No sessions yet. Start one, or resume a conversation below.
+                      No Eyrie sessions yet. Start one, or resume a conversation below.
                     </TableCell>
                   </TableRow>
                 )}
@@ -118,6 +125,51 @@ export function SessionsPage() {
           )}
         </CardContent>
       </Card>
+
+      {!!external.length && (
+        <Card>
+          <CardHeader>
+            <CardTitle>In your terminals</CardTitle>
+            <CardDescription>
+              Claude Code and Codex you started yourself. Eyrie can see them but not attach; switch to that terminal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tool</TableHead>
+                  <TableHead>Directory</TableHead>
+                  <TableHead>Terminal</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Last activity</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {external.map((x) => (
+                  <TableRow key={x.pid}>
+                    <TableCell>
+                      <div>{toolTitle(x.tool)}</div>
+                      {x.resume && <div className="font-mono text-xs text-muted-foreground">resume {x.resume.slice(0, 12)}</div>}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate font-mono text-xs" title={x.cwd ?? undefined}>
+                      {x.cwd ? shortPath(x.cwd) : '—'}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{x.tty} · pid {x.pid}</TableCell>
+                    <TableCell className="text-muted-foreground">{fmtAgo(x.started)}</TableCell>
+                    <TableCell
+                      className="text-muted-foreground"
+                      title={x.activity_exact ? undefined : 'Approximate: newest conversation in this directory'}
+                    >
+                      {x.last_activity ? `${x.activity_exact ? '' : '~'}${fmtAgo(x.last_activity)}` : '—'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {openSession && (
         <Suspense fallback={<Skeleton className="h-[28rem]" />}>

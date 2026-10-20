@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FilePlus } from 'lucide-react'
 import { api, StaleError } from '@/api/client'
-import type { NexusFile } from '@/api/types'
+import type { MemoryFile } from '@/api/types'
 import { usePoll } from '@/usePoll'
 import { fmtAgo } from '@/format'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { PageHeader } from '@/components/PageHeader'
 
 type Sel = { agent: string; name: string }
 const same = (a: Sel | null, b: Sel | null) => !!a && !!b && a.agent === b.agent && a.name === b.name
@@ -30,13 +31,13 @@ function Notice({ tone, children }: { tone: 'warn' | 'ok' | 'bad'; children: Rea
   return <div role="status" className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm ${cls}`}>{children}</div>
 }
 
-export function NexusPage() {
-  const list = usePoll(api.nexus, 15_000)
+export function MemoryPage() {
+  const list = usePoll(api.memory, 15_000)
   const [sel, setSel] = useState<Sel | null>(null)
-  const [file, setFile] = useState<NexusFile | null>(null)
+  const [file, setFile] = useState<MemoryFile | null>(null)
   const [draft, setDraft] = useState('')
   const [pendingSel, setPendingSel] = useState<Sel | null>(null)
-  const [conflict, setConflict] = useState<NexusFile | null>(null)
+  const [conflict, setConflict] = useState<MemoryFile | null>(null)
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null)
   const [creating, setCreating] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
@@ -46,7 +47,7 @@ export function NexusPage() {
 
   const load = async (s: Sel, msg?: string) => {
     try {
-      const f = await api.nexusFile.read(s.agent, s.name)
+      const f = await api.memoryFile.read(s.agent, s.name)
       setSel(s)
       setFile(f)
       setDraft(f.content)
@@ -69,7 +70,7 @@ export function NexusPage() {
     if (!file) return
     const id = setInterval(async () => {
       try {
-        const latest = await api.nexusFile.read(file.agent, file.name)
+        const latest = await api.memoryFile.read(file.agent, file.name)
         if (latest.etag === file.etag) return
         if (draft === file.content) {
           setFile(latest)
@@ -89,14 +90,14 @@ export function NexusPage() {
     if (!file) return
     setBusy(true)
     try {
-      const f = await api.nexusFile.write(file.agent, file.name, draft, etag)
+      const f = await api.memoryFile.write(file.agent, file.name, draft, etag)
       setFile(f)
       setDraft(f.content)
       setConflict(null)
       setNotice({ tone: 'ok', text: 'Saved.' })
       list.refresh()
     } catch (e) {
-      if (e instanceof StaleError) setConflict(e.current as NexusFile)
+      if (e instanceof StaleError) setConflict(e.current as MemoryFile)
       else setNotice({ tone: 'bad', text: `Couldn't save: ${e instanceof Error ? e.message : String(e)}` })
     } finally {
       setBusy(false)
@@ -106,7 +107,7 @@ export function NexusPage() {
   const create = async (agent: string) => {
     const name = newName.trim().endsWith('.md') ? newName.trim() : `${newName.trim()}.md`
     try {
-      await api.nexusFile.write(agent, name, `# ${name.replace(/\.md$/, '')}\n\n`, 'absent')
+      await api.memoryFile.write(agent, name, `# ${name.replace(/\.md$/, '')}\n\n`, 'absent')
       setCreating(null)
       setNewName('')
       await list.refresh()
@@ -120,13 +121,7 @@ export function NexusPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Nexus memory</h1>
-        <p className="text-sm text-muted-foreground">
-          What Nexus agents remember, in your vault at agent-memory/Nexus. Edit or remove a memory here; deleted files
-          go to the vault's .trash folder.
-        </p>
-      </div>
+      <PageHeader eyebrow="Agents" title="Agent memory" description={<>What your Claude Code subagents remember (~/.claude/agent-memory). Edit or remove a memory here; deleted files go to ~/.eyrie/trash.</>} />
       {list.error && <p className="text-sm text-destructive">Couldn't reach backend: {list.error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
@@ -137,7 +132,7 @@ export function NexusPage() {
               <div key={a.agent} className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground" title={a.agent}>
-                    {a.agent.replace(/^nexus-/, '')}
+                    {a.agent}
                   </span>
                   <Button variant="ghost" size="icon" className="ml-auto size-6" aria-label={`New file in ${a.agent}`}
                     onClick={() => { setCreating(a.agent); setNewName('') }}>
@@ -168,7 +163,7 @@ export function NexusPage() {
                 {!a.files.length && <span className="px-2 text-xs text-muted-foreground">No files</span>}
               </div>
             ))}
-            {list.data && !agents.length && <p className="text-sm text-muted-foreground">No Nexus agents have saved memory yet.</p>}
+            {list.data && !agents.length && <p className="text-sm text-muted-foreground">No agents have saved memory yet. Subagents with memory enabled write here.</p>}
           </CardContent>
         </Card>
 
@@ -214,7 +209,7 @@ export function NexusPage() {
                 )}
                 {notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
                 <textarea
-                  id="nexus-editor"
+                  id="memory-editor"
                   aria-label={`Contents of ${file.name}`}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
@@ -243,7 +238,7 @@ export function NexusPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {file?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Moves it to .trash/agent-memory/Nexus/{file?.agent}/ in your vault, so you can restore it.
+              Moves it to ~/.eyrie/trash/agent-memory/{file?.agent}/, so you can restore it.
               {file && file.linked_from.length > 0 &&
                 ` ${file.linked_from.join(', ')} still links to it; update the index after deleting.`}
               {dirty && ' Your unsaved edits will be lost.'}
@@ -256,15 +251,15 @@ export function NexusPage() {
               onClick={async () => {
                 if (!file) return
                 try {
-                  const r = await api.nexusFile.remove(file.agent, file.name, file.etag)
+                  const r = await api.memoryFile.remove(file.agent, file.name, file.etag)
                   setDeleting(false)
                   setFile(null)
                   setSel(null)
                   list.refresh()
-                  setNotice({ tone: 'ok', text: `Moved to ${r.trashed_to}.` })
+                  setNotice({ tone: 'ok', text: `Moved to ~/.eyrie/trash/${r.trashed_to}.` })
                 } catch (e) {
                   setDeleting(false)
-                  if (e instanceof StaleError) setConflict(e.current as NexusFile)
+                  if (e instanceof StaleError) setConflict(e.current as MemoryFile)
                   else setNotice({ tone: 'bad', text: `Couldn't delete: ${e instanceof Error ? e.message : String(e)}` })
                 }
               }}

@@ -3,13 +3,13 @@
 export function CommandPreview({ argv, error }: { argv: string[] | null; error?: string | null }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Eyrie will run</span>
+      <span className="eyebrow">Eyrie will run</span>
       {error ? (
         <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       ) : (
-        <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">
+        <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border bg-tint px-3.5 py-2.5 font-mono text-xs leading-relaxed">
           {argv ? '$ ' + argv.map(quote).join(' ') : '…'}
         </pre>
       )}

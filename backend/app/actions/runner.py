@@ -1,9 +1,12 @@
 """Runs the claude / codex CLIs on Eyrie's behalf.
 
 Always an argv list with shell=False, so no argument is ever interpreted by a shell;
-stdin is closed so a CLI can never block waiting on a prompt. Calls are serialised
-because both CLIs rewrite whole config files.
+stdin is closed so a CLI can never block waiting on a prompt. Calls to the same CLI are
+serialised because claude and codex each rewrite whole config files; different CLIs, and
+tmux (whose server serialises commands itself), don't wait on each other, so a slow
+`claude mcp add` can't stall the session list or the summary.
 """
+import contextlib
 import os
 import shutil
 import subprocess
@@ -14,7 +17,7 @@ from pathlib import Path
 
 from app.config import Settings
 
-_lock = threading.Lock()
+_locks = {"claude": threading.Lock(), "codex": threading.Lock()}
 TAIL = 4000
 
 
@@ -39,9 +42,10 @@ class Runner:
         self.settings = settings
 
     def binary(self, tool: str) -> str:
-        configured = {"claude": self.settings.cli.claude_bin, "codex": self.settings.cli.codex_bin,
-                      "tmux": self.settings.cli.tmux_bin}[tool]
-        found = configured or shutil.which(tool)
+        from app.tools import TOOLS
+
+        configured = getattr(self.settings.cli, f"{tool}_bin", None)
+        found = configured or shutil.which(TOOLS[tool].binary if tool in TOOLS else tool)
         if not found:
             raise CliNotFound(f"`{tool}` CLI not found on PATH; set cli.{tool}_bin in eyrie.toml")
         return found
@@ -53,7 +57,7 @@ class Runner:
             cwd = self.settings.paths.data_dir
             cwd.mkdir(parents=True, exist_ok=True)
         started = time.perf_counter()
-        with _lock:
+        with _locks.get(tool) or contextlib.nullcontext():
             try:
                 p = subprocess.run(
                     argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,

@@ -30,6 +30,24 @@ def _never_run_real_cli(monkeypatch):
     monkeypatch.setattr(runner.Runner, "binary", lambda self, tool: f"/fake/bin/{tool}")
 
 
+@pytest.fixture(autouse=True)
+def _isolated_config(monkeypatch, tmp_path):
+    """Never read (or let setup write) the real ~/.eyrie/eyrie.toml, and don't let whatever
+    this machine has on PATH decide which tools are enabled."""
+    import app.tools
+
+    monkeypatch.setenv("EYRIE_CONFIG", str(tmp_path / "eyrie-config" / "eyrie.toml"))
+    monkeypatch.setattr(app.tools, "installed", lambda settings, tool: bool(getattr(settings.cli, f"{tool}_bin", None)))
+
+
+@pytest.fixture(autouse=True)
+def _no_real_processes(monkeypatch):
+    """Session detection reads `ps`; tests must not see the machine's real sessions."""
+    from app.sessions import external
+    monkeypatch.setattr(external, "_ps", lambda: "")
+    monkeypatch.setattr(external, "_cwds", lambda pids: {})
+
+
 @dataclass
 class FakeCli:
     calls: list = field(default_factory=list)
@@ -51,6 +69,8 @@ def fake_cli(monkeypatch):
     from app.actions import runner
     fake = FakeCli()
     monkeypatch.setattr(runner.Runner, "run", lambda self, tool, args, cwd=None: fake.run(self, tool, args, cwd))
+    import app.tools
+    monkeypatch.setattr(app.tools, "installed", lambda settings, tool: True)  # the fake CLIs are "on PATH"
     return fake
 
 
@@ -58,10 +78,9 @@ def fake_cli(monkeypatch):
 def home(tmp_path):
     vault = tmp_path / "vault"
     (vault / "Personal").mkdir(parents=True)
-    (vault / "agent-memory/Nexus/nexus-debugging").mkdir(parents=True)
-    (vault / "agent-memory/Nexus/nexus-debugging/notes.md").write_text("# notes\n")
     (vault / "Tasks.md").write_text("# Work tasks\n\n- [ ] work item\n")
-    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude/agent-memory/code-reviewer").mkdir(parents=True)
+    (tmp_path / ".claude/agent-memory/code-reviewer/notes.md").write_text("# notes\n")
     (tmp_path / ".claude.json").write_text(json.dumps({
         "projects": {"/p/eyrie": {"lastCost": 1.5, "lastTotalInputTokens": 10, "lastTotalOutputTokens": 20,
                                   "lastModelUsage": {"claude-opus-5-5": {"costUSD": 1.5, "inputTokens": 10, "outputTokens": 20}}}},
@@ -76,7 +95,8 @@ def settings(home):
         claude_home=home / ".claude",
         claude_json=home / ".claude.json",
         codex_home=home / ".codex",
-        vault=home / "vault",
+        gemini_home=home / ".gemini",
+        tasks=home / "vault/Personal/Tasks.md",
         data_dir=home / ".eyrie",
     ))
 

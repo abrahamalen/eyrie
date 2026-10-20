@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from app.tools import ToolId
+
 
 class SourceInfo(BaseModel):
     id: str
@@ -77,7 +79,7 @@ class CodexUsage(BaseModel):
 
 class McpServer(BaseModel):
     name: str
-    client: Literal["claude", "codex"]
+    client: ToolId
     scope: Literal["user", "local", "project"]
     type: str
     target: str
@@ -112,26 +114,26 @@ class PluginList(BaseModel):
     error: str | None
 
 
-# --- Nexus --------------------------------------------------------------------------------
+# --- Agent memory --------------------------------------------------------------------------
 
-class NexusFileInfo(BaseModel):
+class MemoryFileInfo(BaseModel):
     name: str
     size: int
     modified: str
 
 
-class NexusAgent(BaseModel):
+class MemoryAgent(BaseModel):
     agent: str
     file_count: int
     last_used: str
-    files: list[NexusFileInfo]
+    files: list[MemoryFileInfo]
 
 
-class NexusAgents(BaseModel):
-    agents: list[NexusAgent]
+class MemoryAgents(BaseModel):
+    agents: list[MemoryAgent]
 
 
-class NexusFile(BaseModel):
+class MemoryFile(BaseModel):
     agent: str
     name: str
     content: str
@@ -162,7 +164,7 @@ class TasksSnapshot(BaseModel):
 
 class Session(BaseModel):
     name: str
-    tool: Literal["claude", "codex"] | None
+    tool: ToolId | None
     cwd: str | None
     mode: str | None
     conversation_id: str | None
@@ -175,8 +177,22 @@ class Session(BaseModel):
     attach: str
 
 
+class ExternalSession(BaseModel):
+    """A Claude Code / Codex session running in one of your own terminals (not started by Eyrie)."""
+    pid: int
+    tool: ToolId
+    tty: str
+    cwd: str | None
+    resume: str | None
+    started: str
+    last_activity: str | None
+    idle_minutes: int | None
+    activity_exact: bool
+
+
 class SessionsSnapshot(BaseModel):
     sessions: list[Session]
+    external: list[ExternalSession]
     dirs: list[str]
     error: str | None
 
@@ -214,6 +230,7 @@ class UsageDay(BaseModel):
 
 class UsageModel(BaseModel):
     model: str
+    tool: ToolId
     priced: bool
     cost: float
     input: int
@@ -231,25 +248,18 @@ class UsageProject(BaseModel):
     sessions: int
 
 
+class UsageTool(BaseModel):
+    tool: ToolId
+    cost: float
+    tokens: int
+    sessions: int
+
+
 class UsageTotals(BaseModel):
     cost: float
     tokens: int
     messages: int
     sessions: int
-
-
-class CodexModelUsage(BaseModel):
-    model: str
-    threads: int
-    tokens: int
-
-
-class CodexSummary(BaseModel):
-    available: bool
-    threads: int
-    tokens: int
-    by_model: list[CodexModelUsage]
-    error: str | None = None
 
 
 class IndexStats(BaseModel):
@@ -269,8 +279,8 @@ class UsageReport(BaseModel):
     days: list[UsageDay]
     by_model: list[UsageModel]
     by_project: list[UsageProject]
+    by_tool: list[UsageTool]
     totals: UsageTotals
-    codex: CodexSummary
     index: IndexStats
     pricing: Pricing
     note: str
@@ -305,16 +315,170 @@ class AuditEntry(BaseModel):
     message: str
 
 
+class AttentionItem(BaseModel):
+    kind: Literal["cli_missing", "session_exited_error", "session_idle", "mcp_failed", "unpriced_model"]
+    severity: Literal["problem", "attention"]
+    title: str
+    detail: str
+    href: str
+    since: str | None
+
+
+class SummarySession(BaseModel):
+    name: str
+    tool: ToolId | None
+    project: str | None
+    alive: bool
+    exit_status: int | None
+    idle_minutes: int | None
+    last_output: str | None
+    # False for sessions in your own terminals: Eyrie can see them but not attach to them.
+    managed: bool
+    tty: str | None
+    pid: int | None
+
+
+class DayCost(BaseModel):
+    day: str
+    cost: float
+
+
+class Spend(BaseModel):
+    today: float
+    yesterday: float
+    last_7_days: list[DayCost]
+    change_vs_prev_7_pct: float | None
+    top_project_today: str | None
+
+
+class SummaryTasks(BaseModel):
+    open_count: int
+    next: list[Task]
+
+
+class RecentProject(BaseModel):
+    path: str
+    last_used: str
+    tool: ToolId
+
+
+class ToolHealth(BaseModel):
+    found: bool
+    version: str | None
+    path: str | None
+    used: bool  # the tool's state folder exists
+
+
+class Health(BaseModel):
+    tmux: ToolHealth
+    # None when the tool isn't enabled here (tools.enabled)
+    claude: ToolHealth | None
+    codex: ToolHealth | None
+    gemini: ToolHealth | None
+    usage_index: IndexStats | None
+
+
+class Summary(BaseModel):
+    state: Literal["ok", "attention", "problem"]
+    attention: list[AttentionItem]
+    sessions: list[SummarySession]
+    spend: Spend
+    tasks: SummaryTasks | None  # None when no tasks file is set
+    recent_projects: list[RecentProject]
+    health: Health
+    generated_at: str
+
+
+class McpInfo(BaseModel):
+    scopes: list[Literal["user", "local", "project"]]
+    transports: list[Literal["stdio", "http", "sse"]]
+    headers: bool
+    bearer_token_env_var: bool
+
+
+class ToolInfo(BaseModel):
+    """What one tool can do here, so the UI offers only that."""
+    id: ToolId
+    title: str
+    installed: bool
+    used: bool
+    enabled: bool
+    session_modes: list[Literal["new", "continue", "resume"]]
+    resume_requires_cwd: bool
+    # Eyrie picks a new conversation's id up front (so the preview matches what runs).
+    picks_conversation_id: bool
+    mcp: McpInfo | None
+    plugins: bool
+
+
+class Features(BaseModel):
+    """What this machine has, so pages for missing things aren't shown."""
+    tasks: bool         # a tasks file is set
+    agent_memory: bool  # Claude Code is enabled and its agent-memory folder exists
+    mcp: bool           # an enabled tool has MCP support
+    plugins: bool       # an enabled tool has plugins
+
+
 class Meta(BaseModel):
     home: str
     version: str
+    features: Features
+    # False until first-run setup has written a config file
+    configured: bool
+    tools: list[ToolInfo]
+
+
+# --- Setup --------------------------------------------------------------------------------
+
+class ConfigFile(BaseModel):
+    path: str
+    exists: bool
+    etag: str
+
+
+class DetectedTool(BaseModel):
+    id: ToolId
+    title: str
+    installed: bool
+    version: str | None
+    path: str | None
+    home: str | None
+    used: bool
+    enabled: bool
+
+
+class SuggestedRoot(BaseModel):
+    path: str
+    projects: int
+
+
+class AgentMemoryInfo(BaseModel):
+    path: str
+    exists: bool
+
+
+class SetupState(BaseModel):
+    config: ConfigFile
+    tools_enabled: Literal["auto"] | list[ToolId]
+    tools: list[DetectedTool]
+    roots: list[str]
+    suggested_roots: list[SuggestedRoot]
+    tasks: str | None
+    obsidian_vaults: list[str]
+    agent_memory: AgentMemoryInfo
+
+
+class SetupBody(BaseModel):
+    tools_enabled: Literal["auto"] | list[ToolId]
+    roots: list[str] = []
+    tasks: str | None = None
 
 
 class Token(BaseModel):
     token: str
 
 
-class Health(BaseModel):
+class Status(BaseModel):
     status: str
 
 
@@ -323,7 +487,7 @@ SOURCE_MODELS: dict[str, type[BaseModel]] = {
     "codex": CodexUsage,
     "mcp": McpStatus,
     "plugins": PluginList,
-    "nexus": NexusAgents,
+    "memory": MemoryAgents,
     "tasks": TasksSnapshot,
     "sessions": SessionsSnapshot,
     "usage": UsageReport,

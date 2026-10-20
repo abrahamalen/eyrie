@@ -1,9 +1,11 @@
-"""Nexus agent memory: <vault>/agent-memory/Nexus/<agent>/*.md.
+"""Agent memory: what Claude Code subagents remember, <claude_home>/agent-memory/<agent>/*.md
+(paths.agent_memory to point elsewhere).
 
 Eyrie reads and edits files only inside that folder: names are restricted, paths are
-resolved and must stay inside it, and symlinks are refused. Writes need the etag the
-editor loaded (so an edit made by an agent or in Obsidian in between isn't lost), and
-deleting moves the file to the vault's .trash folder instead of removing it.
+resolved and must stay inside it, and symlinks below it are refused (the folder itself may
+be a symlink, e.g. into a notes vault). Writes need the etag the editor loaded (so an edit
+an agent made in between isn't lost), and deleting moves the file to ~/.eyrie/trash
+instead of removing it.
 """
 import re
 import shutil
@@ -32,17 +34,17 @@ def _iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
 
 
-class NexusSource:
-    id = "nexus"
-    title = "Nexus memory"
+class MemorySource:
+    id = "memory"
+    title = "Agent memory"
 
     def __init__(self, settings: Settings) -> None:
-        self.dir = settings.paths.nexus
-        self.trash = settings.paths.vault / ".trash"
+        self.dir = settings.paths.memory
+        self.trash = settings.paths.data_dir / "trash"
         self._lock = threading.Lock()
 
     def available(self) -> Availability:
-        return path_availability(self.dir, "Nexus memory folder")
+        return path_availability(self.dir, "Agent memory folder")
 
     def snapshot(self) -> dict:
         agents = []
@@ -69,7 +71,7 @@ class NexusSource:
             raise NotFound(agent)
         p = folder / name
         if p.is_symlink() or p.resolve().parent != folder.resolve() or self.dir.resolve() not in p.resolve().parents:
-            raise ValueError("Path is outside the Nexus folder")
+            raise ValueError("Path is outside the agent memory folder")
         return p
 
     def read(self, agent: str, name: str) -> dict:
@@ -98,7 +100,7 @@ class NexusSource:
                 raise NotFound(name)
             if etag(current) != if_match:
                 raise Conflict()
-            dest_dir = self.trash / "agent-memory" / "Nexus" / agent
+            dest_dir = self.trash / "agent-memory" / agent
             dest_dir.mkdir(parents=True, exist_ok=True)
             dest = dest_dir / name
             if dest.exists():
