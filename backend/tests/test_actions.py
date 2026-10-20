@@ -112,6 +112,12 @@ def test_cli_error_surfaces_message_and_is_audited(authed, fake_cli):
     assert authed.get("/api/v1/audit").json()[0]["ok"] is False
 
 
+def test_long_cli_output_is_tailed_in_the_result(authed, fake_cli):
+    fake_cli.exit_code, fake_cli.stdout, fake_cli.stderr = 1, "o" * 9000 + "OUT-END", "e" * 9000 + "ERR-END"
+    msg = act(authed, "mcp.add", HTTP).json()["message"]
+    assert len(msg) <= 2 * 4000 + 1 and msg.endswith("ERR-END") and "OUT-END" in msg
+
+
 def test_local_scope_runs_in_project_dir(authed, fake_cli, tmp_path):
     proj = tmp_path / "proj"
     proj.mkdir()

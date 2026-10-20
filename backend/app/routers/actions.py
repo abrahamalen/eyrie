@@ -12,6 +12,10 @@ from app.tools import TOOLS, enabled
 
 router = APIRouter(prefix="/api/v1", tags=["actions"])
 
+# How much of a CLI's stdout/stderr an action result shows; the runner keeps the full output
+# because other callers parse it.
+TAIL = 4000
+
 
 class ActionRequest(BaseModel):
     params: dict[str, Any] = {}
@@ -51,7 +55,7 @@ def run_action(action_id: str, body: ActionRequest, request: Request):
     except CliNotFound as e:
         raise HTTPException(503, str(e))
 
-    message = "\n".join(x for x in (result.stdout.strip(), result.stderr.strip()) if x)
+    message = "\n".join(x[-TAIL:] for x in (result.stdout.strip(), result.stderr.strip()) if x)
     ok = result.ok
     if ok:
         problem = _verify(state, action_id, params)
