@@ -96,17 +96,25 @@ struct Settings {
     show_cost: bool,
     /// Start at login is switched on once, on the first run; after that it's the user's choice.
     autostart_initialised: bool,
+    /// First run's setup page is opened in the browser once, not on every launch.
+    #[serde(default)]
+    setup_opened: bool,
+    /// Unix time of the last update check (at most one a day).
+    #[serde(default)]
+    last_update_check: u64,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { show_cost: true, autostart_initialised: false }
+        Self { show_cost: true, autostart_initialised: false, setup_opened: false, last_update_check: 0 }
     }
 }
 
 struct AppState {
     settings: Mutex<Settings>,
     last: Mutex<Option<Value>>,
+    /// (version, release page) when a newer release than this app exists.
+    update: Mutex<Option<(String, String)>>,
 }
 
 fn settings_path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -215,7 +223,12 @@ fn set_autostart(app: AppHandle, on: bool) -> Result<(), String> {
 
 /// When Eyrie isn't answering: start (or restart) its background service.
 #[tauri::command]
-async fn start_eyrie() -> Result<String, String> {
+async fn start_eyrie(app: AppHandle) -> Result<String, String> {
+    if bundled(&app).is_some() {
+        return tauri::async_runtime::spawn_blocking(move || install_service(&app))
+            .await
+            .map_err(|e| e.to_string())?;
+    }
     tauri::async_runtime::spawn_blocking(|| {
         let (cmd, args): (&str, Vec<String>) = if cfg!(target_os = "macos") {
             let uid = std::process::Command::new("id").arg("-u").output().map_err(|e| e.to_string())?;
@@ -244,6 +257,97 @@ fn hide(app: AppHandle) {
 #[tauri::command]
 fn quit(app: AppHandle) {
     app.exit(0);
+}
+
+// ------------------------------------------------------------------ the bundled server
+//
+// A packaged app ships eyrie-server and the built UI as resources (docs/packaging.md §2-3).
+// The widget owns their lifecycle: on launch it makes sure the background service runs this
+// app's version (installing or repointing it, which restarts it; sessions survive), and on
+// "Quit and remove service" it uninstalls it. `make widget` (a dev build) bundles neither and
+// leaves the service to `make install`.
+
+fn bundled<R: Runtime>(app: &AppHandle<R>) -> Option<(PathBuf, PathBuf)> {
+    let res = app.path().resource_dir().ok()?;
+    let exe = res.join("eyrie-server").join("eyrie-server");
+    let ui = res.join("ui");
+    (exe.is_file() && ui.join("index.html").is_file()).then_some((exe, ui))
+}
+
+fn run_server(exe: &PathBuf, args: &[&str]) -> Result<String, String> {
+    let out = std::process::Command::new(exe).args(args).output().map_err(|e| e.to_string())?;
+    let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if out.status.success() {
+        Ok(text)
+    } else {
+        Err(format!("eyrie-server {} failed: {}", args.join(" "), String::from_utf8_lossy(&out.stderr).trim()))
+    }
+}
+
+fn install_service<R: Runtime>(app: &AppHandle<R>) -> Result<String, String> {
+    let (exe, ui) = bundled(app).ok_or("This build has no bundled server; run `make install`")?;
+    let ui = ui.to_string_lossy().to_string();
+    run_server(&exe, &["service", "install", "--ui-dir", &ui])
+}
+
+/// Launch-time check: install the service if Eyrie doesn't answer or runs another version,
+/// then open first-run setup once if nothing is configured yet.
+fn ensure_service<R: Runtime>(app: &AppHandle<R>) {
+    let Some((exe, _)) = bundled(app) else { return };
+    let want = run_server(&exe, &["--version"]).ok();
+    let running = get("/api/v1/meta").ok().and_then(|m| m["version"].as_str().map(String::from));
+    if running.is_none() || running != want {
+        if let Err(e) = install_service(app) {
+            eprintln!("{e}");
+            return;
+        }
+    }
+    let unconfigured = get("/api/v1/meta").map(|m| m["configured"] == json!(false)).unwrap_or(false);
+    let state = app.state::<AppState>();
+    let s = {
+        let mut s = state.settings.lock().unwrap();
+        if !unconfigured || s.setup_opened {
+            return;
+        }
+        s.setup_opened = true;
+        s.clone()
+    };
+    save_settings(app, &s);
+    let _ = app.opener().open_url(format!("{}/setup", base_url()), None::<&str>);
+}
+
+const RELEASES: &str = "https://api.github.com/repos/abrahamalen/eyrie/releases/latest";
+
+fn newer(candidate: &str, current: &str) -> bool {
+    let parse = |v: &str| -> Vec<u64> { v.trim_start_matches('v').split(['.', '-']).take(3).map(|p| p.parse().unwrap_or(0)).collect() };
+    parse(candidate) > parse(current)
+}
+
+/// At most once a day: one anonymous GET to GitHub's releases API. Nothing is downloaded or
+/// installed; a newer release only adds an "Update available" menu item.
+fn check_for_update<R: Runtime>(app: &AppHandle<R>) {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let state = app.state::<AppState>();
+    {
+        let mut s = state.settings.lock().unwrap();
+        if now.saturating_sub(s.last_update_check) < 86_400 {
+            return;
+        }
+        s.last_update_check = now;
+        let copy = s.clone();
+        drop(s);
+        save_settings(app, &copy);
+    }
+    let resp = agent().get(RELEASES).header("User-Agent", "eyrie-widget").header("Accept", "application/vnd.github+json").call();
+    let Ok(mut resp) = resp else { return };
+    if resp.status().as_u16() != 200 {
+        return;
+    }
+    let Ok(v) = resp.body_mut().read_json::<Value>() else { return };
+    let (Some(tag), Some(url)) = (v["tag_name"].as_str(), v["html_url"].as_str()) else { return };
+    if newer(tag, &app.package_info().version.to_string()) {
+        *state.update.lock().unwrap() = Some((tag.to_string(), url.to_string()));
+    }
 }
 
 // ------------------------------------------------------------------ tray, menu, panel
@@ -316,6 +420,9 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, summary: Option<&Value>) -> tauri:
     }
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
     items.push(Box::new(PredefinedMenuItem::separator(app)?));
+    if let Some((version, _)) = app.state::<AppState>().update.lock().unwrap().clone() {
+        items.push(Box::new(MenuItem::with_id(app, "update", format!("Update available: {version}"), true, None::<&str>)?));
+    }
     items.push(Box::new(MenuItem::with_id(app, "open", "Open Eyrie", true, None::<&str>)?));
     items.push(Box::new(CheckMenuItem::with_id(app, "autostart", "Start at login", true, autostart, None::<&str>)?));
     if cfg!(target_os = "macos") {
@@ -324,6 +431,9 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, summary: Option<&Value>) -> tauri:
     }
     items.push(Box::new(PredefinedMenuItem::separator(app)?));
     items.push(Box::new(MenuItem::with_id(app, "quit", "Quit widget", true, None::<&str>)?));
+    if bundled(app).is_some() {
+        items.push(Box::new(MenuItem::with_id(app, "remove", "Quit and remove service", true, None::<&str>)?));
+    }
     let refs: Vec<&dyn IsMenuItem<R>> = items.iter().map(|b| b.as_ref()).collect();
     Menu::with_items(app, &refs)
 }
@@ -429,6 +539,18 @@ fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
         "show" => show_panel(app, None),
         "open" => open("/"),
         "quit" => app.exit(0),
+        "remove" => {
+            // Stops and removes the background service; ~/.eyrie and running sessions stay.
+            if let Some((exe, _)) = bundled(app) {
+                let _ = run_server(&exe, &["service", "uninstall"]);
+            }
+            app.exit(0);
+        }
+        "update" => {
+            if let Some((_, url)) = app.state::<AppState>().update.lock().unwrap().clone() {
+                let _ = app.opener().open_url(url, None::<&str>);
+            }
+        }
         "autostart" => {
             let al = app.autolaunch();
             let _ = if al.is_enabled().unwrap_or(false) { al.disable() } else { al.enable() };
@@ -490,7 +612,7 @@ pub fn run() {
                 settings.autostart_initialised = true;
                 save_settings(&handle, &settings);
             }
-            app.manage(AppState { settings: Mutex::new(settings), last: Mutex::new(None) });
+            app.manage(AppState { settings: Mutex::new(settings), last: Mutex::new(None), update: Mutex::new(None) });
 
             TrayIconBuilder::with_id(TRAY_ID)
                 .icon(tray_image("ok"))
@@ -516,9 +638,31 @@ pub fn run() {
                     }
                 });
             }
+            let lifecycle = handle.clone();
+            thread::spawn(move || {
+                ensure_service(&lifecycle);
+                loop {
+                    check_for_update(&lifecycle);
+                    thread::sleep(Duration::from_secs(3600));
+                }
+            });
             start_polling(handle);
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running Eyrie's widget");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::newer;
+
+    #[test]
+    fn release_tags_compare_numerically() {
+        assert!(newer("v0.2.0", "0.1.0"));
+        assert!(newer("v0.10.0", "0.9.3"));
+        assert!(!newer("v0.2.0", "0.2.0"));
+        assert!(!newer("v0.1.9", "0.2.0"));
+        assert!(!newer("v0.2.0-rc1", "0.2.0"));
+    }
 }

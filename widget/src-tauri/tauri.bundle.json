@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "../../build/dist/eyrie-server/": "eyrie-server/",
+      "../../frontend/dist/": "ui/"
+    }
+  }
+}
