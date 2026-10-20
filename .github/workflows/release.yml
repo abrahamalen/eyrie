@@ -152,10 +152,12 @@ jobs:
         with:
           node-version: "22"
       - run: make landing-dist
+      # Flat, so publish's `sha256sum -- *` only sees files.
+      - run: mkdir -p out && cp build/eyrie-landing-*.tar.gz scripts/install.sh out/
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: landing
-          path: build/eyrie-landing-*.tar.gz
+          path: out/*
           if-no-files-found: error
 
   publish:
@@ -179,8 +181,13 @@ jobs:
           pre=()
           [[ "$tag" == *-* ]] && pre=(--prerelease)
           cat > notes.md <<'EOF'
-          Install from the terminal (macOS and Linux) once the install script ships, or download
-          the package for your system below and check it against `SHA256SUMS`.
+          Install from the terminal (macOS and Linux):
+
+              curl -fsSL https://alenabraham.me/eyrie/install.sh | sh
+
+          It picks the right file below, checks it against `SHA256SUMS`, and starts Eyrie
+          (`--server-only` for machines without a desktop, `--uninstall` to remove). Or download
+          the package for your system below and check it yourself.
 
           - **macOS:** open the `.dmg` and drag Eyrie to Applications. This build isn't signed,
             so the first time, right-click Eyrie → **Open** (needed only for browser downloads).
