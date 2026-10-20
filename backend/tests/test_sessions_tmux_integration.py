@@ -93,3 +93,18 @@ def test_real_tmux_keeps_arguments_literal(real):
     assert r["ok"], r
     screen = wait_for(lambda: (t := c.get("/api/v1/sessions/eyrie-lit1/screen").json()["text"]) and "cwd:" in t and t)
     assert "a;b $HOME" in screen
+
+
+def test_real_tmux_lists_many_sessions(real):
+    # Over 4 KB of list-sessions output, more than an action result shows.
+    import subprocess
+    c, proj, socket = real
+    deep = proj / ("nested-project-directory-" * 4)
+    deep.mkdir()
+    conf = str(c.app.state.settings.paths.data_dir / "tmux.conf")
+    names = {f"eyrie-many{i:02d}" for i in range(40)}
+    for name in names:
+        subprocess.run(["tmux", "-L", socket, "-f", conf, "new-session", "-d", "-s", name, "sleep", "60"], check=True)
+        subprocess.run(["tmux", "-L", socket, "set-option", "-t", name, "@eyrie_cwd", str(deep)], check=True)
+    sessions = c.get("/api/v1/sources/sessions").json()["sessions"]
+    assert {s["name"] for s in sessions} == names and {s["cwd"] for s in sessions} == {str(deep)}
