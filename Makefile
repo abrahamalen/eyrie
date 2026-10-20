@@ -6,7 +6,7 @@ INSTALL_PORT ?= 8787
 VERSION := $(shell cat VERSION)
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint lint-py clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
+.PHONY: help setup journeys dev backend frontend test build lint lint-py clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -62,6 +62,12 @@ types-check: backend/.venv/.stamp ## Fail if generated.ts is out of date with th
 	$(OPENAPI_TS) "$$tmp/openapi.json" -o "$$tmp/generated.ts" >/dev/null && \
 	if diff -q "$$tmp/generated.ts" $(GENERATED) >/dev/null; then echo "generated.ts is up to date"; \
 	else echo "generated.ts is stale: run 'make types' and commit it"; diff -u $(GENERATED) "$$tmp/generated.ts" | head -40; exit 1; fi
+
+# Recorded user journeys against a throwaway HOME/config/tmux (never your real ~/.eyrie or
+# ~/.claude); report at frontend/journeys/index.html. ARGS go to Playwright, e.g. ARGS='-g Tasks'.
+journeys: setup ## Record the user-journey suite and build its report
+	cd frontend && npx playwright install chromium
+	scripts/journeys.sh $(ARGS)
 
 version-check: ## Fail if a version copy differs from VERSION
 	@python3 scripts/version.py check
