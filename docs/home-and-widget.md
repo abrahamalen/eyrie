@@ -88,7 +88,7 @@ Data colours stay as they are. The chart palette is the validated categorical on
 
 **Landing page**: public, at **<https://alenabraham.me/eyrie>**.
 
-- **Where it lives**: in the site repo (`alen-abraham.github.io`, Hugo + PaperMod, deployed from its `hugo` branch). It's a standalone static page under `static/eyrie/`, so it can use Eyrie's design language without fighting the blog theme, and it ships as its own PR in that repo.
+- **Where it lives**: in this repo, `landing/`, a small Vite + React app (`base: "/eyrie/"`) that shares the UI's tokens and Logo. Each release publishes its build as `eyrie-landing-<version>.tar.gz`; the site repo pins that tarball by sha256 and unpacks it under `/eyrie/`, so the page keeps Eyrie's design language without fighting the blog theme.
 - **No live data**: a public page can't, and shouldn't, reach a local Eyrie. Eyrie's Origin check would refuse it anyway.
 - **Sections**, Nexus-style:
   1. **Hero**:

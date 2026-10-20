@@ -138,8 +138,25 @@ jobs:
           curl -sf http://127.0.0.1:8799/api/v1/meta
           curl -sf http://127.0.0.1:8799/ | grep -q '<div id="root">'
 
+  # The public landing page's static build; the website pins this tarball by sha256 and
+  # unpacks it at alenabraham.me/eyrie/.
+  landing:
+    needs: verify
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "22"
+      - run: make landing-dist
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: landing
+          path: build/eyrie-landing-*.tar.gz
+          if-no-files-found: error
+
   publish:
-    needs: [verify, build, install-test]
+    needs: [verify, build, install-test, landing]
     runs-on: ubuntu-24.04
     permissions:
       contents: write

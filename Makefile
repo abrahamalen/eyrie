@@ -3,9 +3,10 @@ BACKEND_PORT ?= 8000
 FRONTEND_PORT ?= 5173
 # The installed (background) Eyrie, separate from `make dev` so both can run at once.
 INSTALL_PORT ?= 8787
+VERSION := $(shell cat VERSION)
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check
+.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check landing-dev landing-build landing-dist
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -62,13 +63,30 @@ version: ## Set the version everywhere: make version V=0.2.0
 	@test -n "$(V)" || { echo "usage: make version V=x.y.z"; exit 1; }
 	python3 scripts/version.py set $(V)
 
-check: version-check test types-check build lint ## Everything CI runs
+check: version-check test types-check build lint landing-build ## Everything CI runs
 
 build: frontend/node_modules/.stamp ## Typecheck + production build of the UI
 	cd frontend && npm run build
 
 lint: frontend/node_modules/.stamp ## Lint the UI
 	cd frontend && npm run lint
+
+# The public landing page (alenabraham.me/eyrie/): its own small Vite app, sharing the UI's
+# tokens and Logo. The website pins the release tarball by sha256 (docs/home-and-widget.md §3.2).
+landing/node_modules/.stamp: landing/package-lock.json
+	cd landing && npm ci
+	@touch $@
+
+landing-dev: landing/node_modules/.stamp ## Run the landing page with hot reload (http://localhost:5174/eyrie/)
+	cd landing && npm run dev -- --host 127.0.0.1 --port 5174
+
+landing-build: landing/node_modules/.stamp ## Typecheck, lint and build the landing page into landing/dist/
+	cd landing && npm run lint && npm run build
+
+landing-dist: landing-build ## Package the landing page as build/eyrie-landing-$(VERSION).tar.gz (index.html at the root)
+	mkdir -p build
+	COPYFILE_DISABLE=1 tar -C landing/dist -czf build/eyrie-landing-$(VERSION).tar.gz $$(cd landing/dist && ls -A)
+	@echo "Wrote build/eyrie-landing-$(VERSION).tar.gz"
 
 serve: setup build ## Run the built app in the foreground on 127.0.0.1:$(INSTALL_PORT) (UI + API)
 	@echo "Eyrie -> http://127.0.0.1:$(INSTALL_PORT)"
@@ -106,4 +124,4 @@ widget-dist: build server-dist widget-check ## Build Eyrie for this OS: the app 
 	cd widget && npm ci --silent && $(RUST_PATH) CI=true npx tauri build --config src-tauri/tauri.bundle.json
 
 clean: ## Remove venv, node_modules, dist, widget build output
-	rm -rf backend/.venv frontend/node_modules frontend/dist widget/node_modules widget/src-tauri/target build
+	rm -rf backend/.venv frontend/node_modules frontend/dist landing/node_modules landing/dist widget/node_modules widget/src-tauri/target build

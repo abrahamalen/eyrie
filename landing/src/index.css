@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource/instrument-serif/400-italic.css";
+
+/* The app's tokens, so the page looks like the product (frontend/src/tokens.css). */
+@import "../../frontend/src/tokens.css";
+
+/* Shared components used from the app. */
+@source "../../frontend/src/components/Logo.tsx";
+@source "../../frontend/src/components/ui/card.tsx";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 1.5rem;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* The one emphasised phrase: italic serif in the brand colour. */
+  .serif {
+    @apply font-serif font-normal tracking-[-0.01em] text-brand italic;
+  }
+  /* Warm command box, the same treatment as the app's command previews. */
+  .cmd {
+    @apply overflow-x-auto rounded-lg border bg-tint px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] whitespace-pre;
+  }
+}
