@@ -81,7 +81,9 @@ def test_eyrie_uses_private_socket_and_conf(authed, tmux, project, settings):
     start(authed, tool="claude", cwd=str(project))
     tool, args = tmux.calls[-2]  # new-session, then verify's list-sessions
     assert args[:4] == ["-L", "eyrie", "-f", str(settings.paths.data_dir / "tmux.conf")]
-    assert "remain-on-exit on" in (settings.paths.data_dir / "tmux.conf").read_text()
+    conf = (settings.paths.data_dir / "tmux.conf").read_text()
+    assert "remain-on-exit on" in conf
+    assert "set -g status-right \" #{session_name} · %H:%M \"" in conf  # not the default: the hostname
 
 
 @pytest.mark.parametrize("params,argv_tail", [
