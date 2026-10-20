@@ -154,7 +154,7 @@ test('See what needs me at a glance', async ({ page }) => {
 test('See every running session, mine and Eyrie’s', async ({ page }) => {
   await home(page)
   await nav(page, 'Sessions')
-  await expect(page.getByText('In your terminals')).toBeVisible()
+  await expect(page.getByText('In your terminals', { exact: true })).toBeVisible()
   // The two stand-in processes from the seeded `ps` list.
   await expect(page.getByText('~/projects/atlas').first()).toBeVisible()
   await shot(page, 'sessions')
@@ -340,7 +340,7 @@ test('Glance at the top-bar widget', async ({ page }) => {
   await page.setViewportSize({ width: 380, height: 640 })
   await page.goto('/widget.html')
   await expect(page.getByText('Eyrie', { exact: true }).first()).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByText('claude · ttys009')).toBeVisible()
+  await expect(page.getByText(/Claude Code · eyrie · ttys009/)).toBeVisible()
   await page.waitForTimeout(BEAT)
   await shot(page, 'widget panel')
   await page.getByRole('button', { name: '+ Task' }).click()

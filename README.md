@@ -62,7 +62,10 @@ make test    # backend tests + coverage (some use a real tmux on a throwaway soc
 make types   # regenerate frontend/src/api/generated.ts after changing backend/app/schemas.py
 make check   # backend lint + tests + generated-types check + UI and landing builds + lint (what CI runs)
 make landing-dev   # the public landing page (landing/) on http://localhost:5174/eyrie/
+make journeys      # recorded Playwright user journeys; report at frontend/journeys/index.html
 ```
+
+CI runs the journeys too: each run's report and videos are the `journey-report` artifact on its Actions page (kept 14 days).
 
 `make help` lists every target. The API contract is `backend/app/schemas.py`; the
 frontend's types are generated from it, so change the schema and run `make types`
