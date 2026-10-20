@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eyrie: every coding agent on your machine, in one place</title>
+    <meta
+      name="description"
+      content="Eyrie is a local control plane for Claude Code, Codex and Gemini CLI: sessions, usage and cost, MCP servers, plugins and agent memory, on 127.0.0.1 only."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f8f6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#10141d" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="canonical" href="https://alenabraham.me/eyrie/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Eyrie" />
+    <meta property="og:title" content="Eyrie: every coding agent on your machine, in one place" />
+    <meta
+      property="og:description"
+      content="A local control plane for Claude Code, Codex and Gemini CLI. No accounts, no cloud."
+    />
+    <meta property="og:url" content="https://alenabraham.me/eyrie/" />
+    <meta property="og:image" content="https://alenabraham.me/eyrie/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Before first paint, so there's no light flash: a saved choice wins, else the OS.
+      ;(function () {
+        // ?theme=light|dark forces one for this visit (handy for screenshots and links).
+        var saved = new URLSearchParams(location.search).get('theme')
+        if (saved !== 'light' && saved !== 'dark') saved = null
+        try {
+          saved = saved || localStorage.getItem('eyrie-landing-theme')
+        } catch (e) {}
+        var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.classList.toggle('dark', dark)
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
