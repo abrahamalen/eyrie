@@ -188,8 +188,10 @@ apt and dnf **repositories** (`apt install eyrie` with no download step) are def
    against a local mirror of the rc1 release: `.deb` on debian:12, `.rpm` on fedora:41,
    `--server-only` tarball on ubuntu:24.04, a tampered file refused on checksum, `--uninstall`
    (package gone, `~/.eyrie` kept), and a macOS `--dry-run`. Shipped inside the landing tarball
-   (so the site serves `/eyrie/install.sh`) and attached to each release. The Homebrew tap
-   (`abrahamalen/homebrew-eyrie`) is still to do.
+   (so the site serves `/eyrie/install.sh`) and attached to each release. Homebrew: tap
+   `abrahamalen/homebrew-eyrie`, generated per release by `packaging/homebrew/render.py <version>
+   <tap checkout>` (formula `eyrie-server`: server + UI tarballs for macOS and Linux; cask `eyrie`:
+   the dmg, quarantine cleared since it's unsigned). Both pass `brew style`.
 
 ## 9. Decisions (2026-10-20)
 

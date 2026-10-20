@@ -101,3 +101,7 @@ and the reasoning are in [`docs/architecture.md`](docs/architecture.md). There's
 clickable mock in [`prototype/`](prototype/index.html).
 
 Personal project, laptop only, macOS first.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

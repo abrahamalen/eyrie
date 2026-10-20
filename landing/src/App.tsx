@@ -109,7 +109,7 @@ function Hero() {
               See how it works <ArrowDown className="size-4" aria-hidden />
             </ButtonLink>
           </div>
-          <p className="mt-6 font-mono text-xs text-muted-foreground">127.0.0.1 only · No accounts · Source on GitHub</p>
+          <p className="mt-6 font-mono text-xs text-muted-foreground">127.0.0.1 only · No accounts · MIT licensed</p>
         </div>
         <Card className="min-w-0 gap-0 px-6 [--card-spacing:--spacing(6)] sm:px-7">
           <div className="flex justify-between border-b pb-4">
@@ -469,7 +469,7 @@ function Source() {
           Built in the open, <span className="serif">read every line.</span>
         </>
       }
-      intro="Eyrie is a personal project. The code, the design docs and every release, with its checksums, are on GitHub."
+      intro="Eyrie is a personal project, MIT licensed. The code, the design docs and every release, with its checksums, are on GitHub."
     >
       <div className="flex flex-wrap gap-3">
         <ButtonLink href={REPO} primary>
@@ -501,6 +501,9 @@ function Footer() {
         </a>
         <a href={RELEASES} className="hover:text-foreground">
           Releases
+        </a>
+        <a href={`${REPO}/blob/main/LICENSE`} className="hover:text-foreground">
+          MIT License
         </a>
         <span className="font-mono sm:ml-auto">v{VERSION}</span>
       </div>

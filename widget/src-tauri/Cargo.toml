@@ -1,6 +1,6 @@
 [package]
 name = "eyrie-widget"
-version = "0.2.0-rc2"
+version = "0.2.0-rc3"
 description = "Eyrie's top-bar widget: what needs you, live sessions, today's cost"
 edition = "2021"
 
