@@ -138,7 +138,9 @@ Each build job:
    `make widget-dist` = `make server-dist` + `tauri build`; the macOS `.dmg` is built and
    checked locally (app 53 MB, dmg 23 MB). The `.deb`/`.rpm` builds move to the release job's
    distro containers (step 5), where they're installed and smoke-tested.
-4. **Code:** `VERSION`, the `make version` target, and the consistency check.
+4. **Code (done):** `VERSION`, `make version V=x.y.z` (`scripts/version.py`, 7 copies:
+   backend, tauri.conf.json, Cargo.toml/.lock, widget package.json/-lock), and `make
+   version-check` as the first step of `make check`.
 5. **Code:** `release.yml` with smoke tests; a dry run on a `v0.2.0-rc1` tag on the personal
    repo.
 

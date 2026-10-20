@@ -5,7 +5,7 @@ FRONTEND_PORT ?= 5173
 INSTALL_PORT ?= 8787
 
 .DEFAULT_GOAL := dev
-.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist
+.PHONY: help setup dev backend frontend test build lint clean types types-check check serve install uninstall status logs widget widget-dist widget-check server-dist version version-check
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -55,7 +55,14 @@ types-check: backend/.venv/.stamp ## Fail if generated.ts is out of date with th
 	if diff -q "$$tmp/generated.ts" $(GENERATED) >/dev/null; then echo "generated.ts is up to date"; \
 	else echo "generated.ts is stale: run 'make types' and commit it"; diff -u $(GENERATED) "$$tmp/generated.ts" | head -40; exit 1; fi
 
-check: test types-check build lint ## Everything CI runs
+version-check: ## Fail if a version copy differs from VERSION
+	@python3 scripts/version.py check
+
+version: ## Set the version everywhere: make version V=0.2.0
+	@test -n "$(V)" || { echo "usage: make version V=x.y.z"; exit 1; }
+	python3 scripts/version.py set $(V)
+
+check: version-check test types-check build lint ## Everything CI runs
 
 build: frontend/node_modules/.stamp ## Typecheck + production build of the UI
 	cd frontend && npm run build
